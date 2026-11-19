@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PV Formalność — osadzanie w Google Sites</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<style>
+  header.embed-head {
+    background: linear-gradient(135deg, var(--green-deep), var(--green));
+    color: #fff; padding: 26px 22px; border-bottom: 3px solid var(--gold);
+  }
+  header.embed-head .wrap, .embed-main { max-width: 980px; margin: 0 auto; }
+  header.embed-head h1 { margin: 0; font-size: 1.55rem; }
+  header.embed-head p { margin: 6px 0 0; color: #d8e6d8; }
+  .embed-main { padding: 22px 18px 60px; }
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: #0f2419; color: #d8f0dc;
+    font-family: Consolas, "Courier New", monospace; font-size: .82rem; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<header class="embed-head"><div class="wrap">
+  <h1>PV Formalność — osadzanie w Google Sites</h1>
+  <p>Wklej poniższy kod jako „Embed URL > Osadź kod HTML”.</p>
+</div></header>
+<main class="embed-main">
+  <section class="panel">
+    <h2>1. Adres aplikacji</h2>
+    <div class="field"><label class="field-label">URL wersji web</label>
+      <input type="url" id="app-url" value="https://raminassar-arch.github.io/pv-formalnosc/"></div>
+  </section>
+  <section class="panel">
+    <h2>2. Kod do wklejenia</h2>
+    <div class="field"><label class="field-label">Kod iframe</label>
+      <textarea id="code" readonly></textarea></div>
+    <div class="row-actions">
+      <button class="btn primary" id="copy">Kopiuj kod</button>
+      <a class="btn" href="./">Otwórz aplikację</a>
+    </div>
+    <p class="small muted" id="msg"></p>
+  </section>
+  <section class="panel">
+    <h2>3. Wysokość ramki</h2>
+    <p class="small">Google Sites czasem przycina ramki — jeśli treść jest ucięta,
+       zwiększ wartość <code>height</code> w kodzie (np. do <code>900</code>).</p>
+  </section>
+</main>
+<script>
+(function () {
+  "use strict";
+  const url = document.getElementById("app-url");
+  const code = document.getElementById("code");
+  const msg = document.getElementById("msg");
+  function update() {
+    code.value = '<iframe src="' + url.value.replace(/"/g, "&quot;") +
+      '" width="100%" height="760" style="border:0" ' +
+      'title="PV Formalność — analiza ścieżki formalnej"></iframe>';
+    msg.textContent = "";
+  }
+  url.addEventListener("input", update);
+  document.getElementById("copy").addEventListener("click", function () {
+    code.select();
+    try {
+      document.execCommand("copy");
+      msg.textContent = "Skopiowano.";
+    } catch (e) {
+      msg.textContent = "Zaznacz kod i skopiuj go ręcznie (Ctrl+C).";
+    }
+  });
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>uruchamianie testów…</title>
+<link rel="stylesheet" href="../app.css">
+</head>
+<body>
+<div class="panel" style="max-width:900px;margin:24px auto">
+  <h1>PV Formalność — testy wersji web</h1>
+  <pre id="out">Uruchamianie…</pre>
+</div>
+
+<script src="../js/model.js"></script>
+<script src="../js/keys.js"></script>
+<script src="../js/license.js"></script>
+<script src="../js/zip.js"></script>
+<script src="../js/xlsx.js"></script>
+<script src="../js/pdf.js"></script>
+<script>
+(function () {
+  "use strict";
+  const out = document.getElementById("out");
+  const lines = [];
+  let pass = 0, fail = 0;
+
+  function ok(name, condition, detail) {
+    if (condition) { pass++; lines.push("PASS  " + name); }
+    else { fail++; lines.push("FAIL  " + name + (detail ? "  -> " + detail : "")); }
+  }
+
+  function finish() {
+    lines.push("", "TOTAL " + pass + " PASS / " + fail + " FAIL");
+    document.title = (fail ? "FAIL " : "PASS ") + pass + "/" + (pass + fail);
+    out.textContent = lines.join("\n");
+  }
+
+  async function run() {
+    const M = window.PVModel, L = window.PVLicense;
+    ok("wersja 1.3.0", M.VERSION === "1.3.0", M.VERSION);
+    ok("hashe kluczy: 1000 dożywotnich", window.PVKeys.lifetime.length === 1000);
+    ok("hashe kluczy: 1000 rocznych", window.PVKeys.year.length === 1000);
+    ok("hashe mają 64 znaki hex", window.PVKeys.lifetime.every(function (h) {
+      return /^[0-9a-f]{64}$/.test(h);
+    }));
+
+    // Oczekiwane wyniki wygenerowane z desktopowego model.py.
+    // [roof, protected, ha, kw] -> [ścieżka, liczba kroków, E, P, uwaga]
+    const cases = [
+      [[false,false,1,6],    [1,1,0,0,0]],
+      [[false,false,1,10],   [2,3,0,0,0]],
+      [[true,false,1,10],    [2,3,0,0,0]],
+      [[true,false,1,100],   [3,4,0,0,0]],
+      [[false,false,1,100],  [5,5,0,0,0]],
+      [[false,true,0.6,100], [5,5,1,0,1]],
+      [[false,false,3,200],  [7,6,1,1,0]],
+      [[false,true,0.6,200], [7,6,1,1,0]],
+      [[true,false,1,1200],  [8,5,0,1,0]],
+      [[false,false,1,1200], [9,6,0,1,0]],
+      [[false,true,1,1200],  [10,7,1,1,0]],
+    ];
+    cases.forEach(function (item) {
+      const c = item[0], e = item[1];
+      const r = M.calculate(c[0], c[1], c[2], c[3], "p", "l");
+      const got = [r.path_no, r.steps.length, r.env ? 1 : 0, r.perm ? 1 : 0, r.warning ? 1 : 0];
+      ok("parity " + c.join(","), JSON.stringify(got) === JSON.stringify(e), JSON.stringify(got));
+    });
+
+    const bad = await L.validate("AAAAA-BBBBB-CCCCC-DDDDD");
+    ok("nieprawidłowy klucz odrzucony", bad.ok === false);
+    // Fałszywy klucz testowy — żaden prawdziwy klucz nie trafia do katalogu web.
+    ok("kanonizacja klucza", L.canon("abcd-efghi-jklmn-opqrs-t") === "ABCDEFGHIJKLMNOPQRST");
+    ok("formatowanie klucza", L.format("ABCDEFGHIJKLMNOPQRST") === "ABCDE-FGHIJ-KLMNO-PQRST");
+
+    const r = M.calculate(false, false, 1, 6, M.PLACE_GROUND, M.LOC_NORMAL);
+    const pdf = await window.PVPdf.renderPdf(r);
+    const dec = new TextDecoder();
+    const head = dec.decode(pdf.slice(0, 8));
+    const tail = dec.decode(pdf.slice(-16));
+    const text = dec.decode(pdf);
+    ok("PDF: nagłówek 1.4", head === "%PDF-1.4", head);
+    ok("PDF: JPEG /DCTDecode", text.indexOf("/DCTDecode") >= 0);
+    ok("PDF: A4 2480x3508", text.indexOf("/Width 2480 /Height 3508") >= 0);
+    ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
+    const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
+    ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
+
+    const xlsx = window.PVXlsx.build(r);
+    const zipText = dec.decode(xlsx.slice(0, 2000));
+    ok("XLSX: sygnatura ZIP", xlsx[0] === 0x50 && xlsx[1] === 0x4b);
+    ok("XLSX: workbook.xml", zipText.indexOf("xl/workbook.xml") >= 0);
+    ok("XLSX: sheet1.xml", zipText.indexOf("xl/worksheets/sheet1.xml") >= 0);
+
+    const canvas = document.createElement("canvas");
+    const pages = await window.PVPdf.renderPreview(r, canvas);
+    ok("podgląd A4@300dpi", canvas.width === 2480 && canvas.height === 3508 && pages === 1,
+       canvas.width + "x" + canvas.height + " pages=" + pages);
+  }
+
+  run().catch(function (err) {
+    fail++;
+    lines.push("FAIL  wyjątek: " + (err && err.stack ? err.stack : err));
+  }).then(finish);
+})();
+</script>
+</body>
+</html>

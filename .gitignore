@@ -1,0 +1,8 @@
+# Artefakty developerskie — nie publikujemy ich na GitHub Pages
+_screenshots/
+__pycache__/
+*.pyc
+prof-*/
+selftest-profile/
+.DS_Store
+Thumbs.db
