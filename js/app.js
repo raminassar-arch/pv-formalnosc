@@ -83,7 +83,10 @@
   // --- projekt -------------------------------------------------------------
 
   function emptyProject() {
-    return { roof: false, protectedArea: false, ha: 1, kw: 6 };
+    return {
+      roof: false, protectedArea: false, ha: 1, kw: 6,
+      est: M.estimateOptions(),
+    };
   }
 
   function loadProject() {
@@ -97,6 +100,7 @@
         protectedArea: !!data.protectedArea,
         ha: numberOr(data.ha, base.ha),
         kw: numberOr(data.kw, base.kw),
+        est: M.estimateOptions(data.est),
       };
     } catch (err) { return base; }
   }
@@ -120,6 +124,10 @@
   function currentResult() {
     return M.calculate(project.roof, project.protectedArea, project.ha, project.kw,
                        placeText(), locationText());
+  }
+
+  function currentEstimate() {
+    return M.estimate(project.ha, project.kw, project.est);
   }
 
   // --- routing -------------------------------------------------------------
@@ -167,7 +175,7 @@
       '<div class="hero-text">' +
       "<h1>Formalności dla instalacji fotowoltaicznej</h1>" +
       "<p>Podaj parametry instalacji, opłać 30 zł przez Przelewy24 i zobacz ścieżkę z gov.pl, " +
-      "listę kroków w kolejności oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>" +
+      "listę kroków, liczbę paneli z powierzchni, koszty i czas realizacji oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>" +
       '<div class="hero-actions">' +
       '<button class="btn primary" data-act="go" data-path="dane">Rozpocznij analizę</button>' +
       '<button class="btn gold" data-act="go" data-path="platnosc">Płatność · 30 zł</button>' +
@@ -175,9 +183,9 @@
       '<div class="hero-card">' +
       '<span class="badge">' + esc(M.THRESHOLDS_LINE) + "</span>" +
       "<h2>Co otrzymasz</h2>" +
-      "<p><strong>Ścieżka formalna krok po kroku</strong></p>" +
-      '<p class="small">Wynik analizy, decyzje TAK/NIE i raport PDF 300 DPI — ' +
-      "dostępne po opłacie 30 zł.</p>" +
+      "<p><strong>Ścieżka formalna i wycena</strong></p>" +
+      '<p class="small">Decyzje TAK/NIE, liczba paneli, koszty, czas realizacji ' +
+      "i raport PDF 300 DPI — dostępne po opłacie 30 zł.</p>" +
       "</div></section>" +
       '<section class="panel"><h2>Jak to działa</h2>' +
       '<p class="small muted">Dane formularza są zapisywane wyłącznie w Twojej przeglądarce ' +
@@ -187,8 +195,19 @@
       '<p class="small">' + esc(M.DISCLAIMER) + "</p></section>";
   }
 
+  function numField(id, label, value, step, hint) {
+    return '<div class="field"><label class="field-label">' + esc(label) + "</label>" +
+      '<input type="number" id="' + id + '" min="0" step="' + step + '" value="' +
+      esc(M.fmt(value)) + '">' +
+      (hint ? '<span class="hint">' + esc(hint) + "</span>" : "") + "</div>";
+  }
+
   function viewDane() {
-    const p = project;
+    const p = project, e = M.estimateOptions(project.est);
+    const presetOptions = M.MODULE_PRESETS.map(function (m) {
+      return '<option value="' + esc(m.id) + '"' + (m.id === e.preset ? " selected" : "") +
+        ">" + esc(m.name) + "</option>";
+    }).join("");
     return '<div class="page-head"><div><h1>Dane instalacji</h1>' +
       "<p>Podaj podstawowe parametry — kolejnym krokiem jest płatność 30 zł, która otwiera wynik.</p></div></div>" +
       '<section class="panel"><div class="grid">' +
@@ -200,15 +219,36 @@
       '<label class="checkline wide"><input type="checkbox" id="f-protected"' +
       (p.protectedArea ? " checked" : "") + "><span>" + esc(M.LOC_PROTECTED) +
       " <small class=\"muted\">(próg 0,5 ha zamiast 2 ha)</small></span></label>" +
-      '<div class="field"><label class="field-label">Powierzchnia (ha)</label>' +
-      '<input type="number" id="f-ha" min="0" step="0.01" value="' + esc(M.fmt(p.ha)) + '">' +
-      '<span class="hint">Liczoną po obrysie zewnętrznych modułów.</span></div>' +
-      '<div class="field"><label class="field-label">Moc (kW)</label>' +
-      '<input type="number" id="f-kw" min="0" step="0.1" value="' + esc(M.fmt(p.kw)) + '">' +
-      '<span class="hint">Łączna moc zainstalowanych modułów.</span></div>' +
+      numField("f-ha", "Powierzchnia (ha)", p.ha, "0.01",
+               "Po obrysie zewnętrznych modułów — podstawa liczby paneli.") +
+      numField("f-kw", "Moc deklarowana (kW)", p.kw, "0.1",
+               "Służy do porównania z mocą z przeliczonych paneli.") +
+      "</div></section>" +
+      '<section class="panel est-form"><h2>Moduły, koszty i czas realizacji</h2>' +
+      '<p class="small muted">Liczba paneli liczona jest z powierzchni: ' +
+      "powierzchnia × pokrycie ÷ pole modułu. Wybierz gotowy moduł albo wpisz własne parametry — " +
+      "wszystkie wartości można zmienić.</p>" +
+      '<div class="grid">' +
+      '<div class="field wide"><label class="field-label">Model modułu (cena orientacyjna)</label>' +
+      '<select id="f-preset">' + presetOptions + "</select>" +
+      '<span class="hint">Ceny brutto/szt. według zestawienia bursatm.pl (31.07.2026).</span></div>' +
+      numField("f-panelwp", "Moc modułu (Wp)", e.panelWp, "1", "Moc jednego panelu.") +
+      numField("f-panelarea", "Pole modułu (m²)", e.panelAreaM2, "0.01",
+               "Powierzchnia zabudowy jednego modułu.") +
+      numField("f-coverage", "Pokrycie powierzchni (%)", e.coveragePct, "1",
+               "Udział powierzchni faktycznie zajętej przez panele.") +
+      numField("f-moduleprice", "Cena modułu (zł/szt.)", e.modulePriceZl, "1",
+               "Cena brutto jednego panelu.") +
+      numField("f-bos", "Konstrukcja, falownik, osprzęt (zł/panel)", e.bosPerPanelZl, "1",
+               "Pozostałe materiały przypadające na panel.") +
+      numField("f-labor", "Robocizna (zł/panel)", e.laborPerPanelZl, "1",
+               "Koszt wykonania przypadający na panel.") +
+      numField("f-perday", "Tempo montażu (panel/dzień)", e.panelsPerDay, "1",
+               "Przyjęta wydajność ekipy montażowej.") +
       "</div>" +
+      '<p class="small muted">' + esc(M.COST_SOURCE_LINE) + "</p></section>" +
       '<div class="row-actions"><button class="btn primary" data-act="go" data-path="platnosc">Płatność i wynik</button>' +
-      '<button class="btn" data-act="reset">Wyczyść formularz</button></div></section>' +
+      '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
       '<section class="panel"><h3>Progi decyzji</h3><p class="small muted">' +
       esc(M.THRESHOLDS_LINE) + "</p></section>";
   }
@@ -247,6 +287,7 @@
           "</strong><p>" + esc(s.desc) + "</p></li>";
       }).join("") +
       "</ol></section>" +
+      estimatePanel(currentEstimate()) +
       '<section class="panel footnote"><p>' + esc(M.SOURCE_LINE) + "</p>" +
       "<p>" + esc(M.DISCLAIMER) + "</p><p>" + esc(M.AUTHOR_LINE) + "</p></section>";
   }
@@ -266,6 +307,28 @@
 
   function stat(k, v) {
     return '<div class="stat"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>";
+  }
+
+  function estimatePanel(e) {
+    const row = (k, v, total) =>
+      '<div class="stat' + (total ? " total" : "") + '"><span class="k">' + esc(k) +
+      '</span><span class="v">' + esc(v) + "</span></div>";
+    return '<section class="panel est-panel"><h2>Wycena i czas realizacji</h2>' +
+      '<p class="small muted">' + esc(e.presetName) + " · " + esc(e.powerNote) + "</p>" +
+      '<div class="est-grid">' +
+      row("Liczba paneli", e.panels + " szt.") +
+      row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²") +
+      row("Moc z liczby paneli", M.fmt(e.installedKw) + " kW") +
+      row("Koszt modułów", M.money(e.moduleZl)) +
+      row("Konstrukcja, falownik, osprzęt", M.money(e.bosZl)) +
+      row("Koszt materiałów", M.money(e.materialZl)) +
+      row("Koszt wykonania (robocizna)", M.money(e.laborZl)) +
+      row("RAZEM", M.money(e.totalZl), true) +
+      row("Czas realizacji", e.days + " dni roboczych") +
+      row("Koszt na panel", M.money(e.perPanelZl)) +
+      "</div>" +
+      '<p class="small muted">Przyjęte tempo: ' + e.panelsPerDay +
+      " paneli/dzień. " + esc(M.COST_SOURCE_LINE) + "</p></section>";
   }
 
   function viewPlatnosc() {
@@ -380,7 +443,8 @@
     const canvas = $("#preview-canvas");
     if (!canvas) return;
     try {
-      previewPages = await window.PVPdf.renderPreview(currentResult(), canvas);
+      previewPages = await window.PVPdf.renderPreview(
+        currentResult(), canvas, currentEstimate());
       const note = $(".page-head p");
       if (note && previewPages > 1) {
         note.textContent = "Tak wygląda eksportowany plik PDF (A4, 300 DPI) · strona 1 z " + previewPages + ".";
@@ -421,7 +485,7 @@
     }
     busyStart();
     try {
-      const bytes = await window.PVPdf.renderPdf(currentResult());
+      const bytes = await window.PVPdf.renderPdf(currentResult(), currentEstimate());
       download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".pdf", "application/pdf");
       toast("PDF 300 DPI pobrany.", "ok");
       P.consume(session);  // jedna opłata = jeden raport
@@ -488,7 +552,35 @@
     project.protectedArea = !!prot.checked;
     project.ha = numberOr(ha.value, 0);
     project.kw = numberOr(kw.value, 0);
+    const est = M.estimateOptions(project.est);
+    const read = (id, key) => {
+      const el = $("#" + id);
+      if (el) est[key] = numberOr(el.value, est[key]);
+    };
+    read("f-panelwp", "panelWp");
+    read("f-panelarea", "panelAreaM2");
+    read("f-coverage", "coveragePct");
+    read("f-moduleprice", "modulePriceZl");
+    read("f-bos", "bosPerPanelZl");
+    read("f-labor", "laborPerPanelZl");
+    read("f-perday", "panelsPerDay");
+    est.coveragePct = Math.min(100, est.coveragePct);
+    project.est = est;
     saveProject();
+  }
+
+  /** Wybór gotowego modułu wypełnia moc, pole i cenę — reszta zostaje. */
+  function applyPreset(id) {
+    const p = M.MODULE_PRESETS.filter(function (m) { return m.id === id; })[0];
+    if (!p) return;
+    const e = M.estimateOptions(project.est);
+    project.est = M.estimateOptions({
+      preset: p.id, panelWp: p.wp, panelAreaM2: p.area, modulePriceZl: p.price,
+      coveragePct: e.coveragePct, bosPerPanelZl: e.bosPerPanelZl,
+      laborPerPanelZl: e.laborPerPanelZl, panelsPerDay: e.panelsPerDay,
+    });
+    saveProject();
+    render();
   }
 
   // --- start ---------------------------------------------------------------
@@ -524,11 +616,15 @@
       else if (act === "pdf") doPdf();
     });
 
+    const numericFields = ["f-ha", "f-kw", "f-panelwp", "f-panelarea", "f-coverage",
+                           "f-moduleprice", "f-bos", "f-labor", "f-perday"];
     document.addEventListener("change", function (e) {
-      if (e.target && (e.target.id === "f-place" || e.target.id === "f-protected")) readForm();
+      if (!e.target) return;
+      if (e.target.id === "f-preset") { applyPreset(e.target.value); return; }
+      if (e.target.id === "f-place" || e.target.id === "f-protected") readForm();
     });
     document.addEventListener("input", function (e) {
-      if (e.target && (e.target.id === "f-ha" || e.target.id === "f-kw")) readForm();
+      if (e.target && numericFields.indexOf(e.target.id) >= 0) readForm();
     });
 
     window.addEventListener("hashchange", render);

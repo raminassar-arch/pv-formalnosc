@@ -117,8 +117,40 @@
     this.y = saved;
   };
 
-  Doc.prototype.render = function (r) {
+  Doc.prototype.estimateSection = function (e) {
     const f = this.f;
+    this.ensure(60);
+    this.y += 10;
+    this.text("Wycena i czas realizacji", f.h2, CELL, MARGIN, this.y);
+    this.y += 28;
+    this.wrapped(e.presetName + " · " + M.COST_SOURCE_LINE,
+                 f.small, MUTED, MARGIN, W - 2 * MARGIN, 16);
+    this.y += 8;
+
+    const row = (label, value, strong) => {
+      this.ensure(24);
+      this.text(label, f.body, MUTED, MARGIN, this.y);
+      this.text(value, strong ? f.h3 : f.body, strong ? CELL : INK, MARGIN + 330, this.y);
+      this.y += 24;
+    };
+    row("Liczba paneli", e.panels + " szt.");
+    row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²");
+    row("Moc z liczby paneli", M.fmt(e.installedKw) + " kW");
+    row("Koszt modułów", M.money(e.moduleZl));
+    row("Konstrukcja, falownik, osprzęt", M.money(e.bosZl));
+    row("Koszt materiałów", M.money(e.materialZl));
+    row("Koszt wykonania (robocizna)", M.money(e.laborZl));
+    row("RAZEM", M.money(e.totalZl), true);
+    row("Czas realizacji",
+        e.days + " dni roboczych (" + e.panelsPerDay + " paneli/dzień)");
+    this.y += 6;
+    this.wrapped(e.powerNote, f.small, MUTED, MARGIN, W - 2 * MARGIN, 16);
+    this.y += 8;
+  };
+
+  Doc.prototype.render = function (r, e) {
+    const f = this.f;
+    if (!e) e = M.estimate(r.ha, r.kw);
     this.ctx.fillStyle = PRIMARY;
     this.ctx.fillRect(0, 0, W, 130);
     this.text("Formalności dla instalacji fotowoltaicznej", f.title, "#FFFFFF", MARGIN, 26);
@@ -190,6 +222,8 @@
       this.wrapped(step.desc, f.small, BODY_INK, MARGIN + 44, W - 2 * MARGIN - 70, 18);
       this.y += 16;
     });
+
+    this.estimateSection(e);
 
     this.ensure(90);
     this.ctx.strokeStyle = "#CBD6DE";
@@ -275,10 +309,10 @@
     return new Uint8Array(Buffer.from(base64, "base64"));
   }
 
-  async function renderPdf(r) {
+  async function renderPdf(r, e) {
     await ensureFonts();
     const doc = new Doc();
-    doc.render(r);
+    doc.render(r, e);
     const images = doc.pages.map((page) => ({
       bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", 0.9)),
       w: PXW, h: PXH,
@@ -287,10 +321,10 @@
   }
 
   /** Pierwsza strona tego samego układu, narysowana do widocznego canvasa. */
-  async function renderPreview(r, target) {
+  async function renderPreview(r, target, e) {
     await ensureFonts();
     const doc = new Doc();
-    doc.render(r);
+    doc.render(r, e);
     target.width = PXW;
     target.height = PXH;
     const ctx = target.getContext("2d");

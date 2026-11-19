@@ -97,6 +97,43 @@
       ok("parity " + c.join(","), JSON.stringify(got) === JSON.stringify(e), JSON.stringify(got));
     });
 
+    // --- liczba paneli, koszty i czas realizacji (tylko web) ----------------
+    ok("presety modułów dostępne", M.MODULE_PRESETS.length >= 5,
+       String(M.MODULE_PRESETS.length));
+    const jinko = M.MODULE_PRESETS.filter(function (m) { return m.id === "jinko440"; })[0];
+    ok("cena Jinko z rynku PL", !!jinko && jinko.wp === 440 && jinko.price === 350,
+       JSON.stringify(jinko));
+    ok("źródło cen w modelu", M.COST_SOURCE_LINE.indexOf("bursatm.pl") >= 0 &&
+       M.COST_SOURCE_LINE.indexOf("e-greenpower.pl") >= 0);
+
+    const estOpts = {
+      panelWp: 440, panelAreaM2: 2, coveragePct: 80,
+      modulePriceZl: 350, bosPerPanelZl: 250,
+      laborPerPanelZl: 300, panelsPerDay: 12,
+    };
+    const est = M.estimate(1, 6, estOpts);
+    ok("panele z powierzchni 1ha×80%/2m² = 4000", est.panels === 4000, String(est.panels));
+    ok("powierzchnia użyteczna 8000 m²", est.usableAreaM2 === 8000, String(est.usableAreaM2));
+    ok("moc z paneli 1760 kW", Math.abs(est.installedKw - 1760) < 0.001,
+       String(est.installedKw));
+    ok("koszt modułów 1 400 000 zł", est.moduleZl === 1400000, String(est.moduleZl));
+    ok("materiały 2 400 000 zł", est.materialZl === 2400000, String(est.materialZl));
+    ok("robocizna 1 200 000 zł", est.laborZl === 1200000, String(est.laborZl));
+    ok("razem 3 600 000 zł", est.totalZl === 3600000, String(est.totalZl));
+    ok("czas realizacji 334 dni", est.days === 334, String(est.days));
+    ok("zaokrąglenie w dół przy reszcie",
+       M.estimate(1, 6, { panelAreaM2: 3, coveragePct: 100 }).panels === 3333);
+    ok("pokrycie ograniczone do 100%",
+       M.estimate(1, 6, { coveragePct: 150 }).options.coveragePct === 100);
+    ok("domyślne ustawienia scalone", M.estimateOptions().panelWp === 440 &&
+       M.estimateOptions().coveragePct === 80);
+    ok("format kwoty PL", /^\d[\d\u00A0 ]*,\d{2} zł$/.test(M.money(2526000)),
+       JSON.stringify(M.money(2526000)));
+    ok("kwota zero", M.money(0) === "0,00 zł", M.money(0));
+    ok("uwaga o rozbieżności mocy", est.powerNote.indexOf("różni się") >= 0, est.powerNote);
+    ok("uwaga o zgodności mocy",
+       M.estimate(1, 1760, estOpts).powerNote.indexOf("zgodna") >= 0);
+
     // --- PDF ----------------------------------------------------------------
     const r = M.calculate(false, false, 1, 6, M.PLACE_GROUND, M.LOC_NORMAL);
     const pdf = await window.PVPdf.renderPdf(r);
@@ -110,6 +147,15 @@
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
+    const pdfEst = await window.PVPdf.renderPdf(r, est);
+    ok("PDF: sekcja wyceny bez błędu",
+       dec.decode(pdfEst.slice(0, 8)) === "%PDF-1.4" &&
+       dec.decode(pdfEst.slice(-16)).indexOf("%%EOF") >= 0);
+    const mc = document.createElement("canvas").getContext("2d");
+    mc.font = Math.round(10 * 150 / 72) + 'px "DejaVu", sans-serif';
+    const labelW = mc.measureText("Konstrukcja, falownik, osprzęt").width;
+    ok("PDF: etykiety wyceny mieszczą się w kolumnie", labelW < 330,
+       labelW.toFixed(1) + "px");
 
     const canvas = document.createElement("canvas");
     const pages = await window.PVPdf.renderPreview(r, canvas);
@@ -121,6 +167,14 @@
     await nextTick();
     P.clearConfig();
     P.reset();
+
+    location.hash = "#/dane";
+    await nextTick();
+    ok("formularz ma edytowalne pola wyceny",
+       !!document.querySelector("#f-preset") &&
+       !!document.querySelector("#f-panelarea") &&
+       !!document.querySelector("#f-coverage") &&
+       !!document.querySelector("#f-labor"));
 
     location.hash = "#/wynik";
     await nextTick();
@@ -137,6 +191,13 @@
     ok("po opłacie wynik widoczny",
        location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
        location.hash);
+    const wynikText = document.querySelector("#view").textContent || "";
+    ok("wynik pokazuje wycenę i czas",
+       !!document.querySelector("#view .est-panel") &&
+       wynikText.indexOf("Wycena i czas realizacji") >= 0 &&
+       wynikText.indexOf("Liczba paneli") >= 0 &&
+       wynikText.indexOf("RAZEM") >= 0,
+       wynikText.slice(0, 160));
 
     location.hash = "#/podglad";
     await nextTick();

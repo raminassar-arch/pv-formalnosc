@@ -333,6 +333,23 @@ input:focus, select:focus {
 .stat .v { display: block; font-weight: 700; color: var(--green-deep); font-size: .92rem; word-break: break-word; }
 .about-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
 
+/* --- wycena i czas realizacji --------------------------------------------- */
+
+.est-form { border-left: 6px solid var(--gold); }
+.est-form .field .hint { min-height: 2.2em; }
+.est-panel { border-left: 6px solid var(--gold); }
+.est-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.est-grid .stat.total {
+  background: var(--gold-pale);
+  border: 1px solid var(--gold);
+}
+.est-grid .stat.total .v { color: var(--gold-text); font-size: 1.12rem; }
+
 /* --- stopka / toast ------------------------------------------------------- */
 
 .footer {
