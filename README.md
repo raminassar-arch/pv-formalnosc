@@ -100,16 +100,16 @@ Repozytorium: `https://github.com/raminassar-arch/pv-formalnosc` (gałąź `main
    (bez README/licencji — żeby uniknąć konfliktu przy pierwszym pushu).
 2. W repozytorium: `Settings → Pages → Build and deployment` ustaw
    **Source: GitHub Actions**.
-3. Skopiuj zawartość `pv-formalnosc-web` do lokalnego klonu i wypchnij na `main`:
+3. Katalog `pv-formalnosc-web` jest już lokalnym repozytorium Git z gałęzią
+   `main`, commit `7a2d7d6` i remote `origin`. Pozostaje tylko wypchnięcie:
 
    ```bat
-   git init
-   git remote add origin https://github.com/raminassar-arch/pv-formalnosc.git
-   git add .
-   git commit -m "PV Formalność web 1.3.0"
-   git branch -M main
+   cd pv-formalnosc-web
    git push -u origin main
    ```
+
+   (przy pierwszym pushu GitHub poprosi o logowanie / token — użyj
+   *Personal Access Token* z uprawnieniem `repo` jako hasła).
 
 4. Workflow `.github/workflows/deploy.yml` najpierw uruchomi testy
    (`python tools/selftest.py`), potem opublikuje stronę.
