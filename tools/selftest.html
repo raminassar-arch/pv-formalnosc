@@ -134,6 +134,65 @@
     ok("uwaga o zgodności mocy",
        M.estimate(1, 1760, estOpts).powerNote.indexOf("zgodna") >= 0);
 
+    // --- moduły 600 Wp i dobór najtańszego wariantu ------------------------
+    const six = ["jinko600", "longi600", "canadian600"].map(function (id) {
+      return M.MODULE_PRESETS.filter(function (m) { return m.id === id; })[0];
+    });
+    ok("trzy marki 600 Wp na rynku PL",
+       six.length === 3 && six.every(function (m) {
+         return !!m && m.wp === 600 && m.area === 2.70;
+       }), JSON.stringify(six));
+    ok("ceny 600 Wp orientacyjne z zł/Wp",
+       six.map(function (m) { return m.price; }).join(",") === "470,490,455",
+       six.map(function (m) { return m.price; }).join(","));
+    ok("źródło opisuje wyliczenie 600 Wp",
+       M.COST_SOURCE_LINE.indexOf("600 Wp") >= 0 &&
+       M.COST_SOURCE_LINE.indexOf("0,76–0,82 zł/Wp") >= 0);
+
+    const optPower = M.optimize("power", 1, 6, estOpts);
+    ok("ranking rosnąco wg kosztu całkowitego",
+       optPower.list.every(function (x, i) {
+         return i === 0 || optPower.list[i - 1].totalZl <= x.totalZl;
+       }));
+    ok("ranking ma 9 modułów", optPower.list.length === 9, String(optPower.list.length));
+    ok("najtańszy dla 6 kW: Canadian 600W",
+       optPower.cheapest.id === "canadian600" && optPower.cheapest.panels === 10 &&
+       optPower.cheapest.totalZl === 10050,
+       JSON.stringify(optPower.cheapest));
+    ok("moc z paneli >= moc docelowa",
+       optPower.cheapest.installedKw >= 6 && optPower.cheapest.installedKw < 6.6,
+       String(optPower.cheapest.installedKw));
+    ok("rekomendacja mieści się w powierzchni",
+       optPower.recommended && optPower.recommended.id === "canadian600" &&
+       optPower.recommended.fitsArea);
+    ok("różnica vs najdroższy wyceniona",
+       optPower.savingsZl === 3012, String(optPower.savingsZl));
+
+    const three = M.optimize("power", 1, 1.8, estOpts).cheapest;
+    ok("1,8 kW = 3 panele 600 Wp",
+       three.id === "canadian600" && three.panels === 3 &&
+       Math.abs(three.installedKw - 1.8) < 1e-9 && three.totalZl === 3015,
+       JSON.stringify(three));
+
+    const optArea = M.optimize("area", 1, 6, estOpts);
+    ok("najtańszy z powierzchni 1 ha",
+       optArea.cheapest.id === "canadian600" && optArea.cheapest.panels === 2962 &&
+       optArea.cheapest.totalZl === 2976810,
+       JSON.stringify(optArea.cheapest));
+    ok("powierzchnia wykorzystana w trybie ha",
+       Math.abs(optArea.cheapest.neededM2 - 2962 * 2.70) < 1e-6);
+
+    const tight = M.optimize("power", 0.00325, 6, estOpts);
+    ok("rekomendacja omija moduł, który się nie mieści",
+       tight.cheapest.id === "canadian600" && tight.recommended.id === "longi445",
+       JSON.stringify([tight.cheapest.id, tight.recommended && tight.recommended.id]));
+    ok("brak rekomendacji przy zbyt małej powierzchni",
+       M.optimize("power", 0.001, 6, estOpts).recommended === null);
+    ok("uwaga o zerowym pokryciu",
+       M.optimize("power", 1, 6, { coveragePct: 0 }).note.indexOf("Pokrycie") >= 0);
+    ok("zaokrąglenie w górę przy mocy",
+       M.optimize("power", 1, 6.1, estOpts).cheapest.panels === 11);
+
     // --- PDF ----------------------------------------------------------------
     const r = M.calculate(false, false, 1, 6, M.PLACE_GROUND, M.LOC_NORMAL);
     const pdf = await window.PVPdf.renderPdf(r);
@@ -147,8 +206,11 @@
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
-    const pdfEst = await window.PVPdf.renderPdf(r, est);
+    const pdfEst = await window.PVPdf.renderPdf(r, est, optPower);
     ok("PDF: sekcja wyceny bez błędu",
+       dec.decode(pdfEst.slice(0, 8)) === "%PDF-1.4" &&
+       dec.decode(pdfEst.slice(-16)).indexOf("%%EOF") >= 0);
+    ok("PDF: ranking optymalizatora bez błędu",
        dec.decode(pdfEst.slice(0, 8)) === "%PDF-1.4" &&
        dec.decode(pdfEst.slice(-16)).indexOf("%%EOF") >= 0);
     const mc = document.createElement("canvas").getContext("2d");
@@ -158,7 +220,7 @@
        labelW.toFixed(1) + "px");
 
     const canvas = document.createElement("canvas");
-    const pages = await window.PVPdf.renderPreview(r, canvas);
+    const pages = await window.PVPdf.renderPreview(r, canvas, est, optPower);
     ok("podgląd A4@300dpi", canvas.width === 2480 && canvas.height === 3508 && pages === 1,
        canvas.width + "x" + canvas.height + " pages=" + pages);
 
@@ -174,7 +236,8 @@
        !!document.querySelector("#f-preset") &&
        !!document.querySelector("#f-panelarea") &&
        !!document.querySelector("#f-coverage") &&
-       !!document.querySelector("#f-labor"));
+       !!document.querySelector("#f-labor") &&
+       !!document.querySelector("#f-opt-mode"));
 
     location.hash = "#/wynik";
     await nextTick();
@@ -196,7 +259,10 @@
        !!document.querySelector("#view .est-panel") &&
        wynikText.indexOf("Wycena i czas realizacji") >= 0 &&
        wynikText.indexOf("Liczba paneli") >= 0 &&
-       wynikText.indexOf("RAZEM") >= 0,
+       wynikText.indexOf("RAZEM") >= 0 &&
+       !!document.querySelector("#view .opt-panel") &&
+       wynikText.indexOf("Najtańszy wariant") >= 0 &&
+       document.querySelectorAll("#view .opt-table tbody tr").length === 9,
        wynikText.slice(0, 160));
 
     location.hash = "#/podglad";

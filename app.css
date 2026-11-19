@@ -350,6 +350,18 @@ input:focus, select:focus {
 }
 .est-grid .stat.total .v { color: var(--gold-text); font-size: 1.12rem; }
 
+.opt-form { border-left: 6px solid var(--green); }
+.opt-panel { border-left: 6px solid var(--green); }
+.opt-table-wrap { overflow-x: auto; margin: 14px 0; }
+.opt-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.opt-table th, .opt-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.opt-table th { color: var(--muted); font-weight: 600; background: var(--green-pale); }
+.opt-table tr.best td { background: var(--gold-pale); font-weight: 700; }
+.opt-table td:last-child, .opt-table th:last-child { text-align: right; }
+
 /* --- stopka / toast ------------------------------------------------------- */
 
 .footer {

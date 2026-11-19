@@ -85,7 +85,9 @@
   // --- liczba paneli, koszty i czas realizacji (tylko wersja web) -----------
 
   /** Ceny brutto za sztukę to środki przedziałów z zestawienia bursatm.pl
-   *  (aktualizacja 31.07.2026); powierzchnie to wymiary modułu w m². */
+   *  (aktualizacja 31.07.2026); powierzchnie to wymiary modułu w m².
+   *  Presety 600 Wp to orientacyjne 0,76–0,82 zł/Wp wyliczone z tego samego
+   *  poziomu cenowego (szczegóły w COST_SOURCE_LINE). */
   const MODULE_PRESETS = [
     { id: "jinko440",    name: "Jinko Tiger Neo 440W · N-type TOPCon",
       wp: 440, area: 1.95, price: 350 },
@@ -99,6 +101,12 @@
       wp: 450, area: 1.94, price: 308 },
     { id: "selfa450",    name: "Selfa S450MH · Mono PERC (polska produkcja)",
       wp: 450, area: 1.94, price: 289 },
+    { id: "jinko600",    name: "Jinko Tiger Neo 600W · N-type TOPCon bifacial",
+      wp: 600, area: 2.70, price: 470 },
+    { id: "longi600",    name: "Longi Hi-MO 7 600W · HPBC",
+      wp: 600, area: 2.70, price: 490 },
+    { id: "canadian600", name: "Canadian Solar HiKu7 600W · Mono PERC",
+      wp: 600, area: 2.70, price: 455 },
   ];
 
   const ESTIMATE_DEFAULT = {
@@ -116,9 +124,11 @@
     "Ceny modułów brutto/szt. i powierzchnie: bursatm.pl, zestawienie " +
     "hurtowo-detaliczne (aktualizacja 31.07.2026) — Jinko Tiger Neo 440W " +
     "320–381 zł, Longi Hi-MO 5m 445W 295–338 zł, Trina Vertex S+ 445W " +
-    "301–351 zł, Trina Vertex S 450W 350–415 zł. Robocizna: e-greenpower.pl " +
-    "(11.07.2026) — 1000–1500 zł/kWp brutto, 2000–5000 zł dla instalacji " +
-    "5 kWp. Kwoty orientacyjne; przed finalną wyceną sprawdź aktualne oferty.";
+    "301–351 zł, Trina Vertex S 450W 350–415 zł. Moduły 600 Wp (Jinko, Longi, " +
+    "Canadian Solar): orientacyjnie 455–490 zł/szt. (0,76–0,82 zł/Wp) — cena " +
+    "wyliczona z ww. poziomu zł/Wp, nie z oferty konkretnego sklepu. Robocizna: " +
+    "e-greenpower.pl (11.07.2026) — 1000–1500 zł/kWp brutto, 2000–5000 zł dla " +
+    "instalacji 5 kWp. Kwoty orientacyjne; przed finalną wyceną sprawdź aktualne oferty.";
 
   function numOr(value, fallback) {
     const n = Number(value);
@@ -214,6 +224,80 @@
   }
 
   /**
+   * Ranking modułów wg kosztu całkowitego (moduły + konstrukcja/falownik +
+   * robocizna). Tryb "area": ile paneli mieści się na zadanej powierzchni;
+   * tryb "power": ile paneli potrzeba, by osiągnąć zadaną moc.
+   * @param {"area"|"power"} mode
+   * @param {number} ha powierzchnia dostępna (ha)
+   * @param {number} kw moc docelowa (kW)
+   * @param {object} [data] ustawienia edytowalne
+   */
+  function optimize(mode, ha, kw, data) {
+    const o = estimateOptions(data);
+    const m = mode === "power" ? "power" : "area";
+    const haVal = numOr(ha, 0), kwVal = numOr(kw, 0);
+    const coverage = o.coveragePct / 100;
+    const list = MODULE_PRESETS.map(function (p) {
+      let panels, neededM2, neededHa, fitsArea;
+      if (m === "power") {
+        panels = kwVal > 0 ? Math.ceil(kwVal * 1000 / p.wp - 1e-9) : 0;
+        neededM2 = panels * p.area;
+        neededHa = coverage > 0 ? neededM2 / (10000 * coverage) : 0;
+        fitsArea = coverage > 0 && (haVal <= 0 || neededHa <= haVal + 1e-9);
+      } else {
+        const usableM2 = haVal * 10000 * coverage;
+        panels = p.area > 0 ? Math.floor(usableM2 / p.area + 1e-9) : 0;
+        neededM2 = panels * p.area;
+        neededHa = haVal;
+        fitsArea = true;
+      }
+      const perPanelZl = p.price + o.bosPerPanelZl + o.laborPerPanelZl;
+      return {
+        id: p.id, name: p.name, wp: p.wp, areaM2: p.area,
+        modulePriceZl: p.price, panels: panels,
+        installedKw: panels * p.wp / 1000,
+        neededM2: neededM2, neededHa: neededHa, fitsArea: fitsArea,
+        perPanelZl: perPanelZl, totalZl: panels * perPanelZl,
+        days: panels > 0 && o.panelsPerDay > 0
+          ? Math.ceil(panels / o.panelsPerDay) : 0,
+      };
+    }).sort(function (a, b) {
+      return a.totalZl - b.totalZl || a.id.localeCompare(b.id);
+    });
+    list.forEach(function (x, i) { x.rank = i + 1; });
+
+    const cheapest = list[0] || null;
+    const mostExpensive = list[list.length - 1] || null;
+    const fitting = list.filter(function (x) { return x.fitsArea && x.panels > 0; });
+    const recommended = fitting.length ? fitting[0] : null;
+    let note;
+    if (coverage <= 0) {
+      note = "Pokrycie powierzchni musi być większe od zera.";
+    } else if (m === "power" && kwVal <= 0) {
+      note = "Podaj moc w formularzu, aby porównać warianty dla zadanej mocy.";
+    } else if (m === "area" && haVal <= 0) {
+      note = "Podaj powierzchnię w formularzu, aby porównać warianty dla zadanej powierzchni.";
+    } else if (!list.some(function (x) { return x.panels > 0; })) {
+      note = "Powierzchnia jest za mała, aby zmieścić choć jeden moduł.";
+    } else if (m === "power" && !fitting.length) {
+      note = "Żaden moduł nie mieści się w podanej powierzchni przy tym pokryciu — " +
+             "zwiększ powierzchnię albo zmniejsz pokrycie.";
+    } else {
+      note = m === "power"
+        ? "Ranking od najtańszego wariantu osiągającego zadaną moc. Rekomendacja " +
+          "uwzględnia też dostępną powierzchnię."
+        : "Ranking od najtańszego wariantu mieszczącego się na podanej powierzchni.";
+    }
+
+    return {
+      mode: m, ha: haVal, kw: kwVal, coveragePct: o.coveragePct,
+      list: list, cheapest: cheapest, recommended: recommended,
+      savingsZl: cheapest && mostExpensive ? mostExpensive.totalZl - cheapest.totalZl : 0,
+      note: note,
+    };
+  }
+
+  /**
    * @param {boolean} roof
    * @param {boolean} protectedArea
    * @param {number} ha
@@ -291,5 +375,6 @@
     calculate: calculate,
     estimateOptions: estimateOptions,
     estimate: estimate,
+    optimize: optimize,
   };
 })(typeof window !== "undefined" ? window : globalThis);

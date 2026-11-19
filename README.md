@@ -8,7 +8,9 @@ w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 XLSX, dodano bramkę płatności **30 zł przez Przelewy24 przed pokazaniem wyniku**.
 Jedna opłata odblokowuje wynik, podgląd A4 oraz jeden raport PDF 300 DPI —
 bez drugiej płatności. Dodano też **webowy kalkulator inwestycji**: liczbę paneli
-z powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF).
+z powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
+3 presety modułów **600 Wp** znanych marek oraz **dobór najtańszego wariantu**
+(ranking po koszcie całkowitym, od zadanej mocy albo od powierzchni).
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
@@ -25,13 +27,14 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Funkcja | Opis |
 | --- | --- |
 | Kalkulator | Pełny port `pv_formalnosc/model.py` — 10 ścieżek, progi 2 ha / 0,5 ha / 150 kW / 1 MW, komunikaty i uwaga o braku opisu przypadku na gov.pl |
-| Wycena (tylko web) | Liczba paneli z powierzchni, koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; edytowalne parametry i gotowe presety modułów |
-| Formularz | Miejsce montażu, obszar chroniony, powierzchnia, moc oraz pola wyceny (model modułu, moc i pole panelu, pokrycie, ceny, tempo montażu) |
-| Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna”), sekcja wyceny, źródła i disclaimer |
+| Wycena (tylko web) | Liczba paneli z powierzchni, koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; edytowalne parametry i 9 gotowych presetów modułów (także 600 Wp) |
+| Dobór najtańszego wariantu (tylko web) | Ranking wszystkich modułów po koszcie całkowitym, start od mocy (kW) lub od powierzchni (ha), rekomendacja z uwzględnieniem dostępnego terenu i przycisk „Zastosuj najtańszy moduł" |
+| Formularz | Miejsce montażu, obszar chroniony, powierzchnia, moc, punkt wyjścia optymalizatora oraz pola wyceny (model modułu, moc i pole panelu, pokrycie, ceny, tempo montażu) |
+| Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend |
 | Wynik i podgląd | Widoczne dopiero po potwierdzeniu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera też sekcję wyceny |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny i tabelę rankingu optymalizatora |
 
 Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
 Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
@@ -43,7 +46,7 @@ Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatnoś
 
 ## Kalkulator paneli, kosztów i czasu (tylko web)
 
-Liczba paneli wynika z **powierzchni**, nie z mocy:
+W trybie wyceny liczba paneli wynika z **powierzchni**, nie z mocy:
 
 ```
 powierzchnia użyteczna [m²] = ha × 10 000 × pokrycie [%] / 100
@@ -65,6 +68,16 @@ gotowe presety modułów z orientacyjnymi cenami brutto z polskiego rynku:
 | Trina Vertex S 450W · TOPCon bifacial | 450 Wp | 350–415 zł (przyjęto 383 zł) |
 | Suntech Ultra V 450W · Mono PERC | 450 Wp | 283–332 zł (przyjęto 308 zł) |
 | Selfa S450MH · Mono PERC (PL) | 450 Wp | 264–314 zł (przyjęto 289 zł) |
+| Jinko Tiger Neo 600W · N-type TOPCon bifacial | 600 Wp | ~470 zł (orientacyjnie, 0,78 zł/Wp) |
+| Longi Hi-MO 7 600W · HPBC | 600 Wp | ~490 zł (orientacyjnie, 0,82 zł/Wp) |
+| Canadian Solar HiKu7 600W · Mono PERC | 600 Wp | ~455 zł (orientacyjnie, 0,76 zł/Wp) |
+
+Ceny modułów 600 Wp **nie zostały potwierdzone konkretną ofertą sklepu** —
+są wyliczone z tego samego poziomu 0,76–0,82 zł/Wp co powyższe zestawienie
+bursatm.pl i wyraźnie oznaczone jako orientacyjne w `COST_SOURCE_LINE`.
+Powierzchnia modułu 600 Wp przyjęta jako **2,70 m²** (typowy format ok.
+2384 × 1134 mm). Przed finalną wyceną sprawdź aktualną ofertę wybranego
+modułu i wpisz cenę ręcznie w polach edytowalnych.
 
 Robocizna: **1000–1500 zł/kWp brutto** oraz **2000–5000 zł dla instalacji
 5 kWp** (e-greenpower.pl, 11.07.2026). W modelu przyjęto 300 zł/panel oraz
@@ -78,6 +91,40 @@ deklarowaną w formularzu i ostrzega przy rozbieżności > 10%.
 
 ---
 
+## Dobór najtańszego wariantu (tylko web)
+
+Optymalizator (`M.optimize()` w `js/model.js`) porównuje **wszystkie 9 presetów**
+po koszcie całkowitym:
+
+```
+koszt całkowity = liczba paneli × (cena modułu + konstrukcja/falownik + robocizna)
+```
+
+Punkt wyjścia wybiera się w kroku **Dane**:
+
+- **Mam zaplanowaną moc (kW)** — liczba paneli to
+  `ceil(moc [kW] × 1000 / moc modułu [Wp])`; sprawdzane jest też, czy moduły
+  mieszczą się na podanej powierzchni przy zadanym pokryciu. Rekomendacja to
+  najtańszy wariant, który jednocześnie osiąga moc i mieści się na terenie.
+- **Mam powierzchnię (ha)** — liczba paneli to
+  `floor(ha × 10 000 × pokrycie / pole modułu)`, czyli maksymalne wykorzystanie
+  dostępnego terenu. Rekomendacja to najtańszy wariant z rankingu.
+
+Wynik (widok **Wynik**, sekcja PDF i podgląd A4) zawiera:
+
+- rekomendację (moduł, liczba sztuk, moc, koszt całkowity, czas realizacji),
+- różnicę kosztu względem najtańszego wariantu,
+- pełną tabelę rankingu (moduł, panele, moc, powierzchnia, razem),
+- przycisk **„Zastosuj najtańszy moduł"**, który wpisuje wskazany preset do
+  wyceny i przelicza wynik.
+
+Jeśli żaden moduł nie mieści się na podanej powierzchni, aplikacja pokazuje
+odpowiednią uwagę zamiast błędnej rekomendacji. Tryb i wynik optymalizatora
+są zapisywane w `localStorage` razem z projektem. Ranking jest generowany
+dopiero po opłacie — tak samo jak wynik i PDF.
+
+---
+
 ## Struktura
 
 ```
@@ -86,10 +133,10 @@ pv-formalnosc-web/
 ├── app.css             # motyw zielono-złoty, layout, responsywność
 ├── favicon.svg
 ├── js/
-│   ├── model.js        # kalkulator — port 1:1 z model.py + estimate() (wycena)
+│   ├── model.js        # kalkulator — port 1:1 z model.py + estimate() + optimize()
 │   ├── payment.js      # bramka Przelewy24 (szkielet, bez tajnych danych)
-│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (również sekcja wyceny)
-│   └── app.js          # UI, routing, płatność, eksport PDF
+│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (wycena + ranking)
+│   └── app.js          # UI, routing, płatność, optymalizator, eksport PDF
 ├── assets/
 │   ├── DejaVuSans.ttf
 │   └── DejaVuSans-Bold.ttf
@@ -131,11 +178,15 @@ sprawdzają m.in.:
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
 - matematykę wyceny (panele z ha i pokrycia, materiały, robocizna, razem, dni,
   zaokrąglenia, formatowanie zł, zgodność mocy) i obecność sekcji w widoku wyniku,
+- 3 presety 600 Wp (marka, moc, pole 2,70 m², cena orientacyjna, opis źródła),
+- optymalizator: rosnący ranking 9 modułów, wybór dla mocy i dla powierzchni,
+  zaokrąglenie w górę przy mocy, rekomendacja omijająca moduły, które się nie
+  mieszczą, uwagi o zerowym pokryciu i zbyt małej powierzchni,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`,
-  sekcję wyceny bez błędu renderu),
-- wymiary podglądu A4 i pola formularza wyceny.
+  sekcję wyceny i ranking optymalizatora bez błędu renderu),
+- wymiary podglądu A4 i pola formularza wyceny (w tym punkt wyjścia optymalizatora).
 
-Wynik: `TOTAL 61 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 78 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 

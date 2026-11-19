@@ -148,9 +148,68 @@
     this.y += 8;
   };
 
-  Doc.prototype.render = function (r, e) {
+  Doc.prototype.optimizerSection = function (o) {
+    if (!o || !o.list || !o.list.length) return;
+    const f = this.f;
+    const ctx = this.ctx;
+    const fit = (value, maxWidth) => {
+      let s = String(value);
+      if (ctx.measureText(s).width <= maxWidth) return s;
+      while (s.length > 1 && ctx.measureText(s + "…").width > maxWidth) {
+        s = s.slice(0, -1);
+      }
+      return s + "…";
+    };
+
+    this.ensure(60);
+    this.y += 10;
+    this.text("Najtańszy wariant — dobór modułu i mocy", f.h2, CELL, MARGIN, this.y);
+    this.y += 28;
+    this.wrapped(o.note, f.small, MUTED, MARGIN, W - 2 * MARGIN, 16);
+    const rec = o.recommended;
+    if (rec) {
+      this.y += 8;
+      this.ensure(30);
+      this.text("Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
+                M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl),
+                f.body, CELL, MARGIN, this.y);
+      this.y += 32;
+    }
+
+    const cols = [MARGIN, MARGIN + 430, MARGIN + 520, MARGIN + 630, MARGIN + 840];
+    const areaHead = o.mode === "power" ? "Pow. wymagana" : "Pow. zajęta";
+    const heads = ["Moduł", "Panele", "Moc", areaHead, "Razem"];
+    this.ensure(30);
+    ctx.fillStyle = "#EDF2F7";
+    ctx.fillRect(MARGIN, this.y - 4, W - 2 * MARGIN, 24);
+    ctx.font = f.small;
+    heads.forEach((h, i) => this.text(fit(h, i === 0 ? 415 : 100), f.small,
+                                      CELL, cols[i], this.y));
+    this.y += 28;
+
+    o.list.forEach(function (x) {
+      this.ensure(24);
+      const best = rec && x.id === rec.id;
+      const areaText = o.mode === "power"
+        ? (x.fitsArea ? M.fmt(x.neededHa) + " ha" : "za dużo")
+        : M.fmt(x.neededM2) + " m²";
+      ctx.font = f.small;
+      this.text(fit(x.rank + ". " + x.name + " " + M.fmt(x.wp) + " Wp", 415),
+                f.small, best ? CELL : INK, cols[0], this.y);
+      this.text(x.panels + " szt.", f.small, INK, cols[1], this.y);
+      this.text(M.fmt(x.installedKw) + " kW", f.small, INK, cols[2], this.y);
+      this.text(fit(areaText, 100), f.small, INK, cols[3], this.y);
+      this.text(fit(M.money(x.totalZl), 145), f.small, best ? CELL : INK,
+                cols[4], this.y);
+      this.y += 24;
+    }, this);
+    this.y += 8;
+  };
+
+  Doc.prototype.render = function (r, e, o) {
     const f = this.f;
     if (!e) e = M.estimate(r.ha, r.kw);
+    if (!o) o = M.optimize("power", r.ha, r.kw);
     this.ctx.fillStyle = PRIMARY;
     this.ctx.fillRect(0, 0, W, 130);
     this.text("Formalności dla instalacji fotowoltaicznej", f.title, "#FFFFFF", MARGIN, 26);
@@ -224,6 +283,7 @@
     });
 
     this.estimateSection(e);
+    this.optimizerSection(o);
 
     this.ensure(90);
     this.ctx.strokeStyle = "#CBD6DE";
@@ -309,10 +369,10 @@
     return new Uint8Array(Buffer.from(base64, "base64"));
   }
 
-  async function renderPdf(r, e) {
+  async function renderPdf(r, e, o) {
     await ensureFonts();
     const doc = new Doc();
-    doc.render(r, e);
+    doc.render(r, e, o);
     const images = doc.pages.map((page) => ({
       bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", 0.9)),
       w: PXW, h: PXH,
@@ -321,10 +381,10 @@
   }
 
   /** Pierwsza strona tego samego układu, narysowana do widocznego canvasa. */
-  async function renderPreview(r, target, e) {
+  async function renderPreview(r, target, e, o) {
     await ensureFonts();
     const doc = new Doc();
-    doc.render(r, e);
+    doc.render(r, e, o);
     target.width = PXW;
     target.height = PXH;
     const ctx = target.getContext("2d");

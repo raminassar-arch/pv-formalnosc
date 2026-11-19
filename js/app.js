@@ -86,6 +86,7 @@
     return {
       roof: false, protectedArea: false, ha: 1, kw: 6,
       est: M.estimateOptions(),
+      optMode: "power",
     };
   }
 
@@ -101,6 +102,7 @@
         ha: numberOr(data.ha, base.ha),
         kw: numberOr(data.kw, base.kw),
         est: M.estimateOptions(data.est),
+        optMode: data.optMode === "area" ? "area" : "power",
       };
     } catch (err) { return base; }
   }
@@ -128,6 +130,10 @@
 
   function currentEstimate() {
     return M.estimate(project.ha, project.kw, project.est);
+  }
+
+  function currentOptimizer() {
+    return M.optimize(project.optMode, project.ha, project.kw, project.est);
   }
 
   // --- routing -------------------------------------------------------------
@@ -247,6 +253,21 @@
                "Przyjęta wydajność ekipy montażowej.") +
       "</div>" +
       '<p class="small muted">' + esc(M.COST_SOURCE_LINE) + "</p></section>" +
+      '<section class="panel opt-form"><h2>Dobór najtańszego wariantu</h2>' +
+      '<p class="small muted">Porównamy wszystkie moduły po koszcie całkowitym ' +
+      "(moduły + konstrukcja/falownik + robocizna). Wybierz, od czego zacząć:</p>" +
+      '<div class="grid">' +
+      '<div class="field wide"><label class="field-label">Punkt wyjścia</label>' +
+      '<select id="f-opt-mode">' +
+      '<option value="power"' + (project.optMode === "power" ? " selected" : "") +
+      '>Mam zaplanowaną moc (kW) — dobierz panele i cenę</option>' +
+      '<option value="area"' + (project.optMode === "area" ? " selected" : "") +
+      '>Mam powierzchnię (ha) — dobierz panele i cenę</option>' +
+      "</select>" +
+      '<span class="hint">Tryb „moc” szuka najtańszego wariantu osiągającego ' +
+      "zadaną moc i sprawdza, czy mieści się na powierzchni. Tryb „powierzchnia” " +
+      "maksymalnie wykorzystuje dostępny teren.</span></div>" +
+      "</div></section>" +
       '<div class="row-actions"><button class="btn primary" data-act="go" data-path="platnosc">Płatność i wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
       '<section class="panel"><h3>Progi decyzji</h3><p class="small muted">' +
@@ -288,6 +309,7 @@
       }).join("") +
       "</ol></section>" +
       estimatePanel(currentEstimate()) +
+      optimizerPanel(currentOptimizer()) +
       '<section class="panel footnote"><p>' + esc(M.SOURCE_LINE) + "</p>" +
       "<p>" + esc(M.DISCLAIMER) + "</p><p>" + esc(M.AUTHOR_LINE) + "</p></section>";
   }
@@ -329,6 +351,41 @@
       "</div>" +
       '<p class="small muted">Przyjęte tempo: ' + e.panelsPerDay +
       " paneli/dzień. " + esc(M.COST_SOURCE_LINE) + "</p></section>";
+  }
+
+  function optimizerPanel(o) {
+    const head = '<section class="panel opt-panel"><h2>Najtańszy wariant — dobór modułu i mocy</h2>' +
+      '<p class="small muted">' + esc(o.note) + "</p>";
+    const rec = o.recommended;
+    if (!rec) return head + "</section>";
+    const diff = rec.totalZl - (o.cheapest ? o.cheapest.totalZl : 0);
+    const rows = o.list.map(function (x) {
+      const best = x.id === rec.id;
+      return "<tr" + (best ? ' class="best"' : "") + "><td>" +
+        (best ? "★ " : "") + esc(x.name) + " · " + esc(M.fmt(x.wp)) + " Wp</td>" +
+        "<td>" + x.panels + " szt.</td>" +
+        "<td>" + esc(M.fmt(x.installedKw)) + " kW</td>" +
+        "<td>" + (o.mode === "power"
+          ? (x.fitsArea ? esc(M.fmt(x.neededHa)) + " ha" : "nie mieści się")
+          : esc(M.fmt(x.neededM2)) + " m²") + "</td>" +
+        "<td>" + esc(M.money(x.totalZl)) + "</td></tr>";
+    }).join("");
+    return head +
+      '<div class="est-grid">' +
+      stat("Rekomendacja", rec.name) +
+      stat("Liczba paneli", rec.panels + " szt.") +
+      stat("Moc z paneli", M.fmt(rec.installedKw) + " kW") +
+      stat("Koszt całkowity", M.money(rec.totalZl)) +
+      stat("Dopłata vs najtańszy", diff > 0 ? M.money(diff) : "najtańszy wariant") +
+      stat("Czas realizacji", rec.days + " dni roboczych") +
+      "</div>" +
+      '<div class="opt-table-wrap"><table class="opt-table"><thead><tr>' +
+      "<th>Moduł</th><th>Panele</th><th>Moc</th><th>" +
+      (o.mode === "power" ? "Wymagana powierzchnia" : "Zajęta powierzchnia") +
+      "</th><th>Razem</th></tr></thead><tbody>" + rows +
+      "</tbody></table></div>" +
+      '<div class="row-actions"><button class="btn gold" data-act="opt-apply" data-id="' +
+      esc(rec.id) + '">Zastosuj najtańszy moduł</button></div></section>';
   }
 
   function viewPlatnosc() {
@@ -444,7 +501,7 @@
     if (!canvas) return;
     try {
       previewPages = await window.PVPdf.renderPreview(
-        currentResult(), canvas, currentEstimate());
+        currentResult(), canvas, currentEstimate(), currentOptimizer());
       const note = $(".page-head p");
       if (note && previewPages > 1) {
         note.textContent = "Tak wygląda eksportowany plik PDF (A4, 300 DPI) · strona 1 z " + previewPages + ".";
@@ -485,7 +542,8 @@
     }
     busyStart();
     try {
-      const bytes = await window.PVPdf.renderPdf(currentResult(), currentEstimate());
+      const bytes = await window.PVPdf.renderPdf(
+        currentResult(), currentEstimate(), currentOptimizer());
       download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".pdf", "application/pdf");
       toast("PDF 300 DPI pobrany.", "ok");
       P.consume(session);  // jedna opłata = jeden raport
@@ -552,6 +610,8 @@
     project.protectedArea = !!prot.checked;
     project.ha = numberOr(ha.value, 0);
     project.kw = numberOr(kw.value, 0);
+    const mode = $("#f-opt-mode");
+    if (mode) project.optMode = mode.value === "area" ? "area" : "power";
     const est = M.estimateOptions(project.est);
     const read = (id, key) => {
       const el = $("#" + id);
@@ -614,6 +674,10 @@
       else if (act === "pay-config-save") savePaymentConfig();
       else if (act === "pay-config-clear") clearPaymentConfig();
       else if (act === "pdf") doPdf();
+      else if (act === "opt-apply") {
+        applyPreset(btn.getAttribute("data-id"));
+        toast("Zastosowano najtańszy moduł — wycena została przeliczona.", "ok");
+      }
     });
 
     const numericFields = ["f-ha", "f-kw", "f-panelwp", "f-panelarea", "f-coverage",
@@ -621,6 +685,7 @@
     document.addEventListener("change", function (e) {
       if (!e.target) return;
       if (e.target.id === "f-preset") { applyPreset(e.target.value); return; }
+      if (e.target.id === "f-opt-mode") { readForm(); render(); return; }
       if (e.target.id === "f-place" || e.target.id === "f-protected") readForm();
     });
     document.addEventListener("input", function (e) {
