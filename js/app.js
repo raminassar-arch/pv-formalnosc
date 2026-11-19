@@ -10,7 +10,7 @@
   const M = window.PVModel;
   const P = window.PVPayment;
   // Wersja testowa — wynik, podgląd i PDF dostępne bez opłaty.
-  // PVPayment.TEST_MODE = false przywraca bramkę 30 zł.
+  // TEST_MODE = false w js/payment.js przywraca bramkę 30 zł.
   const TEST = !!(P.isTestMode && P.isTestMode());
   const PROJECT_KEY = "pvformalnosc.project.v1";
 

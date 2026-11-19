@@ -17,7 +17,7 @@
   const PXW = W * S, PXH = H * S;
 
   // Wersja testowa — znak wodny na każdej stronie (również w podglądzie A4).
-  // Zniknął automatycznie po ustawieniu PVPayment.TEST_MODE = false.
+  // Znika automatycznie po ustawieniu TEST_MODE = false w js/payment.js.
   const TEST_BUILD = !!(root.PVPayment && root.PVPayment.isTestMode &&
                         root.PVPayment.isTestMode());
   const WATERMARK = TEST_BUILD ? "WERSJA TESTOWA" : "";

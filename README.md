@@ -19,7 +19,7 @@ zakładki Wynik i Podgląd są blokowane kłódką do czasu potwierdzenia płatn
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 > **BUDOWA TESTOWA — wersja publiczna odblokowana.** W `js/payment.js`
-> `PVPayment.TEST_MODE = true`: wynik, podgląd A4 i PDF są dostępne **bez
+> `TEST_MODE = true`: wynik, podgląd A4 i PDF są dostępne **bez
 > opłaty**. Z widoku **Płatność** usunięto sekcje „Konfiguracja bramki (dla
 > właściciela)" oraz „Jak to działa"; konfiguracja została tylko jako API
 > `PVPayment.saveConfig()`. Każda strona raportu PDF i podglądu A4 ma
