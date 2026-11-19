@@ -10,10 +10,12 @@
   <h1>PV Formalność 2.0 — testy wersji web</h1>
   <pre id="out">Uruchamianie…</pre>
 </div>
+<div id="app"></div>
 
 <script src="../js/model.js"></script>
 <script src="../js/payment.js"></script>
 <script src="../js/pdf.js"></script>
+<script src="../js/app.js"></script>
 <script>
 (function () {
   "use strict";
@@ -30,6 +32,17 @@
     lines.push("", "TOTAL " + pass + " PASS / " + fail + " FAIL");
     document.title = (fail ? "FAIL " : "PASS ") + pass + "/" + (pass + fail);
     out.textContent = lines.join("\n");
+  }
+
+  function nextTick() {
+    return new Promise(function (res) { setTimeout(res, 60); });
+  }
+
+  function domReady() {
+    if (document.readyState !== "loading") return Promise.resolve();
+    return new Promise(function (res) {
+      document.addEventListener("DOMContentLoaded", res, { once: true });
+    });
   }
 
   async function run() {
@@ -102,6 +115,45 @@
     const pages = await window.PVPdf.renderPreview(r, canvas);
     ok("podgląd A4@300dpi", canvas.width === 2480 && canvas.height === 3508 && pages === 1,
        canvas.width + "x" + canvas.height + " pages=" + pages);
+
+    // --- bramka przed wynikiem (Routing w/js/app.js) -----------------------
+    await domReady();
+    await nextTick();
+    P.clearConfig();
+    P.reset();
+
+    location.hash = "#/wynik";
+    await nextTick();
+    ok("wynik bez opłaty idzie do płatności", location.hash === "#/platnosc", location.hash);
+
+    location.hash = "#/podglad";
+    await nextTick();
+    ok("podgląd bez opłaty idzie do płatności", location.hash === "#/platnosc", location.hash);
+
+    const paidSession = P.newSession();
+    P.confirmTest(paidSession);
+    location.hash = "#/wynik";
+    await nextTick();
+    ok("po opłacie wynik widoczny",
+       location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
+       location.hash);
+
+    location.hash = "#/podglad";
+    await nextTick();
+    ok("po opłacie podgląd widoczny",
+       location.hash === "#/podglad" && !!document.querySelector("#preview-canvas"),
+       location.hash);
+
+    P.consume(paidSession);
+    location.hash = "#/wynik";
+    await nextTick();
+    ok("po zużyciu opłaty wynik znów blokowany", location.hash === "#/platnosc", location.hash);
+
+    location.hash = "#/start";
+    await nextTick();
+    const startText = document.querySelector("#view").textContent || "";
+    ok("start nie ujawnia ścieżki przed opłatą", startText.indexOf(r.path_name) < 0,
+       startText.slice(0, 120));
   }
 
   run().catch(function (err) {

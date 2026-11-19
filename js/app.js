@@ -144,9 +144,9 @@
   const STEPS = [
     ["start", "Start", "Wprowadzenie"],
     ["dane", "Dane", "Parametry instalacji"],
+    ["platnosc", "Płatność", "Dostęp do wyniku · 30 zł"],
     ["wynik", "Wynik", "Ścieżka formalna"],
     ["podglad", "Podgląd", "Strona A4"],
-    ["platnosc", "Płatność", "PDF · 30 zł"],
     ["o-programie", "O programie", "Informacje"],
   ];
 
@@ -163,35 +163,34 @@
   // --- widoki --------------------------------------------------------------
 
   function viewStart() {
-    const r = currentResult();
     return '<section class="hero">' +
       '<div class="hero-text">' +
       "<h1>Formalności dla instalacji fotowoltaicznej</h1>" +
-      "<p>Sprawdź w kilka sekund, jakie decyzje i uzgodnienia są potrzebne dla Twojej instalacji. " +
-      "Wynik zawiera ścieżkę z gov.pl, listę kroków w kolejności oraz raport PDF 300 DPI " +
-      "(30 zł przez Przelewy24).</p>" +
+      "<p>Podaj parametry instalacji, opłać 30 zł przez Przelewy24 i zobacz ścieżkę z gov.pl, " +
+      "listę kroków w kolejności oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>" +
       '<div class="hero-actions">' +
       '<button class="btn primary" data-act="go" data-path="dane">Rozpocznij analizę</button>' +
-      '<button class="btn gold" data-act="go" data-path="wynik">Zobacz bieżący wynik</button>' +
+      '<button class="btn gold" data-act="go" data-path="platnosc">Płatność · 30 zł</button>' +
       "</div></div>" +
       '<div class="hero-card">' +
       '<span class="badge">' + esc(M.THRESHOLDS_LINE) + "</span>" +
-      "<h2>Aktualna ścieżka</h2>" +
-      "<p><strong>" + esc(r.path_name) + "</strong></p>" +
-      "<p class=\"small\">" + esc(r.path_meta) + "</p>" +
+      "<h2>Co otrzymasz</h2>" +
+      "<p><strong>Ścieżka formalna krok po kroku</strong></p>" +
+      '<p class="small">Wynik analizy, decyzje TAK/NIE i raport PDF 300 DPI — ' +
+      "dostępne po opłacie 30 zł.</p>" +
       "</div></section>" +
       '<section class="panel"><h2>Jak to działa</h2>' +
-      '<p class="small muted">Wynik jest liczony wyłącznie w Twojej przeglądarce — ' +
-      "dane formularza są zapisywane lokalnie (localStorage). Podgląd i raport PDF powstają " +
-      "lokalnie, bez drukarki i bez serwera. Płatność 30 zł odbywa się w Przelewy24 " +
-      "przed wygenerowaniem pliku.</p>" +
+      '<p class="small muted">Dane formularza są zapisywane wyłącznie w Twojej przeglądarce ' +
+      "(localStorage). Po ich wprowadzeniu następuje płatność 30 zł w Przelewy24 — dopiero " +
+      "po jej potwierdzeniu pokazywany jest wynik. Podgląd i PDF powstają lokalnie, bez drukarki " +
+      "i bez serwera.</p>" +
       '<p class="small">' + esc(M.DISCLAIMER) + "</p></section>";
   }
 
   function viewDane() {
     const p = project;
     return '<div class="page-head"><div><h1>Dane instalacji</h1>' +
-      "<p>Podaj podstawowe parametry — wynik aktualizuje się natychmiast.</p></div></div>" +
+      "<p>Podaj podstawowe parametry — kolejnym krokiem jest płatność 30 zł, która otwiera wynik.</p></div></div>" +
       '<section class="panel"><div class="grid">' +
       '<div class="field wide"><label class="field-label">Miejsce montażu</label>' +
       '<select id="f-place">' +
@@ -208,7 +207,7 @@
       '<input type="number" id="f-kw" min="0" step="0.1" value="' + esc(M.fmt(p.kw)) + '">' +
       '<span class="hint">Łączna moc zainstalowanych modułów.</span></div>' +
       "</div>" +
-      '<div class="row-actions"><button class="btn primary" data-act="go" data-path="wynik">Pokaż wynik</button>' +
+      '<div class="row-actions"><button class="btn primary" data-act="go" data-path="platnosc">Płatność i wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div></section>' +
       '<section class="panel"><h3>Progi decyzji</h3><p class="small muted">' +
       esc(M.THRESHOLDS_LINE) + "</p></section>";
@@ -227,7 +226,7 @@
       "<p>" + esc(M.todayPl()) + " · wersja " + esc(M.VERSION) + "</p></div>" +
       '<div class="row-actions" style="margin:0">' +
       '<button class="btn" data-act="go" data-path="podglad">Podgląd A4</button>' +
-      '<button class="btn primary" data-act="go" data-path="platnosc">Pobierz PDF · 30 zł</button>' +
+      '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
       "</div></div>" +
       '<section class="panel"><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span><span>' + esc(r.place_text) + "</span></div>" +
@@ -257,7 +256,7 @@
     return '<div class="page-head"><div><h1>Podgląd dokumentu</h1>' +
       "<p>Tak wygląda eksportowany plik PDF (A4, 300 DPI)" + esc(pages) + ".</p></div>" +
       '<div class="row-actions" style="margin:0">' +
-      '<button class="btn primary" data-act="go" data-path="platnosc">Przejdź do płatności</button>' +
+      '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
       '<button class="btn" data-act="go" data-path="wynik">Wróć do wyniku</button>' +
       "</div></div>" +
       '<section class="panel"><div class="preview-wrap"><div class="paper">' +
@@ -276,31 +275,32 @@
     const mode = P.configured()
       ? "Bramka skonfigurowana — weryfikacja przez backend"
       : "TRYB TESTOWY / KONFIGURACYJNY — nie pobieramy pieniędzy";
-    return '<div class="page-head"><div><h1>Płatność za raport PDF</h1>' +
-      "<p>Ostatni krok: opłata 30 zł przez Przelewy24, potem plik PDF jest generowany i pobierany.</p></div></div>" +
+    return '<div class="page-head"><div><h1>Płatność za dostęp do wyniku</h1>' +
+      "<p>Ostatni krok przed wynikiem: opłata 30 zł przez Przelewy24. Po zapłacie zobaczysz " +
+      "ścieżkę formalną i pobierzesz raport PDF bez dodatkowej opłaty.</p></div></div>" +
       '<section class="panel pay-card' + (paid ? " paid" : "") + '">' +
-      '<div class="pay-price"><strong>30 zł</strong><span>jednorazowo · jeden raport PDF</span></div>' +
+      '<div class="pay-price"><strong>30 zł</strong><span>jednorazowo · wynik + jeden raport PDF</span></div>' +
       '<div class="lic-grid">' +
       stat("Metoda", "Przelewy24") +
       stat("Waluta", P.CURRENCY) +
-      stat("Zakres", "1 raport PDF · 300 DPI") +
+      stat("Zakres", "Wynik + 1 raport PDF · 300 DPI") +
       stat("Sesja", session ? String(session).slice(0, 12) + "…" : "nowa po kliknięciu") +
-      stat("Status", paid ? "Opłacono — możesz pobrać PDF" : "Oczekuje na płatność") +
+      stat("Status", paid ? "Opłacono — przejdź do wyniku" : "Oczekuje na płatność") +
       stat("Tryb", mode) +
       "</div>" +
       '<div class="row-actions">' +
       '<button class="btn primary" data-act="pay-open">1. Otwórz stronę płatności</button>' +
-      '<button class="btn gold" data-act="pay-confirm">2. Potwierdź i pobierz PDF</button>' +
+      '<button class="btn gold" data-act="pay-confirm">2. Potwierdź i zobacz wynik</button>' +
       "</div>" +
       (P.configured() ? "" :
         '<p class="small err">Uzupełnij endpointy backendu poniżej, aby włączyć prawdziwe płatności. ' +
-        "W trybie testowym potwierdzenie odblokowuje PDF bez opłaty.</p>") +
+        "W trybie testowym potwierdzenie otwiera wynik bez opłaty.</p>") +
       "</section>" +
       '<section class="panel"><h3>Jak to działa</h3><p class="small muted">' +
       "1. Kliknij „Otwórz stronę płatności” — przejdziesz do Przelewy24. " +
-      "2. Po zapłacie wróć tutaj i kliknij „Potwierdź i pobierz PDF”. " +
-      "Serwer weryfikuje transakcję, a dopiero potem przeglądarka tworzy plik. " +
-      "Jedna opłata uprawnia do jednego raportu.</p></section>" +
+      "2. Po zapłacie wróć tutaj i kliknij „Potwierdź i zobacz wynik”. " +
+      "Serwer weryfikuje transakcję, a dopiero potem wyświetlany jest wynik. " +
+      "Jedna opłata uprawnia do jednego raportu PDF.</p></section>" +
       '<details class="panel pay-config"><summary>Konfiguracja bramki (dla właściciela)</summary>' +
       '<p class="small muted">Wklej adresy własnego backendu. Dane merchantId, posId, CRC i klucz API ' +
       "nigdy nie są zapisywane w tej statycznej stronie — zostają po stronie serwera.</p>" +
@@ -328,7 +328,7 @@
       '<div class="lic-grid">' +
       stat("Wersja", M.VERSION) +
       stat("Wydanie", "Statyczna wersja web (GitHub Pages)") +
-      stat("Raport PDF", P.PRICE_ZL + " zł · Przelewy24") +
+      stat("Wynik + PDF", P.PRICE_ZL + " zł · Przelewy24") +
       stat("Autor", "Rami Nassar") +
       stat("Firma", "BIM architects & consultants") +
       stat("Kontakt", "raminassar.arch@gmail.com") +
@@ -345,10 +345,20 @@
 
   // --- render --------------------------------------------------------------
 
+  /** Wynik i podgląd są dostępne wyłącznie po opłaceniu bieżącej sesji. */
+  function paidSession() {
+    const session = P.currentSession();
+    return session && P.isPaid(session) ? session : null;
+  }
+
   function render() {
     if (!project) project = loadProject();
     let head = route()[0];
     if (head === "eksport") { go("platnosc"); return; }
+    if ((head === "wynik" || head === "podglad") && !paidSession()) {
+      go("platnosc");
+      return;
+    }
 
     let html = "";
     if (head === "dane") html = viewDane();
@@ -383,13 +393,14 @@
   // --- płatność i eksport --------------------------------------------------
 
   async function openPayment() {
+    if (paidSession()) { go("wynik"); return; }
     let session = P.currentSession();
-    if (!session || !P.isPaid(session)) session = P.newSession();
+    if (!session) session = P.newSession();
     busyStart();
     try {
       const url = await P.registerPayment(session);
       rootOpen(url);
-      toast("Otwarto stronę Przelewy24. Po zapłacie kliknij „Potwierdź i pobierz PDF”.", "ok");
+      toast("Otwarto stronę Przelewy24. Po zapłacie kliknij „Potwierdź i zobacz wynik”.", "ok");
     } catch (err) {
       toast("Nie udało się otworzyć płatności: " + err.message, "err");
     } finally { busyStop(); }
@@ -402,9 +413,9 @@
 
   /** PDF powstaje dopiero po potwierdzonej opłacie. Zwraca true po pobraniu. */
   async function doPdf() {
-    const session = P.currentSession();
-    if (!session || !P.isPaid(session)) {
-      toast("Najpierw opłać raport (30 zł) — PDF nie został wygenerowany.", "err");
+    const session = paidSession();
+    if (!session) {
+      toast("Najpierw opłać dostęp do wyniku (30 zł) — PDF nie został wygenerowany.", "err");
       go("platnosc");
       return false;
     }
@@ -413,6 +424,7 @@
       const bytes = await window.PVPdf.renderPdf(currentResult());
       download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".pdf", "application/pdf");
       toast("PDF 300 DPI pobrany.", "ok");
+      P.consume(session);  // jedna opłata = jeden raport
       return true;
     } catch (err) {
       toast("Nie udało się utworzyć PDF: " + err.message, "err");
@@ -420,9 +432,11 @@
     } finally { busyStop(); }
   }
 
-  async function payAndPdf() {
-    let session = P.currentSession();
-    if (!session || !P.isPaid(session)) {
+  /** Potwierdza płatność i dopiero wtedy otwiera wynik. */
+  async function confirmAndShowResult() {
+    let session = paidSession();
+    if (!session) {
+      session = P.currentSession();
       if (!session) session = P.newSession();
       if (P.configured()) {
         busyStart();
@@ -438,8 +452,8 @@
         P.confirmTest(session);
       }
     }
-    const saved = await doPdf();
-    if (saved) P.consume(session);  // jedna opłata = jeden raport
+    toast("Płatność potwierdzona — przygotowujemy wynik.", "ok");
+    go("wynik");
   }
 
   function savePaymentConfig() {
@@ -488,7 +502,7 @@
       esc(M.VERSION) + "</small></span></a>" +
       '<div class="topbar-tools">' +
       '<span class="chip save">zapis lokalny</span>' +
-      '<span class="chip pay">PDF 30 zł</span>' +
+      '<span class="chip pay">Wynik 30 zł</span>' +
       "</div></header>" +
       '<nav class="steps" id="steps"></nav>' +
       '<main id="view"></main>' +
@@ -504,7 +518,7 @@
       if (act === "go") go(btn.getAttribute("data-path"));
       else if (act === "reset") resetForm();
       else if (act === "pay-open") openPayment();
-      else if (act === "pay-confirm") payAndPdf();
+      else if (act === "pay-confirm") confirmAndShowResult();
       else if (act === "pay-config-save") savePaymentConfig();
       else if (act === "pay-config-clear") clearPaymentConfig();
       else if (act === "pdf") doPdf();

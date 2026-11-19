@@ -5,8 +5,9 @@ kolejność kroków co w wersji desktopowej (Python/customtkinter), uruchamiana
 w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 
 **Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
-XLSX, dodano bramkę płatności **30 zł za jeden raport PDF przez Przelewy24**
-przed wygenerowaniem pliku.
+XLSX, dodano bramkę płatności **30 zł przez Przelewy24 przed pokazaniem wyniku**.
+Jedna opłata odblokowuje wynik, podgląd A4 oraz jeden raport PDF 300 DPI —
+bez drugiej płatności.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
 wzorowany na projekcie **PAB cyfrowa** tego samego autora:
@@ -25,8 +26,9 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Formularz | Miejsce montażu, obszar chroniony, powierzchnia, moc; wynik aktualizuje się od razu |
 | Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna”), źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
-| Płatność | Ostatni krok przed PDF: 30 zł przez Przelewy24, weryfikacja przez własny backend |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — dopiero po opłacie |
+| Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend |
+| Wynik i podgląd | Widoczne dopiero po potwierdzeniu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę |
 
 Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
 Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
@@ -85,11 +87,12 @@ sprawdzają m.in.:
 
 - wersję 2.0.0 i brak modułów licencji / XLSX,
 - bramkę: 30 zł / 3000 groszy, sesję 32-hex, adres Przelewy24, opłatę i jej zużycie,
+- blokadę wyniku i podglądu przed opłatą, przejście do wyniku po opłacie,
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`),
 - wymiary podglądu A4.
 
-Wynik: `TOTAL 33 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 39 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
@@ -114,10 +117,11 @@ Backend (np. Cloudflare Worker, Vercel Function albo mały serwer) powinien:
 
 Endpointy wpisuje właściciel w widoku **Płatność → Konfiguracja bramki**
 (zapis w `localStorage`). Dopóki są puste, aplikacja działa w **trybie testowym**:
-po kliknięciu „Potwierdź i pobierz PDF" plik powstaje bez pobierania opłaty.
+po kliknięciu „Potwierdź i zobacz wynik" wynik otwiera się bez pobierania opłaty.
 To jedyny tryb możliwy na czystym GitHub Pages bez backendu.
 
-Jedna sesja = jeden PDF. Po pobraniu pliku opłata jest zużywana.
+Jedna sesja = wynik + podgląd + jeden PDF. Opłata jest zużywana dopiero po
+pomyślnym pobraniu pliku; pobranie PDF nie wymaga drugiej płatności.
 
 ---
 
