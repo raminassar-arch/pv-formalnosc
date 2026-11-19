@@ -1,15 +1,19 @@
-# PV Formalność — wersja web (v1.3.0)
+# PV Formalność — wersja web (v2.0.0)
 
-Statyczna wersja aplikacji **PV Formalność 1.3.0** — te same teksty, progi i
+Statyczna wersja aplikacji **PV Formalność 2.0.0** — te same teksty, progi i
 kolejność kroków co w wersji desktopowej (Python/customtkinter), uruchamiana
 w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
+
+**Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
+XLSX, dodano bramkę płatności **30 zł za jeden raport PDF przez Przelewy24**
+przed wygenerowaniem pliku.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
 wzorowany na projekcie **PAB cyfrowa** tego samego autora:
 `..\opis PZT i PAB\sites`.
 
-Wersja desktopowa `PV_Formalność_v1.3.0.exe` oraz fallback
-`PV_Formalność_v1.2.0.exe` pozostają niezmienione.
+Odpowiednik desktopowy: `PV_Formalność_v2.0.0.exe` (16,3 MB).
+Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 
 ---
 
@@ -21,13 +25,14 @@ Wersja desktopowa `PV_Formalność_v1.3.0.exe` oraz fallback
 | Formularz | Miejsce montażu, obszar chroniony, powierzchnia, moc; wynik aktualizuje się od razu |
 | Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna”), źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku |
-| Eksport XLSX | Czysty ZIP + XML (bez openpyxl), arkusz „Wynik” z danymi, decyzjami i krokami |
-| Licencja | 14 dni próbki, 1000 kluczy dożywotnich + 1000 rocznych (365 dni od aktywacji), wyłącznie hashe SHA-256 |
+| Płatność | Ostatni krok przed PDF: 30 zł przez Przelewy24, weryfikacja przez własny backend |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — dopiero po opłacie |
 
-Dane formularza i stan licencji są zapisywane w `localStorage`. **Nic nie jest
-wysyłane na serwer.** Jedynymi zasobami są pliki tej strony oraz lokalne fonty
-DejaVu.
+Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
+Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
+ w Przelewy24 i — po skonfigurowaniu — wywołanie endpointów własnego backendu.
+
+**XLSX i licencja nie istnieją w wersji 2.0.0.**
 
 ---
 
@@ -40,17 +45,13 @@ pv-formalnosc-web/
 ├── favicon.svg
 ├── js/
 │   ├── model.js        # kalkulator — port 1:1 z model.py
-│   ├── keys.js         # WYŁĄCZNIE hashe SHA-256 (generowane)
-│   ├── license.js      # próbka i klucze (localStorage)
-│   ├── zip.js          # minimalny zapis ZIP (store)
-│   ├── xlsx.js         # eksport XLSX
+│   ├── payment.js      # bramka Przelewy24 (szkielet, bez tajnych danych)
 │   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4
-│   └── app.js          # UI, routing, eksport, aktywacja klucza
+│   └── app.js          # UI, routing, płatność, eksport PDF
 ├── assets/
 │   ├── DejaVuSans.ttf
 │   └── DejaVuSans-Bold.ttf
 ├── tools/
-│   ├── gen_keys.py     # generuje js/keys.js z folderu keys/
 │   ├── selftest.html   # testy w przeglądarce
 │   ├── selftest.py     # uruchamia testy headless Chrome/Edge
 │   └── screenshots.py  # zrzuty wszystkich widoków do _screenshots/
@@ -62,7 +63,7 @@ pv-formalnosc-web/
 ## Uruchomienie lokalne
 
 Nie wystarczy otworzyć `index.html` przez `file://` — przeglądarka może zablokować
-fonty i Web Crypto. Użyj dowolnego serwera statycznego:
+fonty i `fetch`. Użyj dowolnego serwera statycznego:
 
 ```bat
 cd pv-formalnosc-web
@@ -82,13 +83,41 @@ python tools/selftest.py
 Testy uruchamiane są w prawdziwej przeglądarce (headless Chrome lub Edge) i
 sprawdzają m.in.:
 
+- wersję 2.0.0 i brak modułów licencji / XLSX,
+- bramkę: 30 zł / 3000 groszy, sesję 32-hex, adres Przelewy24, opłatę i jej zużycie,
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
-- 1000 + 1000 hashów kluczy (64 znaki hex), odrzucenie złego klucza,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`),
-- strukturę XLSX (ZIP, `workbook.xml`, `worksheets/sheet1.xml`),
 - wymiary podglądu A4.
 
-Wynik: `TOTAL 27 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 33 PASS / 0 FAIL` (kod wyjścia 0).
+
+---
+
+## Bramka płatności — konfiguracja (ważne)
+
+Statyczna strona **nie może** bezpiecznie przechowywać `merchantId`, `posId`,
+`crc` ani klucza API. Dlatego w kodzie znajdują się tylko dwa placeholdery
+endpointów własnego backendu:
+
+| Endpoint | Żądanie | Odpowiedź |
+| --- | --- | --- |
+| `createUrl` | `POST {sessionId, amount: 3000, currency: "PLN", description, sandbox}` | `{"url": "https://...przelewy24.pl/tranzakcja/TOKEN"}` |
+| `verifyUrl` | `POST {sessionId, amount: 3000}` | `{"paid": true}` |
+
+Backend (np. Cloudflare Worker, Vercel Function albo mały serwer) powinien:
+
+1. zawołać `POST https://sandbox-api.przelewy24.pl/api/v1/transaction/register`
+   (lub `https://api.przelewy24.pl/...` na produkcji) z danymi merchantu,
+2. zwrócić token jako adres przekierowania,
+3. po powrocie użytkownika zawołać `/api/v1/transaction/verify` z CRC
+   i zwrócić `{"paid": true}` tylko dla opłaconej sesji o kwocie 3000 groszy.
+
+Endpointy wpisuje właściciel w widoku **Płatność → Konfiguracja bramki**
+(zapis w `localStorage`). Dopóki są puste, aplikacja działa w **trybie testowym**:
+po kliknięciu „Potwierdź i pobierz PDF" plik powstaje bez pobierania opłaty.
+To jedyny tryb możliwy na czystym GitHub Pages bez backendu.
+
+Jedna sesja = jeden PDF. Po pobraniu pliku opłata jest zużywana.
 
 ---
 
@@ -96,49 +125,17 @@ Wynik: `TOTAL 27 PASS / 0 FAIL` (kod wyjścia 0).
 
 Repozytorium: `https://github.com/raminassar-arch/pv-formalnosc` (gałąź `main`).
 
-1. Utwórz puste repozytorium `pv-formalnosc` na koncie `raminassar-arch`
-   (bez README/licencji — żeby uniknąć konfliktu przy pierwszym pushu).
-2. W repozytorium: `Settings → Pages → Build and deployment` ustaw
+1. W repozytorium: `Settings → Pages → Build and deployment` ustaw
    **Source: GitHub Actions**.
-3. Katalog `pv-formalnosc-web` jest już lokalnym repozytorium Git z gałęzią
-   `main`, commit `7a2d7d6` i remote `origin`. Pozostaje tylko wypchnięcie:
-
-   ```bat
-   cd pv-formalnosc-web
-   git push -u origin main
-   ```
-
-   (przy pierwszym pushu GitHub poprosi o logowanie / token — użyj
-   *Personal Access Token* z uprawnieniem `repo` jako hasła).
-
-4. Workflow `.github/workflows/deploy.yml` najpierw uruchomi testy
+2. Workflow `.github/workflows/deploy.yml` najpierw uruchomi testy
    (`python tools/selftest.py`), potem opublikuje stronę.
-5. Adres: `https://raminassar-arch.github.io/pv-formalnosc/`.
+3. Push na `main` publikuje nową wersję automatycznie.
+4. Adres: `https://raminassar-arch.github.io/pv-formalnosc/`.
 
 Plik `.nojekyll` zapobiega przetwarzaniu katalogu przez Jekyll.
 
 Jeśli chcesz osadzić aplikację w Google Sites, otwórz `embed.html` — przygotuje
-gotowy kod iframe z adresem opublikowanej strony
-(`https://raminassar-arch.github.io/pv-formalnosc/`).
-
----
-
-## Klucze — ważne
-
-- Katalog web **nie zawiera jawnych kluczy**. `js/keys.js` ma wyłącznie hashe
-  SHA-256 (134 KB) wygenerowane z `..\pv-formalnosc-python\keys`.
-- Aby odtworzyć plik po zmianie kluczy:
-
-  ```bat
-  python tools/gen_keys.py "..\pv-formalnosc-python\keys"
-  ```
-
-- Klucz aktywowany w wersji desktopowej działa też w web (te same hashe), ale
-  **stan licencji nie jest współdzielony**: desktop zapisuje go w `%LOCALAPPDATA%`
-  i rejestrze Windows, web w `localStorage`. Trzeba aktywować klucz osobno.
-- Ochrona w statycznej stronie jest „na uczciwego użytkownika" — stan w
-  `localStorage` da się wyczyścić z poziomu devtools. Realna ochrona wymagałaby
-  serverless (np. Cloudflare Worker), co nie jest już czysty GitHub Pages.
+gotowy kod iframe z adresem opublikowanej strony.
 
 ---
 
@@ -152,5 +149,5 @@ PDF używa tego samego układu A4 w jednostkach projektowych 150 DPI skalowanych
 Różnice wynikające ze środowiska:
 
 - rasteryzację robi Canvas zamiast PIL (jakość JPEG porównywalna),
-- XLSX jest składany w JS zamiast w Pythonie (ten sam układ arkusza),
-- licencja web nie zapisuje stanu w systemie Windows.
+- weryfikacja płatności odbywa się przez `fetch` do backendu zamiast
+  `urllib.request` w desktopie.

@@ -1,18 +1,17 @@
 /* ==========================================================================
-   PV Formalność — wersja web
-   app.js — interfejs: routing, formularz, wynik, podgląd, eksport, licencja.
-   Wszystkie dane pozostają w przeglądarce (localStorage). Nic nie jest
-   wysyłane na serwer. Dokumenty powstają lokalnie (JS + Canvas).
+   PV Formalność — wersja web 2.0.0
+   app.js — interfejs: routing, formularz, wynik, podgląd, płatność 30 zł, PDF.
+   Wszystkie dane pozostają w przeglądarce. Dokumenty powstają lokalnie
+   (JS + Canvas), bez drukarki i bez serwera. Płatność odbywa się w Przelewy24.
    ========================================================================== */
 (function () {
   "use strict";
 
   const M = window.PVModel;
-  const L = window.PVLicense;
+  const P = window.PVPayment;
   const PROJECT_KEY = "pvformalnosc.project.v1";
 
   let project = null;
-  let licence = null;
   let saveTimer = null;
   let busyCount = 0;
   let toastTimer = null;
@@ -84,12 +83,7 @@
   // --- projekt -------------------------------------------------------------
 
   function emptyProject() {
-    return {
-      roof: false,
-      protectedArea: false,
-      ha: 1,
-      kw: 6,
-    };
+    return { roof: false, protectedArea: false, ha: 1, kw: 6 };
   }
 
   function loadProject() {
@@ -128,43 +122,11 @@
                        placeText(), locationText());
   }
 
-  // --- licencja ------------------------------------------------------------
-
-  function refreshLicence() {
-    const state = L.load();
-    licence = L.status(state);
-    licence.state = state;
-    licence.maskedKey = state.Key ? formatKey(state.Key) : "";
-    const trialEnd = new Date(new Date(state.FirstStartUtc).getTime() + L.TRIAL_DAYS * 86400000);
-    licence.trialEnd = trialEnd.toISOString();
-    licence.daysLeft = state.Kind === "lifetime" ? null : L.yearDaysLeft(state);
-    licence.holder = "";
-    licence.expires = state.Kind === "year" && state.ActivatedUtc
-      ? new Date(new Date(state.ActivatedUtc).getTime() + L.YEAR_DAYS * 86400000).toISOString()
-      : "";
-    licence.serial = "";
-    return licence;
-  }
-
-  function formatKey(canon) { return L.format(canon); }
-
-  function gate() {
-    if (!licence) refreshLicence();
-    return licence.valid;
-  }
-
-  function licenceBadge() {
-    if (!licence) return "";
-    const cls = licence.valid ? (licence.licensed ? "ok" : "trial") : "bad";
-    return '<a href="#/licencja"><span class="chip ' + cls + '">' +
-      esc(licence.short) + (licence.valid ? "" : " · WYMAGANY KLUCZ") + "</span></a>";
-  }
-
   // --- routing -------------------------------------------------------------
 
   const TITLES = {
     start: "Start", dane: "Dane", wynik: "Wynik", podglad: "Podgląd",
-    eksport: "Eksport", licencja: "Licencja", "o-programie": "O programie",
+    platnosc: "Płatność", "o-programie": "O programie",
   };
 
   function route() {
@@ -184,8 +146,7 @@
     ["dane", "Dane", "Parametry instalacji"],
     ["wynik", "Wynik", "Ścieżka formalna"],
     ["podglad", "Podgląd", "Strona A4"],
-    ["eksport", "Eksport", "PDF i XLSX"],
-    ["licencja", "Licencja", "Klucz i próbka"],
+    ["platnosc", "Płatność", "PDF · 30 zł"],
     ["o-programie", "O programie", "Informacje"],
   ];
 
@@ -207,7 +168,8 @@
       '<div class="hero-text">' +
       "<h1>Formalności dla instalacji fotowoltaicznej</h1>" +
       "<p>Sprawdź w kilka sekund, jakie decyzje i uzgodnienia są potrzebne dla Twojej instalacji. " +
-      "Wynik zawiera ścieżkę z gov.pl, listę kroków w kolejności oraz gotowe dokumenty PDF 300 DPI i XLSX.</p>" +
+      "Wynik zawiera ścieżkę z gov.pl, listę kroków w kolejności oraz raport PDF 300 DPI " +
+      "(30 zł przez Przelewy24).</p>" +
       '<div class="hero-actions">' +
       '<button class="btn primary" data-act="go" data-path="dane">Rozpocznij analizę</button>' +
       '<button class="btn gold" data-act="go" data-path="wynik">Zobacz bieżący wynik</button>' +
@@ -219,9 +181,10 @@
       "<p class=\"small\">" + esc(r.path_meta) + "</p>" +
       "</div></section>" +
       '<section class="panel"><h2>Jak to działa</h2>' +
-      '<p class="small muted">Program nie wysyła danych nigdzie poza Twoją przeglądarkę. ' +
-      "Dane formularza i stan licencji są zapisywane lokalnie (localStorage). " +
-      "Eksport PDF i XLSX jest generowany w pełni lokalnie — bez drukarki i bez serwera.</p>" +
+      '<p class="small muted">Wynik jest liczony wyłącznie w Twojej przeglądarce — ' +
+      "dane formularza są zapisywane lokalnie (localStorage). Podgląd i raport PDF powstają " +
+      "lokalnie, bez drukarki i bez serwera. Płatność 30 zł odbywa się w Przelewy24 " +
+      "przed wygenerowaniem pliku.</p>" +
       '<p class="small">' + esc(M.DISCLAIMER) + "</p></section>";
   }
 
@@ -264,7 +227,7 @@
       "<p>" + esc(M.todayPl()) + " · wersja " + esc(M.VERSION) + "</p></div>" +
       '<div class="row-actions" style="margin:0">' +
       '<button class="btn" data-act="go" data-path="podglad">Podgląd A4</button>' +
-      '<button class="btn primary" data-act="go" data-path="eksport">Eksportuj</button>' +
+      '<button class="btn primary" data-act="go" data-path="platnosc">Pobierz PDF · 30 zł</button>' +
       "</div></div>" +
       '<section class="panel"><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span><span>' + esc(r.place_text) + "</span></div>" +
@@ -294,81 +257,66 @@
     return '<div class="page-head"><div><h1>Podgląd dokumentu</h1>' +
       "<p>Tak wygląda eksportowany plik PDF (A4, 300 DPI)" + esc(pages) + ".</p></div>" +
       '<div class="row-actions" style="margin:0">' +
-      '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
-      '<button class="btn" data-act="go" data-path="eksport">Więcej opcji</button>' +
+      '<button class="btn primary" data-act="go" data-path="platnosc">Przejdź do płatności</button>' +
+      '<button class="btn" data-act="go" data-path="wynik">Wróć do wyniku</button>' +
       "</div></div>" +
       '<section class="panel"><div class="preview-wrap"><div class="paper">' +
       '<canvas id="preview-canvas" width="2480" height="3508"></canvas>' +
       "</div></div></section>";
   }
 
-  function viewEksport() {
-    return '<div class="page-head"><div><h1>Eksport</h1>' +
-      "<p>Dokumenty są tworzone lokalnie w przeglądarce i pobierane bezpośrednio na dysk.</p></div></div>" +
-      '<section class="export-grid">' +
-      '<div class="export-card"><span class="badge">PDF · 300 DPI</span>' +
-      "<h3>Raport z wynikiem</h3>" +
-      "<p>Jedna lub więcej stron A4 (2480 × 3508 px), polskie znaki, bez drukarki i bez przeglądarki wydruku.</p>" +
-      '<button class="btn primary" data-act="pdf">Pobierz PDF</button></div>' +
-      '<div class="export-card"><span class="badge">XLSX</span>' +
-      "<h3>Arkusz kalkulacyjny</h3>" +
-      "<p>Wynik, dane wejściowe i pełna lista kroków w jednym arkuszu. Bez zależności zewnętrznych.</p>" +
-      '<button class="btn primary" data-act="xlsx">Pobierz XLSX</button></div>' +
-      "</section>" +
-      '<section class="panel"><h3>Parność z wersją desktopową 1.3.0</h3>' +
-      '<p class="small muted">Silnik kalkulatora, teksty decyzji i kolejność kroków są identyczne jak w ' +
-      "aplikacji Python. PDF używa tego samego układu A4 i rozdzielczości 300 DPI.</p></section>";
-  }
-
   function stat(k, v) {
     return '<div class="stat"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>";
   }
 
-  function stateLabel(state) {
-    return {
-      trial: "wersja próbna", trial_expired: "okres próbny upłynął",
-      licensed: "licencja pełna", expired: "licencja wygasła", invalid: "klucz nieprawidłowy",
-    }[state] || state;
-  }
-
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-    return m ? m[3] + "." + m[2] + "." + m[1] : iso;
-  }
-
-  function viewLicencja() {
-    const lic = licence;
-    const cls = lic.valid ? (lic.licensed ? "ok" : "trial") : "bad";
-    return '<div class="page-head"><div><h1>Licencja</h1>' +
-      "<p>Program działa " + L.TRIAL_DAYS + " dni w wersji próbnej, a następnie wymaga klucza.</p></div></div>" +
-      '<section class="panel licence ' + cls + '"><h2>' + esc(lic.summary) + "</h2>" +
+  function viewPlatnosc() {
+    const cfg = P.config();
+    const session = P.currentSession();
+    const paid = P.isPaid(session);
+    const mode = P.configured()
+      ? "Bramka skonfigurowana — weryfikacja przez backend"
+      : "TRYB TESTOWY / KONFIGURACYJNY — nie pobieramy pieniędzy";
+    return '<div class="page-head"><div><h1>Płatność za raport PDF</h1>' +
+      "<p>Ostatni krok: opłata 30 zł przez Przelewy24, potem plik PDF jest generowany i pobierany.</p></div></div>" +
+      '<section class="panel pay-card' + (paid ? " paid" : "") + '">' +
+      '<div class="pay-price"><strong>30 zł</strong><span>jednorazowo · jeden raport PDF</span></div>' +
       '<div class="lic-grid">' +
-      stat("Stan", stateLabel(lic.kind)) +
-      stat("Okres próbny do", fmtDate(lic.trialEnd)) +
-      stat("Pozostało dni", lic.licensed
-        ? (lic.daysLeft === null ? "bezterminowo" : String(lic.daysLeft))
-        : String(lic.trialDaysLeft)) +
-      (lic.key ? stat("Klucz", lic.key) : "") +
-      (lic.expires ? stat("Ważna do", fmtDate(lic.expires)) : "") +
+      stat("Metoda", "Przelewy24") +
+      stat("Waluta", P.CURRENCY) +
+      stat("Zakres", "1 raport PDF · 300 DPI") +
+      stat("Sesja", session ? String(session).slice(0, 12) + "…" : "nowa po kliknięciu") +
+      stat("Status", paid ? "Opłacono — możesz pobrać PDF" : "Oczekuje na płatność") +
+      stat("Tryb", mode) +
       "</div>" +
-      (lic.state && lic.state.Key && lic.kind === "expired"
-        ? '<p class="small err">Klucz roczny wygasł — aktywuj nowy klucz.</p>' : "") +
+      '<div class="row-actions">' +
+      '<button class="btn primary" data-act="pay-open">1. Otwórz stronę płatności</button>' +
+      '<button class="btn gold" data-act="pay-confirm">2. Potwierdź i pobierz PDF</button>' +
+      "</div>" +
+      (P.configured() ? "" :
+        '<p class="small err">Uzupełnij endpointy backendu poniżej, aby włączyć prawdziwe płatności. ' +
+        "W trybie testowym potwierdzenie odblokowuje PDF bez opłaty.</p>") +
       "</section>" +
-      '<section class="panel"><h2>Aktywacja klucza</h2>' +
+      '<section class="panel"><h3>Jak to działa</h3><p class="small muted">' +
+      "1. Kliknij „Otwórz stronę płatności” — przejdziesz do Przelewy24. " +
+      "2. Po zapłacie wróć tutaj i kliknij „Potwierdź i pobierz PDF”. " +
+      "Serwer weryfikuje transakcję, a dopiero potem przeglądarka tworzy plik. " +
+      "Jedna opłata uprawnia do jednego raportu.</p></section>" +
+      '<details class="panel pay-config"><summary>Konfiguracja bramki (dla właściciela)</summary>' +
+      '<p class="small muted">Wklej adresy własnego backendu. Dane merchantId, posId, CRC i klucz API ' +
+      "nigdy nie są zapisywane w tej statycznej stronie — zostają po stronie serwera.</p>" +
       '<div class="grid">' +
-      '<div class="field wide"><label class="field-label">Klucz licencyjny</label>' +
-      '<input type="text" id="lic-key" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="field wide"><label class="field-label">createUrl (rejestracja transakcji)</label>' +
+      '<input type="url" id="p-create" placeholder="https://twoj-backend.example/p24/create" value="' +
+      esc(cfg.createUrl) + '"></div>' +
+      '<div class="field wide"><label class="field-label">verifyUrl (potwierdzenie zapłaty)</label>' +
+      '<input type="url" id="p-verify" placeholder="https://twoj-backend.example/p24/verify" value="' +
+      esc(cfg.verifyUrl) + '"></div>' +
+      '<label class="checkline wide"><input type="checkbox" id="p-sandbox"' +
+      (cfg.sandbox !== false ? " checked" : "") + "><span>Tryb sandbox (testowy) Przelewy24</span></label>" +
       "</div>" +
-      '<div class="row-actions"><button class="btn primary" data-act="activate">Aktywuj klucz</button>' +
-      (lic.state && lic.state.Key ? '<button class="btn danger" data-act="deactivate">Usuń klucz</button>' : "") +
-      "</div>" +
-      '<p class="small muted">Klucz jest sprawdzany lokalnie przez SHA-256 (w kodzie zapisane są wyłącznie hashe). ' +
-      "Aktywacja nie wymaga internetu.</p></section>" +
-      '<section class="panel"><h3>Uwaga o wersji przeglądarkowej</h3>' +
-      '<p class="small">Stan licencji jest przechowywany w pamięci przeglądarki (localStorage). ' +
-      "Wyczyszczenie danych witryny usuwa zapis. Wersja desktopowa przechowuje stan dodatkowo w systemie " +
-      "(%LOCALAPPDATA% oraz rejestr Windows) i jest z nią kompatybilna pod względem kluczy.</p></section>";
+      '<div class="row-actions"><button class="btn primary" data-act="pay-config-save">Zapisz konfigurację</button>' +
+      '<button class="btn" data-act="pay-config-clear">Wyczyść</button></div>' +
+      "</details>";
   }
 
   function viewAbout() {
@@ -380,6 +328,7 @@
       '<div class="lic-grid">' +
       stat("Wersja", M.VERSION) +
       stat("Wydanie", "Statyczna wersja web (GitHub Pages)") +
+      stat("Raport PDF", P.PRICE_ZL + " zł · Przelewy24") +
       stat("Autor", "Rami Nassar") +
       stat("Firma", "BIM architects & consultants") +
       stat("Kontakt", "raminassar.arch@gmail.com") +
@@ -389,32 +338,25 @@
       '<p class="small">' + esc(M.DISCLAIMER) + "</p>" +
       "</section>" +
       '<section class="panel"><h3>Prywatność</h3><p class="small">' +
-      "Wszystkie dane projektu pozostają w Twojej przeglądarce. Aplikacja nie wysyła ich na żaden serwer. " +
-      "Jedynymi zasobami ładowanymi lokalnie są pliki programu oraz fonty DejaVu.</p></section>";
+      "Dane projektu pozostają w Twojej przeglądarce. Obliczenia i pdf powstają lokalnie. " +
+      "Jedynym zewnętrznym krokiem jest płatność w Przelewy24 oraz — po skonfigurowaniu — " +
+      "wywołanie endpointów własnego backendu w celu potwierdzenia transakcji.</p></section>";
   }
 
   // --- render --------------------------------------------------------------
 
   function render() {
     if (!project) project = loadProject();
-    if (!licence) refreshLicence();
-
-    if (!gate()) {
-      if (route()[0] !== "licencja") { go("licencja"); return; }
-    }
-
-    const head = route()[0];
-    const badge = $("#lic-badge");
-    if (badge) badge.innerHTML = licenceBadge();
+    let head = route()[0];
+    if (head === "eksport") { go("platnosc"); return; }
 
     let html = "";
     if (head === "dane") html = viewDane();
     else if (head === "wynik") html = viewWynik();
     else if (head === "podglad") html = viewPodglad();
-    else if (head === "eksport") html = viewEksport();
-    else if (head === "licencja") html = viewLicencja();
+    else if (head === "platnosc") html = viewPlatnosc();
     else if (head === "o-programie") html = viewAbout();
-    else html = viewStart();
+    else { head = "start"; html = viewStart(); }
 
     const view = $("#view");
     if (view) view.innerHTML = html;
@@ -438,57 +380,84 @@
     }
   }
 
-  // --- akcje ---------------------------------------------------------------
+  // --- płatność i eksport --------------------------------------------------
 
-  async function activateKey() {
-    const input = $("#lic-key");
-    if (!input) return;
+  async function openPayment() {
+    let session = P.currentSession();
+    if (!session || !P.isPaid(session)) session = P.newSession();
     busyStart();
     try {
-      const check = await L.validate(input.value);
-      if (!check.ok) { toast(check.message, "err"); return; }
-      const state = refreshLicence().state;
-      L.activate(state, input.value, check.kind);
-      refreshLicence();
-      toast("Licencja aktywowana: " + licence.summary, "ok");
-      render();
+      const url = await P.registerPayment(session);
+      rootOpen(url);
+      toast("Otwarto stronę Przelewy24. Po zapłacie kliknij „Potwierdź i pobierz PDF”.", "ok");
     } catch (err) {
-      toast("Błąd aktywacji: " + err.message, "err");
-    } finally {
-      busyStop();
-    }
+      toast("Nie udało się otworzyć płatności: " + err.message, "err");
+    } finally { busyStop(); }
   }
 
-  function deactivateKey() {
-    const state = refreshLicence().state;
-    state.Key = null; state.Kind = null; state.ActivatedUtc = null;
-    L.save(state);
-    refreshLicence();
-    toast("Klucz usunięty.", "ok");
-    render();
+  function rootOpen(url) {
+    const win = window.open(url, "_blank");
+    if (!win) toast("Przeglądarka zablokowała nowe okno — otwórz link ręcznie.", "err");
   }
 
+  /** PDF powstaje dopiero po potwierdzonej opłacie. Zwraca true po pobraniu. */
   async function doPdf() {
+    const session = P.currentSession();
+    if (!session || !P.isPaid(session)) {
+      toast("Najpierw opłać raport (30 zł) — PDF nie został wygenerowany.", "err");
+      go("platnosc");
+      return false;
+    }
     busyStart();
     try {
       const bytes = await window.PVPdf.renderPdf(currentResult());
       download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".pdf", "application/pdf");
       toast("PDF 300 DPI pobrany.", "ok");
+      return true;
     } catch (err) {
       toast("Nie udało się utworzyć PDF: " + err.message, "err");
+      return false;
     } finally { busyStop(); }
   }
 
-  function doXlsx() {
-    busyStart();
-    try {
-      const bytes = window.PVXlsx.build(currentResult());
-      download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      toast("XLSX pobrany.", "ok");
-    } catch (err) {
-      toast("Nie udało się utworzyć XLSX: " + err.message, "err");
-    } finally { busyStop(); }
+  async function payAndPdf() {
+    let session = P.currentSession();
+    if (!session || !P.isPaid(session)) {
+      if (!session) session = P.newSession();
+      if (P.configured()) {
+        busyStart();
+        let ok = false;
+        try { ok = await P.verify(session); }
+        finally { busyStop(); }
+        if (!ok) {
+          toast("Płatność nie została potwierdzona przez serwer. Spróbuj ponownie po zapłacie.", "err");
+          return;
+        }
+        P.markPaid(session);
+      } else {
+        P.confirmTest(session);
+      }
+    }
+    const saved = await doPdf();
+    if (saved) P.consume(session);  // jedna opłata = jeden raport
+  }
+
+  function savePaymentConfig() {
+    const createInput = $("#p-create"), verifyInput = $("#p-verify"), sandboxInput = $("#p-sandbox");
+    if (!createInput || !verifyInput) return;
+    P.saveConfig({
+      createUrl: createInput.value.trim(),
+      verifyUrl: verifyInput.value.trim(),
+      sandbox: !!sandboxInput.checked,
+    });
+    toast("Konfiguracja bramki zapisana lokalnie.", "ok");
+    render();
+  }
+
+  function clearPaymentConfig() {
+    P.clearConfig();
+    toast("Konfiguracja bramki usunięta — tryb testowy.", "ok");
+    render();
   }
 
   function resetForm() {
@@ -519,13 +488,13 @@
       esc(M.VERSION) + "</small></span></a>" +
       '<div class="topbar-tools">' +
       '<span class="chip save">zapis lokalny</span>' +
-      '<span id="lic-badge" class="lic-badge"></span>' +
+      '<span class="chip pay">PDF 30 zł</span>' +
       "</div></header>" +
       '<nav class="steps" id="steps"></nav>' +
       '<main id="view"></main>' +
       '<footer class="footer">' +
       "<span>" + esc(M.AUTHOR_LINE) + "</span>" +
-      '<span><a href="#/licencja">Licencja</a> · <a href="#/o-programie">O programie</a></span>' +
+      '<span><a href="#/platnosc">Płatność</a> · <a href="#/o-programie">O programie</a></span>' +
       "</footer>";
 
     document.addEventListener("click", function (e) {
@@ -534,36 +503,31 @@
       const act = btn.getAttribute("data-act");
       if (act === "go") go(btn.getAttribute("data-path"));
       else if (act === "reset") resetForm();
-      else if (act === "activate") activateKey();
-      else if (act === "deactivate") deactivateKey();
+      else if (act === "pay-open") openPayment();
+      else if (act === "pay-confirm") payAndPdf();
+      else if (act === "pay-config-save") savePaymentConfig();
+      else if (act === "pay-config-clear") clearPaymentConfig();
       else if (act === "pdf") doPdf();
-      else if (act === "xlsx") doXlsx();
     });
 
     document.addEventListener("change", function (e) {
-      if (e.target && (e.target.id === "f-place" || e.target.id === "f-protected")) {
-        readForm();
-      }
+      if (e.target && (e.target.id === "f-place" || e.target.id === "f-protected")) readForm();
     });
     document.addEventListener("input", function (e) {
       if (e.target && (e.target.id === "f-ha" || e.target.id === "f-kw")) readForm();
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target && e.target.id === "lic-key") activateKey();
     });
 
     window.addEventListener("hashchange", render);
   }
 
   function init() {
-    if (!M || !L || !window.PVPdf || !window.PVXlsx) {
+    if (!M || !P || !window.PVPdf) {
       document.getElementById("app").innerHTML =
         '<div class="panel" style="margin:24px"><h2>Błąd ładowania programu</h2>' +
         "<p>Brakuje jednego z plików silnika (js/). Sprawdź, czy cały katalog został opublikowany.</p></div>";
       return;
     }
     project = loadProject();
-    refreshLicence();
     mount();
     if (!location.hash) location.hash = "#/start";
     render();

@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "_screenshots"
-ROUTES = ["start", "dane", "wynik", "podglad", "eksport", "licencja", "o-programie"]
+ROUTES = ["start", "dane", "wynik", "podglad", "platnosc", "o-programie"]
 CHROME_CANDIDATES = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",

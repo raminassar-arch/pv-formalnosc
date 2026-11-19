@@ -96,10 +96,8 @@ a { color: var(--green-mid); }
 }
 .chip.ok { background: rgba(46, 160, 92, .25); border-color: rgba(120, 220, 160, .5); color: #d6ffe6; }
 .chip.bad { background: rgba(200, 70, 50, .3); border-color: rgba(255, 150, 130, .5); color: #ffe0d8; }
-.chip.trial { background: rgba(212, 170, 70, .28); border-color: rgba(240, 210, 130, .5); color: #fff3d4; }
+.chip.pay { background: rgba(212, 170, 70, .28); border-color: rgba(240, 210, 130, .5); color: #fff3d4; }
 .chip.save { background: rgba(255,255,255,.08); }
-
-.lic-badge a { text-decoration: none; }
 
 /* --- steps nav ------------------------------------------------------------ */
 
@@ -320,11 +318,15 @@ input:focus, select:focus {
 }
 .paper canvas { display: block; width: 100%; height: 100%; }
 
-/* --- licencja / o programie ---------------------------------------------- */
+/* --- płatność / o programie ----------------------------------------------- */
 
-.panel.licence.ok { border-left: 6px solid var(--success); }
-.panel.licence.trial { border-left: 6px solid var(--gold); }
-.panel.licence.bad { border-left: 6px solid var(--danger); }
+.pay-card { border-left: 6px solid var(--gold); }
+.pay-card.paid { border-left-color: var(--success); }
+.pay-price { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.pay-price strong { font-size: 2.1rem; color: var(--gold-text); line-height: 1; }
+.pay-price span { color: var(--muted); font-size: .9rem; }
+.pay-config summary { cursor: pointer; font-weight: 700; color: var(--green-deep); }
+.pay-config[open] summary { margin-bottom: 14px; }
 .lic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .stat { background: var(--green-pale); border-radius: 9px; padding: 10px 12px; }
 .stat .k { display: block; font-size: .74rem; color: var(--muted); }

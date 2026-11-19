@@ -5,7 +5,7 @@
 (function (root) {
   "use strict";
 
-  const VERSION = "1.3.0";
+  const VERSION = "2.0.0";
   const CHRON = 0.5, INNY = 2, POW = 150, MICRO = 50, PPOZ = 6.5, BIG = 1000;
   const OPTIONAL_STEPS = [8];
 
@@ -141,8 +141,6 @@
 
   root.PVModel = {
     VERSION: VERSION,
-    TRIAL_DAYS: 14,
-    YEAR_DAYS: 365,
     PLACE_GROUND: PLACE_GROUND,
     PLACE_ROOF: PLACE_ROOF,
     LOC_NORMAL: LOC_NORMAL,
