@@ -98,6 +98,7 @@ a { color: var(--green-mid); }
 .chip.bad { background: rgba(200, 70, 50, .3); border-color: rgba(255, 150, 130, .5); color: #ffe0d8; }
 .chip.pay { background: rgba(212, 170, 70, .28); border-color: rgba(240, 210, 130, .5); color: #fff3d4; }
 .chip.save { background: rgba(255,255,255,.08); }
+.chip.test { background: rgba(90, 170, 230, .25); border-color: rgba(160, 210, 250, .5); color: #e4f2ff; }
 
 /* --- steps nav ------------------------------------------------------------ */
 

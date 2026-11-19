@@ -9,9 +9,13 @@
      POST createUrl  ->  {"url": "https://...przelewy24.pl/tranzakcja/TOKEN"}
      POST verifyUrl  ->  {"paid": true}
 
-   Endpointy wpisuje właściciel w panelu „Płatność” (localStorage). Bez nich
-   bramka działa w trybie testowym — nie pobiera pieniędzy i pozwala ręcznie
-   potwierdzić płatność na potrzeby testów.
+   Endpointy wpisuje właściciel przez API PVPayment.saveConfig (localStorage).
+   Bez nich bramka działa w trybie testowym — nie pobiera pieniędzy.
+
+   BUDOWA TESTOWA: TEST_MODE = true — wynik, podgląd i PDF są dostępne bez
+   opłaty. Powrót do bramki 30 zł: ustawić TEST_MODE = false i skonfigurować
+   własny backend (createUrl / verifyUrl). Panel konfiguracji został usunięty
+   z interfejsu — zostaje tylko API.
 
    Jeden sessionId = jeden PDF. Sesja jest zużywana po pobraniu pliku.
    ========================================================================== */
@@ -23,6 +27,8 @@
   var PRICE_ZL = 30;
   var PRICE_GROSZE = 3000;
   var CURRENCY = "PLN";
+  // Wersja testowa — dostęp bez opłaty. false = wymagana opłata 30 zł i backend.
+  var TEST_MODE = true;
   var CHECKOUT_SANDBOX = "https://sandbox.przelewy24.pl/tranzakcja/";
   var CHECKOUT_LIVE = "https://www.przelewy24.pl/tranzakcja/";
 
@@ -187,6 +193,7 @@
     PRICE_ZL: PRICE_ZL,
     PRICE_GROSZE: PRICE_GROSZE,
     CURRENCY: CURRENCY,
+    isTestMode: function () { return TEST_MODE; },
     CHECKOUT_SANDBOX: CHECKOUT_SANDBOX,
     CHECKOUT_LIVE: CHECKOUT_LIVE,
     config: config,

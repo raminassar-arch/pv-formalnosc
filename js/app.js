@@ -9,6 +9,9 @@
 
   const M = window.PVModel;
   const P = window.PVPayment;
+  // Wersja testowa — wynik, podgląd i PDF dostępne bez opłaty.
+  // PVPayment.TEST_MODE = false przywraca bramkę 30 zł.
+  const TEST = !!(P.isTestMode && P.isTestMode());
   const PROJECT_KEY = "pvformalnosc.project.v1";
 
   let project = null;
@@ -194,24 +197,33 @@
     return '<section class="hero">' +
       '<div class="hero-text">' +
       "<h1>Formalności dla instalacji fotowoltaicznej</h1>" +
-      "<p>Podaj parametry instalacji, opłać 30 zł przez Przelewy24 i zobacz ścieżkę z gov.pl, " +
-      "listę kroków, liczbę paneli z powierzchni, koszty i czas realizacji oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>" +
+      (TEST
+        ? "<p><strong>Wersja testowa — dostęp bez opłaty.</strong> Podaj parametry instalacji " +
+          "i zobacz ścieżkę z gov.pl, listę kroków, liczbę paneli z mocy i powierzchni, " +
+          "koszty, czas realizacji oraz raport PDF 300 DPI.</p>"
+        : "<p>Podaj parametry instalacji, opłać 30 zł przez Przelewy24 i zobacz ścieżkę z gov.pl, " +
+          "listę kroków, liczbę paneli z powierzchni, koszty i czas realizacji oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>") +
       '<div class="hero-actions">' +
       '<button class="btn primary" data-act="go" data-path="dane">Rozpocznij analizę</button>' +
-      '<button class="btn gold" data-act="go" data-path="platnosc">Płatność · 30 zł</button>' +
+      '<button class="btn gold" data-act="go" data-path="platnosc">' +
+      (TEST ? "Wynik i PDF — bez opłaty" : "Płatność · 30 zł") + "</button>" +
       "</div></div>" +
       '<div class="hero-card">' +
       '<span class="badge">' + esc(M.THRESHOLDS_LINE) + "</span>" +
       "<h2>Co otrzymasz</h2>" +
       "<p><strong>Ścieżka formalna i wycena</strong></p>" +
       '<p class="small">Decyzje TAK/NIE, liczba paneli, koszty, czas realizacji ' +
-      "i raport PDF 300 DPI — dostępne po opłacie 30 zł.</p>" +
+      (TEST ? "i raport PDF 300 DPI — dostępne bez opłaty (wersja testowa).</p>"
+            : "i raport PDF 300 DPI — dostępne po opłacie 30 zł.</p>") +
       "</div></section>" +
       '<section class="panel"><h2>Jak to działa</h2>' +
       '<p class="small muted">Dane formularza są zapisywane wyłącznie w Twojej przeglądarce ' +
-      "(localStorage). Po ich wprowadzeniu następuje płatność 30 zł w Przelewy24 — dopiero " +
-      "po jej potwierdzeniu pokazywany jest wynik. Podgląd i PDF powstają lokalnie, bez drukarki " +
-      "i bez serwera.</p>" +
+      (TEST
+        ? "(localStorage). Wersja testowa pokazuje wynik, podgląd i PDF bez płatności. " +
+          "Podgląd i PDF powstają lokalnie, bez drukarki i bez serwera.</p>"
+        : "(localStorage). Po ich wprowadzeniu następuje płatność 30 zł w Przelewy24 — dopiero " +
+          "po jej potwierdzeniu pokazywany jest wynik. Podgląd i PDF powstają lokalnie, bez drukarki " +
+          "i bez serwera.</p>") +
       '<p class="small">' + esc(M.DISCLAIMER) + "</p></section>";
   }
 
@@ -378,54 +390,48 @@
   }
 
   function viewPlatnosc() {
-    const cfg = P.config();
     const session = P.currentSession();
     const paid = P.isPaid(session);
-    const mode = P.configured()
-      ? "Bramka skonfigurowana — weryfikacja przez backend"
-      : "TRYB TESTOWY / KONFIGURACYJNY — nie pobieramy pieniędzy";
-    return '<div class="page-head"><div><h1>Płatność za dostęp do wyniku</h1>' +
-      "<p>Ostatni krok przed wynikiem: opłata 30 zł przez Przelewy24. Po zapłacie zobaczysz " +
-      "ścieżkę formalną i pobierzesz raport PDF bez dodatkowej opłaty.</p></div></div>" +
+    const mode = TEST
+      ? "WERSJA TESTOWA — dostęp bez opłaty"
+      : (P.configured()
+          ? "Bramka skonfigurowana — weryfikacja przez backend"
+          : "TRYB KONFIGURACYJNY — brak backendu");
+    return '<div class="page-head"><div><h1>' +
+      (TEST ? "Dostęp do wyniku — wersja testowa" : "Płatność za dostęp do wyniku") +
+      "</h1><p>" +
+      (TEST
+        ? "Wersja testowa: wynik, podgląd A4 i raport PDF są dostępne bez opłaty."
+        : "Ostatni krok przed wynikiem: opłata 30 zł przez Przelewy24. Po zapłacie zobaczysz " +
+          "ścieżkę formalną i pobierzesz raport PDF bez dodatkowej opłaty.") +
+      "</p></div></div>" +
       '<section class="panel pay-card' + (paid ? " paid" : "") + '">' +
-      '<div class="pay-price"><strong>30 zł</strong><span>jednorazowo · wynik + jeden raport PDF</span></div>' +
+      '<div class="pay-price"><strong>' + (TEST ? "0 zł" : "30 zł") +
+      "</strong><span>" +
+      (TEST ? "wersja testowa · wynik + jeden raport PDF"
+            : "jednorazowo · wynik + jeden raport PDF") +
+      "</span></div>" +
       '<div class="lic-grid">' +
-      stat("Metoda", "Przelewy24") +
+      stat("Metoda", TEST ? "Wersja testowa" : "Przelewy24") +
       stat("Waluta", P.CURRENCY) +
       stat("Zakres", "Wynik + 1 raport PDF · 300 DPI") +
       stat("Sesja", session ? String(session).slice(0, 12) + "…" : "nowa po kliknięciu") +
-      stat("Status", paid ? "Opłacono — przejdź do wyniku" : "Oczekuje na płatność") +
+      stat("Status", paid ? "Dostęp otwarty — przejdź do wyniku" : "Oczekuje na płatność") +
       stat("Tryb", mode) +
       "</div>" +
       '<div class="row-actions">' +
-      '<button class="btn primary" data-act="pay-open">1. Otwórz stronę płatności</button>' +
-      '<button class="btn gold" data-act="pay-confirm">2. Potwierdź i zobacz wynik</button>' +
-      "</div>" +
-      (P.configured() ? "" :
-        '<p class="small err">Uzupełnij endpointy backendu poniżej. Bez potwierdzonej ' +
-        "płatności wynik pozostaje zablokowany.</p>") +
-      "</section>" +
-      '<section class="panel"><h3>Jak to działa</h3><p class="small muted">' +
-      "1. Kliknij „Otwórz stronę płatności” — przejdziesz do Przelewy24. " +
-      "2. Po zapłacie wróć tutaj i kliknij „Potwierdź i zobacz wynik”. " +
-      "Serwer weryfikuje transakcję, a dopiero potem wyświetlany jest wynik. " +
-      "Jedna opłata uprawnia do jednego raportu PDF.</p></section>" +
-      '<details class="panel pay-config"><summary>Konfiguracja bramki (dla właściciela)</summary>' +
-      '<p class="small muted">Wklej adresy własnego backendu. Dane merchantId, posId, CRC i klucz API ' +
-      "nigdy nie są zapisywane w tej statycznej stronie — zostają po stronie serwera.</p>" +
-      '<div class="grid">' +
-      '<div class="field wide"><label class="field-label">createUrl (rejestracja transakcji)</label>' +
-      '<input type="url" id="p-create" placeholder="https://twoj-backend.example/p24/create" value="' +
-      esc(cfg.createUrl) + '"></div>' +
-      '<div class="field wide"><label class="field-label">verifyUrl (potwierdzenie zapłaty)</label>' +
-      '<input type="url" id="p-verify" placeholder="https://twoj-backend.example/p24/verify" value="' +
-      esc(cfg.verifyUrl) + '"></div>' +
-      '<label class="checkline wide"><input type="checkbox" id="p-sandbox"' +
-      (cfg.sandbox !== false ? " checked" : "") + "><span>Tryb sandbox (testowy) Przelewy24</span></label>" +
-      "</div>" +
-      '<div class="row-actions"><button class="btn primary" data-act="pay-config-save">Zapisz konfigurację</button>' +
-      '<button class="btn" data-act="pay-config-clear">Wyczyść</button></div>' +
-      "</details>";
+      (TEST ? "" : '<button class="btn" data-act="pay-open">1. Otwórz stronę płatności</button>') +
+      '<button class="btn primary" data-act="pay-confirm">' +
+      (TEST ? "Przejdź do wyniku i PDF" : "2. Potwierdź i zobacz wynik") +
+      "</button></div>" +
+      (TEST
+        ? '<p class="small muted">To jest wersja testowa — nie są pobierane żadne dane ' +
+          "płatności. Wynik, podgląd i PDF działają bez opłaty.</p>"
+        : (P.configured() ? "" :
+            '<p class="small err">Bramka nie jest skonfigurowana — ustaw createUrl ' +
+            "i verifyUrl przez PVPayment.saveConfig(). Bez potwierdzonej płatności " +
+            "wynik pozostaje zablokowany.</p>")) +
+      "</section>";
   }
 
   function viewAbout() {
@@ -436,12 +442,16 @@
       "Analiza ścieżki formalnej dla instalacji fotowoltaicznej.</p></div></div>" +
       '<div class="lic-grid">' +
       stat("Wersja", M.VERSION) +
-      stat("Wydanie", "Statyczna wersja web (GitHub Pages)") +
-      stat("Wynik + PDF", P.PRICE_ZL + " zł · Przelewy24") +
+      stat("Wydanie", TEST ? "Statyczna wersja web — testowa (GitHub Pages)"
+                           : "Statyczna wersja web (GitHub Pages)") +
+      stat("Wynik + PDF", TEST ? "bez opłaty · wersja testowa"
+                               : P.PRICE_ZL + " zł · Przelewy24") +
       stat("Autor", "Rami Nassar") +
       stat("Firma", "BIM architects & consultants") +
       stat("Kontakt", "raminassar.arch@gmail.com") +
       "</div>" +
+      (TEST ? '<p class="small">' + esc(window.PVPdf.watermark || "WERSJA TESTOWA") +
+              " — znak wodny na każdej stronie raportu PDF i w podglądzie A4.</p>" : "") +
       '<p class="small">' + esc(M.THRESHOLDS_LINE) + "</p>" +
       '<p class="small">' + esc(M.SOURCE_LINE) + "</p>" +
       '<p class="small">' + esc(M.DISCLAIMER) + "</p>" +
@@ -454,8 +464,14 @@
 
   // --- render --------------------------------------------------------------
 
-  /** Wynik i podgląd są dostępne wyłącznie po opłaceniu bieżącej sesji. */
+  /** Wymaga opłaconej sesji; w wersji testowej sesja jest tworzona i oznaczana automatycznie. */
   function paidSession() {
+    if (TEST) {
+      let session = P.currentSession();
+      if (!session) session = P.newSession();
+      if (!P.isPaid(session)) P.markPaid(session);
+      return session;
+    }
     const session = P.currentSession();
     return session && P.isPaid(session) ? session : null;
   }
@@ -579,26 +595,9 @@
         return;
       }
     }
-    toast("Płatność potwierdzona — przygotowujemy wynik.", "ok");
+    toast(TEST ? "Wersja testowa — otwieramy wynik."
+               : "Płatność potwierdzona — przygotowujemy wynik.", "ok");
     go("wynik");
-  }
-
-  function savePaymentConfig() {
-    const createInput = $("#p-create"), verifyInput = $("#p-verify"), sandboxInput = $("#p-sandbox");
-    if (!createInput || !verifyInput) return;
-    P.saveConfig({
-      createUrl: createInput.value.trim(),
-      verifyUrl: verifyInput.value.trim(),
-      sandbox: !!sandboxInput.checked,
-    });
-    toast("Konfiguracja bramki zapisana lokalnie.", "ok");
-    render();
-  }
-
-  function clearPaymentConfig() {
-    P.clearConfig();
-    toast("Konfiguracja bramki usunięta — wynik ponownie zablokowany.", "ok");
-    render();
   }
 
   function resetForm() {
@@ -629,7 +628,8 @@
       esc(M.VERSION) + "</small></span></a>" +
       '<div class="topbar-tools">' +
       '<span class="chip save">zapis lokalny</span>' +
-      '<span class="chip pay">Wynik 30 zł</span>' +
+      (TEST ? '<span class="chip test">wersja testowa</span>' : "") +
+      '<span class="chip pay">' + (TEST ? "Wynik bez opłaty" : "Wynik 30 zł") + "</span>" +
       "</div></header>" +
       '<nav class="steps" id="steps"></nav>' +
       '<main id="view"></main>' +
@@ -646,8 +646,6 @@
       else if (act === "reset") resetForm();
       else if (act === "pay-open") openPayment();
       else if (act === "pay-confirm") confirmAndShowResult();
-      else if (act === "pay-config-save") savePaymentConfig();
-      else if (act === "pay-config-clear") clearPaymentConfig();
       else if (act === "pdf") doPdf();
     });
 

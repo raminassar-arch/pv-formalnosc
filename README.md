@@ -5,17 +5,26 @@ kolejność kroków co w wersji desktopowej (Python/customtkinter), uruchamiana
 w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 
 **Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
-XLSX, dodano bramkę płatności **30 zł przez Przelewy24 przed pokazaniem wyniku**.
-Jedna opłata odblokowuje wynik, podgląd A4 oraz jeden raport PDF 300 DPI —
-bez drugiej płatności. Dodano też **webowy kalkulator inwestycji**: liczbę paneli
-dobraną automatycznie z mocy i powierzchni, koszty materiałów i robocizny oraz
-czas realizacji (wynik + PDF), 3 presety modułów **600 Wp** znanych marek,
-**dobór najtańszego wariantu** (ranking po koszcie całkowitym z uwzględnieniem
-oba wejścia) oraz **3 style raportu PDF** (Biały, Karty, Premium) wybierane
-dopiero po opłacie w widoku Wynik lub Podgląd. W formularzu **Dane** edytowalne
-są wyłącznie moc i powierzchnia; pozostałe parametry są stałe i widoczne
-w raporcie. Zakładki Wynik i Podgląd są przed opłatą zablokowane kłódką.
+XLSX, dodano szkielet bramki płatności **30 zł przez Przelewy24** do włączenia
+w wersji produkcyjnej. **Obecna publiczna wersja testowa jest odblokowana**:
+wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano
+też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z mocy
+i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
+3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
+(ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
+raportu PDF** (Biały, Karty, Premium) wybierane w widoku Wynik lub Podgląd.
+W formularzu **Dane** edytowalne są wyłącznie moc i powierzchnia; pozostałe
+parametry są stałe i widoczne w raporcie. Po ustawieniu `TEST_MODE = false`
+zakładki Wynik i Podgląd są blokowane kłódką do czasu potwierdzenia płatności.
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
+
+> **BUDOWA TESTOWA — wersja publiczna odblokowana.** W `js/payment.js`
+> `PVPayment.TEST_MODE = true`: wynik, podgląd A4 i PDF są dostępne **bez
+> opłaty**. Z widoku **Płatność** usunięto sekcje „Konfiguracja bramki (dla
+> właściciela)" oraz „Jak to działa"; konfiguracja została tylko jako API
+> `PVPayment.saveConfig()`. Każda strona raportu PDF i podglądu A4 ma
+> przekątny znak wodny **WERSJA TESTOWA** — tak samo jak oznaczenie w widoku
+> „O programie". Powrót do bramki 30 zł: `TEST_MODE = false` i własny backend.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
 wzorowany na projekcie **PAB cyfrowa** tego samego autora:
@@ -36,14 +45,16 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Formularz | Edytowalne tylko powierzchnia (ha) i moc (kW); miejsce montażu i lokalizacja widoczne jako wartości stałe; pozostałe parametry wyceny pokazywane w raporcie |
 | Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, wybór stylu PDF, źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
-| Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend; bez skonfigurowanego backendu wynik pozostaje zablokowany |
-| Wynik i podgląd | Zakładki zablokowane kłódką do czasu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności bez zapisywania wpisu w historii |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
-| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór po opłacie |
+| Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
+| Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
+| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór w widoku Wynik/Podgląd |
+| Znak wodny | „WERSJA TESTOWA" na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
-Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
-Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
- w Przelewy24 i — po skonfigurowaniu — wywołanie endpointów własnego backendu.
+Dane formularza i stan sesji są zapisywane w `localStorage`. Obliczenia
+i PDF powstają lokalnie. W wersji testowej nie ma żadnego zewnętrznego kroku;
+po `TEST_MODE = false` są nim płatność w Przelewy24 i wywołanie endpointów
+własnego backendu.
 
 **XLSX i licencja nie istnieją w wersji 2.0.0.**
 
@@ -131,14 +142,14 @@ Parametry modułów pozostają stałe — nie ma już przycisku zmiany presetu
 w wyniku. Wybór modułu jest częścią rekomendacji i trafia do raportu.
 
 Tryb doboru jest stały (`both`) i zapisywany w `localStorage` razem
-z projektem. Ranking jest generowany dopiero po opłacie — tak samo jak wynik
-i PDF.
+z projektem. Ranking jest generowany razem z wynikiem i PDF (w wersji testowej —
+od razu, bez opłaty).
 
 ---
 
 ## Trzy style raportu PDF
 
-Po opłacie, w widoku **Wynik** lub **Podgląd**, znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
+W widoku **Wynik** lub **Podgląd** znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
 Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
 sekcji i wymiary strony są identyczne:
 
@@ -203,7 +214,8 @@ sprawdzają m.in.:
 
 - wersję 2.0.0 i brak modułów licencji / XLSX,
 - bramkę: 30 zł / 3000 groszy, sesję 32-hex, adres Przelewy24, opłatę i jej zużycie,
-- blokadę wyniku i podglądu przed opłatą, przejście do wyniku po opłacie,
+- wersję testową: brak panelu konfiguracji i sekcji „Jak to działa" na Płatności,
+  odblokowane zakładki, wynik bez opłaty i znak wodny WERSJA TESTOWA,
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
 - matematykę wyceny (panele z mocy i powierzchni, materiały, robocizna, razem,
   dni, zaokrąglenia, formatowanie zł, zgodność mocy) i obecność sekcji w widoku wyniku,
@@ -215,11 +227,10 @@ sprawdzają m.in.:
   sekcję wyceny i ranking optymalizatora bez błędu renderu),
 - wszystkie 3 style PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
   wyjściowe — czyli style naprawdę się różnią),
-- wymiary podglądu A4, formularz tylko z mocą i powierzchnią, zablokowane
-  zakładki Wynik/Podgląd oraz brak otwarcia wyniku bez skonfigurowanej bramki,
-- wybór stylu raportu dopiero po opłacie.
+- wymiary podglądu A4 i formularz tylko z mocą i powierzchnią,
+- wybór stylu raportu w widoku Wynik/Podgląd.
 
-Wynik: `TOTAL 92 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 95 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
@@ -234,22 +245,21 @@ endpointów własnego backendu:
 | `createUrl` | `POST {sessionId, amount: 3000, currency: "PLN", description, sandbox}` | `{"url": "https://...przelewy24.pl/tranzakcja/TOKEN"}` |
 | `verifyUrl` | `POST {sessionId, amount: 3000}` | `{"paid": true}` |
 
-Backend (np. Cloudflare Worker, Vercel Function albo mały serwer) powinien:
+Panel „Konfiguracja bramki (dla właściciela)" został usunięty z interfejsu —
+endpointy ustawia się przez API `PVPayment.saveConfig({createUrl, verifyUrl,
+sandbox})` (zapis w `localStorage`) albo w kodzie. Dane merchantu zostają
+wyłącznie po stronie backendu (np. Cloudflare Worker, Vercel Function).
 
-1. zawołać `POST https://sandbox-api.przelewy24.pl/api/v1/transaction/register`
-   (lub `https://api.przelewy24.pl/...` na produkcji) z danymi merchantu,
-2. zwrócić token jako adres przekierowania,
-3. po powrocie użytkownika zawołać `/api/v1/transaction/verify` z CRC
-   i zwrócić `{"paid": true}` tylko dla opłaconej sesji o kwocie 3000 groszy.
+Backend powinien zarejestrować transakcję w Przelewy24, zwrócić token jako
+adres przekierowania i — po powrocie użytkownika — zwrócić `{"paid": true}`
+tylko dla opłaconej sesji o kwocie 3000 groszy.
 
-Endpointy wpisuje właściciel w widoku **Płatność → Konfiguracja bramki**
-(zapis w `localStorage`). Dopóki są puste, przycisk „Potwierdź i zobacz wynik"
-pokazuje błąd i **nie otwiera wyniku** — bramka jest szczelna również na czystym
-GitHub Pages. Wynik jest dostępny wyłącznie po pomyślnej weryfikacji przez
-własny backend (albo po zapisaniu opłaconej sesji przez testy/screenshotsy).
-
-Jedna sesja = wynik + podgląd + jeden PDF. Opłata jest zużywana dopiero po
-pomyślnym pobraniu pliku; pobranie PDF nie wymaga drugiej płatności.
+**Obecnie wersja testowa:** `TEST_MODE = true` w `js/payment.js` — przycisk
+na stronie Płatności otwiera wynik bez weryfikacji, a PDF ma znak wodny.
+Po ustawieniu `TEST_MODE = false` wynik pozostaje zablokowany, dopóki backend
+nie potwierdzi płatności. W obu trybach jedna sesja = wynik + podgląd + jeden
+PDF; opłata jest zużywana dopiero po pomyślnym pobraniu pliku (w wersji
+testowej dostęp jest odnawiany automatycznie).
 
 ---
 

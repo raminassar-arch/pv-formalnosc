@@ -16,6 +16,12 @@
   const S = 2;                              // 150 -> 300 DPI
   const PXW = W * S, PXH = H * S;
 
+  // Wersja testowa — znak wodny na każdej stronie (również w podglądzie A4).
+  // Zniknął automatycznie po ustawieniu PVPayment.TEST_MODE = false.
+  const TEST_BUILD = !!(root.PVPayment && root.PVPayment.isTestMode &&
+                        root.PVPayment.isTestMode());
+  const WATERMARK = TEST_BUILD ? "WERSJA TESTOWA" : "";
+
   /** Trzy wyglądy tego samego raportu. Identyczna treść i układ A4. */
   const THEMES = [
     { id: "simple",  name: "Biały — prosty i czytelny" },
@@ -63,6 +69,21 @@
     return `${fontPx(pt)}px "${bold ? "DejaVu-Bold" : "DejaVu"}", sans-serif`;
   }
 
+  /** Przezroczysty, przekątny znak wodny pod treścią raportu. */
+  function drawWatermark(ctx) {
+    if (!WATERMARK) return;
+    ctx.save();
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = "#0F2742";
+    ctx.font = fontDef(54, true);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(-Math.PI / 6);
+    ctx.fillText(WATERMARK, 0, 0);
+    ctx.restore();
+  }
+
   let fontsReady = false;
   async function ensureFonts() {
     if (fontsReady || typeof document === "undefined" || !document.fonts) return;
@@ -101,6 +122,7 @@
     ctx.textBaseline = "top";
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, W, H);
+    drawWatermark(ctx);
     this.pages.push({ canvas: canvas, ctx: ctx });
     this.ctx = ctx;
     this.y = MARGIN;
@@ -524,6 +546,7 @@
     renderPreview: renderPreview,
     buildPdf: buildPdf,          // eksportowany też do testów Node
     themes: THEMES,
+    watermark: WATERMARK,
     defaultTheme: "premium",
     constants: { W: W, H: H, S: S, PXW: PXW, PXH: PXH },
   };

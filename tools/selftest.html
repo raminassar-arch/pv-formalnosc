@@ -221,6 +221,8 @@
     ok("PDF: JPEG /DCTDecode", text.indexOf("/DCTDecode") >= 0);
     ok("PDF: A4 2480x3508", text.indexOf("/Width 2480 /Height 3508") >= 0);
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
+    ok("znak wodny wersji testowej", window.PVPdf.watermark === "WERSJA TESTOWA",
+       String(window.PVPdf.watermark));
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
     const pdfEst = await window.PVPdf.renderPdf(r, est, optPower);
@@ -273,11 +275,13 @@
        themed.simple.length !== themed.premium.length,
        [themed.simple.length, themed.cards.length, themed.premium.length].join(","));
 
-    // --- bramka przed wynikiem (Routing w/js/app.js) -----------------------
+    // --- dostęp bez opłaty w wersji testowej (Routing w/js/app.js) ----------
     await domReady();
     await nextTick();
-    P.clearConfig();
     P.reset();
+
+    ok("wersja testowa włączona", P.isTestMode() === true);
+    ok("brak konfiguracji na start", P.configured() === false);
 
     location.hash = "#/dane";
     await nextTick();
@@ -288,33 +292,14 @@
        !document.querySelector("#f-coverage") && !document.querySelector("#f-labor") &&
        !document.querySelector("#f-opt-mode") && !document.querySelector("#f-pdf-theme") &&
        document.querySelectorAll("#view input").length === 2);
-    ok("zakładki wynik i podgląd są zablokowane",
-       document.querySelectorAll("#steps .step.locked").length === 2 &&
-       !document.querySelector('#steps a[href="#/wynik"]') &&
-       !document.querySelector('#steps a[href="#/podglad"]'));
+    ok("zakładki wynik i podgląd są odblokowane w wersji testowej",
+       document.querySelectorAll("#steps .step.locked").length === 0 &&
+       !!document.querySelector('#steps a[href="#/wynik"]') &&
+       !!document.querySelector('#steps a[href="#/podglad"]'));
 
     location.hash = "#/wynik";
     await nextTick();
-    ok("wynik bez opłaty idzie do płatności", location.hash === "#/platnosc", location.hash);
-
-    location.hash = "#/podglad";
-    await nextTick();
-    ok("podgląd bez opłaty idzie do płatności", location.hash === "#/platnosc", location.hash);
-
-    location.hash = "#/platnosc";
-    await nextTick();
-    const confirmBtn = document.querySelector('[data-act="pay-confirm"]');
-    if (confirmBtn) confirmBtn.click();
-    await nextTick();
-    await nextTick();
-    ok("potwierdzenie bez bramki nie otwiera wyniku",
-       location.hash === "#/platnosc" && !P.isPaid(P.currentSession()), location.hash);
-
-    const paidSession = P.newSession();
-    P.markPaid(paidSession);
-    location.hash = "#/wynik";
-    await nextTick();
-    ok("po opłacie wynik widoczny",
+    ok("wynik dostępny bez opłaty w wersji testowej",
        location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
        location.hash);
     const wynikText = document.querySelector("#view").textContent || "";
@@ -330,20 +315,41 @@
 
     location.hash = "#/podglad";
     await nextTick();
-    ok("po opłacie podgląd widoczny",
+    ok("podgląd dostępny bez opłaty w wersji testowej",
        location.hash === "#/podglad" && !!document.querySelector("#preview-canvas"),
        location.hash);
 
-    P.consume(paidSession);
-    location.hash = "#/wynik";
+    location.hash = "#/platnosc";
     await nextTick();
-    ok("po zużyciu opłaty wynik znów blokowany", location.hash === "#/platnosc", location.hash);
+    const payText = document.querySelector("#view").textContent || "";
+    ok("brak sekcji Konfiguracja bramki i Jak to działa na Płatności",
+       !document.querySelector("#p-create") && !document.querySelector("#p-verify") &&
+       payText.indexOf("Konfiguracja bramki") < 0 &&
+       payText.indexOf("Jak to działa") < 0, payText.slice(0, 160));
+    ok("brak otwierania bramki w wersji testowej",
+       !document.querySelector('[data-act="pay-open"]') &&
+       !!document.querySelector('[data-act="pay-confirm"]'));
+    const confirmBtn = document.querySelector('[data-act="pay-confirm"]');
+    if (confirmBtn) confirmBtn.click();
+    await nextTick();
+    ok("przycisk na Płatności otwiera wynik",
+       location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
+       location.hash);
+
+    const testSession = P.currentSession();
+    P.consume(testSession);
+    location.hash = "#/podglad";
+    await nextTick();
+    ok("wersja testowa odnawia dostęp po pobraniu PDF",
+       location.hash === "#/podglad" && !!document.querySelector("#preview-canvas") &&
+       !!P.currentSession() && P.isPaid(P.currentSession()), location.hash);
 
     location.hash = "#/start";
     await nextTick();
     const startText = document.querySelector("#view").textContent || "";
-    ok("start nie ujawnia ścieżki przed opłatą", startText.indexOf(r.path_name) < 0,
+    ok("start oznacza wersję testową", startText.indexOf("wersja testowa") >= 0,
        startText.slice(0, 120));
+
   }
 
   run().catch(function (err) {
