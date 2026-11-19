@@ -224,6 +224,32 @@
     ok("podgląd A4@300dpi", canvas.width === 2480 && canvas.height === 3508 && pages === 1,
        canvas.width + "x" + canvas.height + " pages=" + pages);
 
+    // --- trzy style raportu PDF --------------------------------------------
+    const themes = window.PVPdf.themes;
+    ok("trzy style PDF dostępne",
+       themes.length === 3 &&
+       themes.map(function (t) { return t.id; }).join(",") === "simple,cards,premium" &&
+       window.PVPdf.defaultTheme === "premium",
+       JSON.stringify(themes));
+    const themed = {};
+    for (const t of themes) {
+      const bytes = await window.PVPdf.renderPdf(r, est, optPower, t.id);
+      themed[t.id] = bytes;
+      ok("PDF: styl " + t.id + " bez błędu",
+         dec.decode(bytes.slice(0, 8)) === "%PDF-1.4" &&
+         dec.decode(bytes.slice(-16)).indexOf("%%EOF") >= 0 &&
+         bytes.length > 10000, String(bytes.length));
+      const cv = document.createElement("canvas");
+      const n = await window.PVPdf.renderPreview(r, cv, est, optPower, t.id);
+      ok("podgląd: styl " + t.id + " ma stronę A4",
+         cv.width === 2480 && cv.height === 3508 && n === 1, "pages=" + n);
+    }
+    ok("style dają różne pliki",
+       themed.simple.length !== themed.cards.length &&
+       themed.cards.length !== themed.premium.length &&
+       themed.simple.length !== themed.premium.length,
+       [themed.simple.length, themed.cards.length, themed.premium.length].join(","));
+
     // --- bramka przed wynikiem (Routing w/js/app.js) -----------------------
     await domReady();
     await nextTick();
@@ -237,7 +263,8 @@
        !!document.querySelector("#f-panelarea") &&
        !!document.querySelector("#f-coverage") &&
        !!document.querySelector("#f-labor") &&
-       !!document.querySelector("#f-opt-mode"));
+       !!document.querySelector("#f-opt-mode") &&
+       !!document.querySelector("#f-pdf-theme"));
 
     location.hash = "#/wynik";
     await nextTick();

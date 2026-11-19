@@ -9,8 +9,9 @@ XLSX, dodano bramkę płatności **30 zł przez Przelewy24 przed pokazaniem wyni
 Jedna opłata odblokowuje wynik, podgląd A4 oraz jeden raport PDF 300 DPI —
 bez drugiej płatności. Dodano też **webowy kalkulator inwestycji**: liczbę paneli
 z powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
-3 presety modułów **600 Wp** znanych marek oraz **dobór najtańszego wariantu**
-(ranking po koszcie całkowitym, od zadanej mocy albo od powierzchni).
+3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
+(ranking po koszcie całkowitym, od zadanej mocy albo od powierzchni) oraz
+**3 style raportu PDF** (Biały, Karty, Premium) wybierane w kroku Dane.
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
@@ -34,7 +35,8 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend |
 | Wynik i podgląd | Widoczne dopiero po potwierdzeniu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny i tabelę rankingu optymalizatora |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny i tabelę rankingu; **3 wybierane style** |
+| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd) |
 
 Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
 Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
@@ -125,6 +127,24 @@ dopiero po opłacie — tak samo jak wynik i PDF.
 
 ---
 
+## Trzy style raportu PDF
+
+W kroku **Dane** znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
+Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
+sekcji i wymiary strony są identyczne:
+
+| Styl | Opis |
+| --- | --- |
+| **Biały — prosty i czytelny** | Białe tło bez kolorowego paska, cienkie linie pod tytułami sekcji, pola decyzji i kroki tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
+| **Karty — sekcje w ramkach** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zielonym akcentem (motyw zielono-złoty webu). |
+| **Premium — ciemnogranatowo-złoty** | Dotychczasowy wygląd: ciemnogranatowy pasek, wypełnione pola TAK/NIE, niebieskie numerki kroków. Domyślny styl. |
+
+Style są zdefiniowane jako palety w `js/pdf.js` (`PVPdf.themes`, `PALETTES`).
+Wszystkie strony mają jawnie wypełnione białe tło, więc styl „Biały" nie zależy
+od ustawień przeglądarki ani programu do PDF.
+
+---
+
 ## Struktura
 
 ```
@@ -135,7 +155,7 @@ pv-formalnosc-web/
 ├── js/
 │   ├── model.js        # kalkulator — port 1:1 z model.py + estimate() + optimize()
 │   ├── payment.js      # bramka Przelewy24 (szkielet, bez tajnych danych)
-│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (wycena + ranking)
+│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (wycena, ranking, 3 style)
 │   └── app.js          # UI, routing, płatność, optymalizator, eksport PDF
 ├── assets/
 │   ├── DejaVuSans.ttf
@@ -184,9 +204,12 @@ sprawdzają m.in.:
   mieszczą, uwagi o zerowym pokryciu i zbyt małej powierzchni,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`,
   sekcję wyceny i ranking optymalizatora bez błędu renderu),
-- wymiary podglądu A4 i pola formularza wyceny (w tym punkt wyjścia optymalizatora).
+- wszystkie 3 style PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
+  wyjściowe — czyli style naprawdę się różnią),
+- wymiary podglądu A4 i pola formularza (w tym punkt wyjścia optymalizatora
+  i wybór stylu raportu).
 
-Wynik: `TOTAL 78 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 86 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 

@@ -87,6 +87,7 @@
       roof: false, protectedArea: false, ha: 1, kw: 6,
       est: M.estimateOptions(),
       optMode: "power",
+      pdfTheme: window.PVPdf.defaultTheme,
     };
   }
 
@@ -103,6 +104,8 @@
         kw: numberOr(data.kw, base.kw),
         est: M.estimateOptions(data.est),
         optMode: data.optMode === "area" ? "area" : "power",
+        pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
+          ? data.pdfTheme : window.PVPdf.defaultTheme,
       };
     } catch (err) { return base; }
   }
@@ -135,6 +138,8 @@
   function currentOptimizer() {
     return M.optimize(project.optMode, project.ha, project.kw, project.est);
   }
+
+  function currentPdfTheme() { return project.pdfTheme; }
 
   // --- routing -------------------------------------------------------------
 
@@ -268,6 +273,20 @@
       "zadaną moc i sprawdza, czy mieści się na powierzchni. Tryb „powierzchnia” " +
       "maksymalnie wykorzystuje dostępny teren.</span></div>" +
       "</div></section>" +
+      '<section class="panel"><h2>Wygląd raportu PDF</h2>' +
+      '<p class="small muted">Wybierz styl eksportu. Treść raportu pozostaje identyczna — ' +
+      "zmienia się tylko układ graficzny podglądu i pobranego PDF.</p>" +
+      '<div class="grid"><div class="field wide">' +
+      '<label class="field-label">Styl raportu</label>' +
+      '<select id="f-pdf-theme">' +
+      window.PVPdf.themes.map(function (t) {
+        return '<option value="' + esc(t.id) + '"' +
+          (t.id === project.pdfTheme ? " selected" : "") + ">" + esc(t.name) + "</option>";
+      }).join("") +
+      "</select>" +
+      '<span class="hint">Biały — czyste tło i cienkie linie. Karty — sekcje w ' +
+      "ramkach z akcentem. Premium — ciemnogranatowy nagłówek i kolorowe pola decyzji " +
+      "(dotychczasowy wygląd).</span></div></div></section>" +
       '<div class="row-actions"><button class="btn primary" data-act="go" data-path="platnosc">Płatność i wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
       '<section class="panel"><h3>Progi decyzji</h3><p class="small muted">' +
@@ -501,7 +520,8 @@
     if (!canvas) return;
     try {
       previewPages = await window.PVPdf.renderPreview(
-        currentResult(), canvas, currentEstimate(), currentOptimizer());
+        currentResult(), canvas, currentEstimate(), currentOptimizer(),
+        currentPdfTheme());
       const note = $(".page-head p");
       if (note && previewPages > 1) {
         note.textContent = "Tak wygląda eksportowany plik PDF (A4, 300 DPI) · strona 1 z " + previewPages + ".";
@@ -543,7 +563,7 @@
     busyStart();
     try {
       const bytes = await window.PVPdf.renderPdf(
-        currentResult(), currentEstimate(), currentOptimizer());
+        currentResult(), currentEstimate(), currentOptimizer(), currentPdfTheme());
       download(bytes, "PV_Formalnosc_wynik_" + stamp() + ".pdf", "application/pdf");
       toast("PDF 300 DPI pobrany.", "ok");
       P.consume(session);  // jedna opłata = jeden raport
@@ -612,6 +632,8 @@
     project.kw = numberOr(kw.value, 0);
     const mode = $("#f-opt-mode");
     if (mode) project.optMode = mode.value === "area" ? "area" : "power";
+    const theme = $("#f-pdf-theme");
+    if (theme) project.pdfTheme = theme.value;
     const est = M.estimateOptions(project.est);
     const read = (id, key) => {
       const el = $("#" + id);
@@ -685,7 +707,9 @@
     document.addEventListener("change", function (e) {
       if (!e.target) return;
       if (e.target.id === "f-preset") { applyPreset(e.target.value); return; }
-      if (e.target.id === "f-opt-mode") { readForm(); render(); return; }
+      if (e.target.id === "f-opt-mode" || e.target.id === "f-pdf-theme") {
+        readForm(); render(); return;
+      }
       if (e.target.id === "f-place" || e.target.id === "f-protected") readForm();
     });
     document.addEventListener("input", function (e) {
