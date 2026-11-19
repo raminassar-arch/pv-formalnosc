@@ -86,7 +86,7 @@
     return {
       roof: false, protectedArea: false, ha: 1, kw: 6,
       est: M.estimateOptions(),
-      optMode: "power",
+      optMode: "both",
       pdfTheme: window.PVPdf.defaultTheme,
     };
   }
@@ -103,7 +103,7 @@
         ha: numberOr(data.ha, base.ha),
         kw: numberOr(data.kw, base.kw),
         est: M.estimateOptions(data.est),
-        optMode: data.optMode === "area" ? "area" : "power",
+        optMode: "both", // dobór z mocy i powierzchni — brak pola do edycji
         pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
           ? data.pdfTheme : window.PVPdf.defaultTheme,
       };
@@ -132,7 +132,9 @@
   }
 
   function currentEstimate() {
-    return M.estimate(project.ha, project.kw, project.est);
+    const opt = currentOptimizer();
+    const panels = opt.recommended ? opt.recommended.panels : undefined;
+    return M.estimate(project.ha, project.kw, project.est, panels);
   }
 
   function currentOptimizer() {
@@ -172,8 +174,15 @@
   function renderSteps(head) {
     const box = $("#steps");
     if (!box) return;
+    const paid = !!paidSession();
     box.innerHTML = STEPS.map(function (s) {
       const active = s[0] === head;
+      const gated = s[0] === "wynik" || s[0] === "podglad";
+      if (gated && !paid) {
+        return '<span class="step locked" title="Dostęp po opłacie 30 zł">' +
+          '<span><span class="lock" aria-hidden="true">🔒</span> ' + esc(s[1]) + "</span>" +
+          "<small>Dostęp po opłacie</small></span>";
+      }
       return '<a class="step' + (active ? " active" : "") + '" href="#/' + s[0] + '">' +
         "<span>" + esc(s[1]) + "</span><small>" + esc(s[2]) + "</small></a>";
     }).join("");
@@ -214,79 +223,22 @@
   }
 
   function viewDane() {
-    const p = project, e = M.estimateOptions(project.est);
-    const presetOptions = M.MODULE_PRESETS.map(function (m) {
-      return '<option value="' + esc(m.id) + '"' + (m.id === e.preset ? " selected" : "") +
-        ">" + esc(m.name) + "</option>";
-    }).join("");
+    const p = project;
     return '<div class="page-head"><div><h1>Dane instalacji</h1>' +
-      "<p>Podaj podstawowe parametry — kolejnym krokiem jest płatność 30 zł, która otwiera wynik.</p></div></div>" +
+      "<p>Edytowalne są tylko moc i powierzchnia. Pozostałe parametry są stałe i " +
+      "zostają pokazane w raporcie PDF.</p></div></div>" +
       '<section class="panel"><div class="grid">' +
-      '<div class="field wide"><label class="field-label">Miejsce montażu</label>' +
-      '<select id="f-place">' +
-      '<option value="ground"' + (!p.roof ? " selected" : "") + ">" + esc(M.PLACE_GROUND) + "</option>" +
-      '<option value="roof"' + (p.roof ? " selected" : "") + ">" + esc(M.PLACE_ROOF) + "</option>" +
-      "</select></div>" +
-      '<label class="checkline wide"><input type="checkbox" id="f-protected"' +
-      (p.protectedArea ? " checked" : "") + "><span>" + esc(M.LOC_PROTECTED) +
-      " <small class=\"muted\">(próg 0,5 ha zamiast 2 ha)</small></span></label>" +
+      '<div class="field"><span class="field-label">Miejsce montażu</span>' +
+      '<span class="readonly-value">' + esc(p.roof ? M.PLACE_ROOF : M.PLACE_GROUND) + "</span>" +
+      '<span class="hint">Wartość stała (nieedytowalna).</span></div>' +
+      '<div class="field"><span class="field-label">Lokalizacja</span>' +
+      '<span class="readonly-value">' + esc(p.protectedArea ? M.LOC_PROTECTED : M.LOC_NORMAL) + "</span>" +
+      '<span class="hint">Wartość stała (nieedytowalna).</span></div>' +
       numField("f-ha", "Powierzchnia (ha)", p.ha, "0.01",
-               "Po obrysie zewnętrznych modułów — podstawa liczby paneli.") +
+               "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
       numField("f-kw", "Moc deklarowana (kW)", p.kw, "0.1",
-               "Służy do porównania z mocą z przeliczonych paneli.") +
+               "Liczba paneli jest dobierana z mocy i powierzchni.") +
       "</div></section>" +
-      '<section class="panel est-form"><h2>Moduły, koszty i czas realizacji</h2>' +
-      '<p class="small muted">Liczba paneli liczona jest z powierzchni: ' +
-      "powierzchnia × pokrycie ÷ pole modułu. Wybierz gotowy moduł albo wpisz własne parametry — " +
-      "wszystkie wartości można zmienić.</p>" +
-      '<div class="grid">' +
-      '<div class="field wide"><label class="field-label">Model modułu (cena orientacyjna)</label>' +
-      '<select id="f-preset">' + presetOptions + "</select>" +
-      '<span class="hint">Ceny brutto/szt. według zestawienia bursatm.pl (31.07.2026).</span></div>' +
-      numField("f-panelwp", "Moc modułu (Wp)", e.panelWp, "1", "Moc jednego panelu.") +
-      numField("f-panelarea", "Pole modułu (m²)", e.panelAreaM2, "0.01",
-               "Powierzchnia zabudowy jednego modułu.") +
-      numField("f-coverage", "Pokrycie powierzchni (%)", e.coveragePct, "1",
-               "Udział powierzchni faktycznie zajętej przez panele.") +
-      numField("f-moduleprice", "Cena modułu (zł/szt.)", e.modulePriceZl, "1",
-               "Cena brutto jednego panelu.") +
-      numField("f-bos", "Konstrukcja, falownik, osprzęt (zł/panel)", e.bosPerPanelZl, "1",
-               "Pozostałe materiały przypadające na panel.") +
-      numField("f-labor", "Robocizna (zł/panel)", e.laborPerPanelZl, "1",
-               "Koszt wykonania przypadający na panel.") +
-      numField("f-perday", "Tempo montażu (panel/dzień)", e.panelsPerDay, "1",
-               "Przyjęta wydajność ekipy montażowej.") +
-      "</div>" +
-      '<p class="small muted">' + esc(M.COST_SOURCE_LINE) + "</p></section>" +
-      '<section class="panel opt-form"><h2>Dobór najtańszego wariantu</h2>' +
-      '<p class="small muted">Porównamy wszystkie moduły po koszcie całkowitym ' +
-      "(moduły + konstrukcja/falownik + robocizna). Wybierz, od czego zacząć:</p>" +
-      '<div class="grid">' +
-      '<div class="field wide"><label class="field-label">Punkt wyjścia</label>' +
-      '<select id="f-opt-mode">' +
-      '<option value="power"' + (project.optMode === "power" ? " selected" : "") +
-      '>Mam zaplanowaną moc (kW) — dobierz panele i cenę</option>' +
-      '<option value="area"' + (project.optMode === "area" ? " selected" : "") +
-      '>Mam powierzchnię (ha) — dobierz panele i cenę</option>' +
-      "</select>" +
-      '<span class="hint">Tryb „moc” szuka najtańszego wariantu osiągającego ' +
-      "zadaną moc i sprawdza, czy mieści się na powierzchni. Tryb „powierzchnia” " +
-      "maksymalnie wykorzystuje dostępny teren.</span></div>" +
-      "</div></section>" +
-      '<section class="panel"><h2>Wygląd raportu PDF</h2>' +
-      '<p class="small muted">Wybierz styl eksportu. Treść raportu pozostaje identyczna — ' +
-      "zmienia się tylko układ graficzny podglądu i pobranego PDF.</p>" +
-      '<div class="grid"><div class="field wide">' +
-      '<label class="field-label">Styl raportu</label>' +
-      '<select id="f-pdf-theme">' +
-      window.PVPdf.themes.map(function (t) {
-        return '<option value="' + esc(t.id) + '"' +
-          (t.id === project.pdfTheme ? " selected" : "") + ">" + esc(t.name) + "</option>";
-      }).join("") +
-      "</select>" +
-      '<span class="hint">Biały — czyste tło i cienkie linie. Karty — sekcje w ' +
-      "ramkach z akcentem. Premium — ciemnogranatowy nagłówek i kolorowe pola decyzji " +
-      "(dotychczasowy wygląd).</span></div></div></section>" +
       '<div class="row-actions"><button class="btn primary" data-act="go" data-path="platnosc">Płatność i wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
       '<section class="panel"><h3>Progi decyzji</h3><p class="small muted">' +
@@ -300,11 +252,23 @@
       "<p>" + esc(desc) + "</p></div>";
   }
 
+  /** Wybór stylu to opcja eksportu — staje się dostępna dopiero po opłacie. */
+  function themePicker() {
+    return '<label class="theme-pick"><span>Styl raportu</span>' +
+      '<select id="f-pdf-theme">' +
+      window.PVPdf.themes.map(function (t) {
+        return '<option value="' + esc(t.id) + '"' +
+          (t.id === project.pdfTheme ? " selected" : "") + ">" + esc(t.name) + "</option>";
+      }).join("") +
+      "</select></label>";
+  }
+
   function viewWynik() {
     const r = currentResult();
     return '<div class="page-head"><div><h1>Wynik analizy</h1>' +
       "<p>" + esc(M.todayPl()) + " · wersja " + esc(M.VERSION) + "</p></div>" +
       '<div class="row-actions" style="margin:0">' +
+      themePicker() +
       '<button class="btn" data-act="go" data-path="podglad">Podgląd A4</button>' +
       '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
       "</div></div>" +
@@ -338,6 +302,7 @@
     return '<div class="page-head"><div><h1>Podgląd dokumentu</h1>' +
       "<p>Tak wygląda eksportowany plik PDF (A4, 300 DPI)" + esc(pages) + ".</p></div>" +
       '<div class="row-actions" style="margin:0">' +
+      themePicker() +
       '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
       '<button class="btn" data-act="go" data-path="wynik">Wróć do wyniku</button>' +
       "</div></div>" +
@@ -380,19 +345,25 @@
     const diff = rec.totalZl - (o.cheapest ? o.cheapest.totalZl : 0);
     const rows = o.list.map(function (x) {
       const best = x.id === rec.id;
+      const areaCell = o.mode === "both"
+        ? esc(M.fmt(x.neededHa)) + " ha" +
+          '<span class="cell-sub">moc ' + x.powerPanels + " · pow. " + x.areaPanels + "</span>"
+        : o.mode === "power"
+          ? (x.fitsArea ? esc(M.fmt(x.neededHa)) + " ha" : "nie mieści się")
+          : esc(M.fmt(x.neededM2)) + " m²";
       return "<tr" + (best ? ' class="best"' : "") + "><td>" +
         (best ? "★ " : "") + esc(x.name) + " · " + esc(M.fmt(x.wp)) + " Wp</td>" +
         "<td>" + x.panels + " szt.</td>" +
         "<td>" + esc(M.fmt(x.installedKw)) + " kW</td>" +
-        "<td>" + (o.mode === "power"
-          ? (x.fitsArea ? esc(M.fmt(x.neededHa)) + " ha" : "nie mieści się")
-          : esc(M.fmt(x.neededM2)) + " m²") + "</td>" +
+        "<td>" + areaCell + "</td>" +
         "<td>" + esc(M.money(x.totalZl)) + "</td></tr>";
     }).join("");
     return head +
       '<div class="est-grid">' +
       stat("Rekomendacja", rec.name) +
-      stat("Liczba paneli", rec.panels + " szt.") +
+      stat("Wybrano", rec.panels + " szt.") +
+      stat("Z mocy", rec.powerPanels + " szt.") +
+      stat("Z powierzchni", rec.areaPanels + " szt.") +
       stat("Moc z paneli", M.fmt(rec.installedKw) + " kW") +
       stat("Koszt całkowity", M.money(rec.totalZl)) +
       stat("Dopłata vs najtańszy", diff > 0 ? M.money(diff) : "najtańszy wariant") +
@@ -400,11 +371,10 @@
       "</div>" +
       '<div class="opt-table-wrap"><table class="opt-table"><thead><tr>' +
       "<th>Moduł</th><th>Panele</th><th>Moc</th><th>" +
-      (o.mode === "power" ? "Wymagana powierzchnia" : "Zajęta powierzchnia") +
+      (o.mode === "both" ? "Pow. (ha) · szt. z mocy/pow."
+        : o.mode === "power" ? "Wymagana powierzchnia" : "Zajęta powierzchnia") +
       "</th><th>Razem</th></tr></thead><tbody>" + rows +
-      "</tbody></table></div>" +
-      '<div class="row-actions"><button class="btn gold" data-act="opt-apply" data-id="' +
-      esc(rec.id) + '">Zastosuj najtańszy moduł</button></div></section>';
+      "</tbody></table></div></section>";
   }
 
   function viewPlatnosc() {
@@ -432,8 +402,8 @@
       '<button class="btn gold" data-act="pay-confirm">2. Potwierdź i zobacz wynik</button>' +
       "</div>" +
       (P.configured() ? "" :
-        '<p class="small err">Uzupełnij endpointy backendu poniżej, aby włączyć prawdziwe płatności. ' +
-        "W trybie testowym potwierdzenie otwiera wynik bez opłaty.</p>") +
+        '<p class="small err">Uzupełnij endpointy backendu poniżej. Bez potwierdzonej ' +
+        "płatności wynik pozostaje zablokowany.</p>") +
       "</section>" +
       '<section class="panel"><h3>Jak to działa</h3><p class="small muted">' +
       "1. Kliknij „Otwórz stronę płatności” — przejdziesz do Przelewy24. " +
@@ -490,12 +460,25 @@
     return session && P.isPaid(session) ? session : null;
   }
 
+  /** Przekierowanie bez dopisywania nowego wpisu do historii przeglądarki. */
+  function replaceHash(path) {
+    const target = "#/" + path;
+    try {
+      if (location.hash === target) { render(); return; }
+      history.replaceState(null, "", target);
+    } catch (err) {
+      location.replace(target);
+      return;
+    }
+    render();
+  }
+
   function render() {
     if (!project) project = loadProject();
     let head = route()[0];
-    if (head === "eksport") { go("platnosc"); return; }
+    if (head === "eksport") { replaceHash("platnosc"); return; }
     if ((head === "wynik" || head === "podglad") && !paidSession()) {
-      go("platnosc");
+      replaceHash("platnosc");
       return;
     }
 
@@ -591,7 +574,9 @@
         }
         P.markPaid(session);
       } else {
-        P.confirmTest(session);
+        toast("Bramka nie jest skonfigurowana. Wynik jest dostępny dopiero po " +
+              "potwierdzonej płatności — ustaw createUrl i verifyUrl w konfiguracji.", "err");
+        return;
       }
     }
     toast("Płatność potwierdzona — przygotowujemy wynik.", "ok");
@@ -612,7 +597,7 @@
 
   function clearPaymentConfig() {
     P.clearConfig();
-    toast("Konfiguracja bramki usunięta — tryb testowy.", "ok");
+    toast("Konfiguracja bramki usunięta — wynik ponownie zablokowany.", "ok");
     render();
   }
 
@@ -623,46 +608,14 @@
     toast("Formularz wyczyszczony.", "ok");
   }
 
+  /** W formularzu czyta wyłącznie moc i powierzchnię — reszta jest stała. */
   function readForm() {
-    const place = $("#f-place"), prot = $("#f-protected"), ha = $("#f-ha"), kw = $("#f-kw");
-    if (!place || !prot || !ha || !kw) return;
-    project.roof = place.value === "roof";
-    project.protectedArea = !!prot.checked;
+    const ha = $("#f-ha"), kw = $("#f-kw");
+    if (!ha || !kw) return;
     project.ha = numberOr(ha.value, 0);
     project.kw = numberOr(kw.value, 0);
-    const mode = $("#f-opt-mode");
-    if (mode) project.optMode = mode.value === "area" ? "area" : "power";
-    const theme = $("#f-pdf-theme");
-    if (theme) project.pdfTheme = theme.value;
-    const est = M.estimateOptions(project.est);
-    const read = (id, key) => {
-      const el = $("#" + id);
-      if (el) est[key] = numberOr(el.value, est[key]);
-    };
-    read("f-panelwp", "panelWp");
-    read("f-panelarea", "panelAreaM2");
-    read("f-coverage", "coveragePct");
-    read("f-moduleprice", "modulePriceZl");
-    read("f-bos", "bosPerPanelZl");
-    read("f-labor", "laborPerPanelZl");
-    read("f-perday", "panelsPerDay");
-    est.coveragePct = Math.min(100, est.coveragePct);
-    project.est = est;
+    project.est = M.estimateOptions(project.est);
     saveProject();
-  }
-
-  /** Wybór gotowego modułu wypełnia moc, pole i cenę — reszta zostaje. */
-  function applyPreset(id) {
-    const p = M.MODULE_PRESETS.filter(function (m) { return m.id === id; })[0];
-    if (!p) return;
-    const e = M.estimateOptions(project.est);
-    project.est = M.estimateOptions({
-      preset: p.id, panelWp: p.wp, panelAreaM2: p.area, modulePriceZl: p.price,
-      coveragePct: e.coveragePct, bosPerPanelZl: e.bosPerPanelZl,
-      laborPerPanelZl: e.laborPerPanelZl, panelsPerDay: e.panelsPerDay,
-    });
-    saveProject();
-    render();
   }
 
   // --- start ---------------------------------------------------------------
@@ -696,21 +649,19 @@
       else if (act === "pay-config-save") savePaymentConfig();
       else if (act === "pay-config-clear") clearPaymentConfig();
       else if (act === "pdf") doPdf();
-      else if (act === "opt-apply") {
-        applyPreset(btn.getAttribute("data-id"));
-        toast("Zastosowano najtańszy moduł — wycena została przeliczona.", "ok");
-      }
     });
 
-    const numericFields = ["f-ha", "f-kw", "f-panelwp", "f-panelarea", "f-coverage",
-                           "f-moduleprice", "f-bos", "f-labor", "f-perday"];
+    const numericFields = ["f-ha", "f-kw"];
     document.addEventListener("change", function (e) {
       if (!e.target) return;
-      if (e.target.id === "f-preset") { applyPreset(e.target.value); return; }
-      if (e.target.id === "f-opt-mode" || e.target.id === "f-pdf-theme") {
-        readForm(); render(); return;
+      if (e.target.id === "f-pdf-theme") {
+        const theme = e.target.value;
+        if (window.PVPdf.themes.some(function (t) { return t.id === theme; })) {
+          project.pdfTheme = theme;
+          saveProject();
+        }
+        return;
       }
-      if (e.target.id === "f-place" || e.target.id === "f-protected") readForm();
     });
     document.addEventListener("input", function (e) {
       if (e.target && numericFields.indexOf(e.target.id) >= 0) readForm();

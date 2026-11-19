@@ -8,10 +8,13 @@ w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 XLSX, dodano bramkę płatności **30 zł przez Przelewy24 przed pokazaniem wyniku**.
 Jedna opłata odblokowuje wynik, podgląd A4 oraz jeden raport PDF 300 DPI —
 bez drugiej płatności. Dodano też **webowy kalkulator inwestycji**: liczbę paneli
-z powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
-3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
-(ranking po koszcie całkowitym, od zadanej mocy albo od powierzchni) oraz
-**3 style raportu PDF** (Biały, Karty, Premium) wybierane w kroku Dane.
+dobraną automatycznie z mocy i powierzchni, koszty materiałów i robocizny oraz
+czas realizacji (wynik + PDF), 3 presety modułów **600 Wp** znanych marek,
+**dobór najtańszego wariantu** (ranking po koszcie całkowitym z uwzględnieniem
+oba wejścia) oraz **3 style raportu PDF** (Biały, Karty, Premium) wybierane
+dopiero po opłacie w widoku Wynik lub Podgląd. W formularzu **Dane** edytowalne
+są wyłącznie moc i powierzchnia; pozostałe parametry są stałe i widoczne
+w raporcie. Zakładki Wynik i Podgląd są przed opłatą zablokowane kłódką.
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 Motyw wizualny (zielono-złoty, górny pasek, nawigacja kroków, karty) jest
@@ -28,15 +31,15 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Funkcja | Opis |
 | --- | --- |
 | Kalkulator | Pełny port `pv_formalnosc/model.py` — 10 ścieżek, progi 2 ha / 0,5 ha / 150 kW / 1 MW, komunikaty i uwaga o braku opisu przypadku na gov.pl |
-| Wycena (tylko web) | Liczba paneli z powierzchni, koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; edytowalne parametry i 9 gotowych presetów modułów (także 600 Wp) |
-| Dobór najtańszego wariantu (tylko web) | Ranking wszystkich modułów po koszcie całkowitym, start od mocy (kW) lub od powierzchni (ha), rekomendacja z uwzględnieniem dostępnego terenu i przycisk „Zastosuj najtańszy moduł" |
-| Formularz | Miejsce montażu, obszar chroniony, powierzchnia, moc, punkt wyjścia optymalizatora oraz pola wyceny (model modułu, moc i pole panelu, pokrycie, ceny, tempo montażu) |
-| Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, źródła i disclaimer |
+| Wycena (tylko web) | Liczba paneli z obu wejść (moc i powierzchnia), koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; stałe parametry i 9 gotowych presetów modułów (także 600 Wp) |
+| Dobór najtańszego wariantu (tylko web) | Ranking wszystkich modułów po koszcie całkowitym, liczba paneli = minimum zapotrzebowania na moc i maksimum z powierzchni; rekomendacja i uwaga, gdy powierzchnia ogranicza moc |
+| Formularz | Edytowalne tylko powierzchnia (ha) i moc (kW); miejsce montażu i lokalizacja widoczne jako wartości stałe; pozostałe parametry wyceny pokazywane w raporcie |
+| Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, wybór stylu PDF, źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
-| Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend |
-| Wynik i podgląd | Widoczne dopiero po potwierdzeniu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny i tabelę rankingu; **3 wybierane style** |
-| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd) |
+| Płatność | Krok przed wynikiem: 30 zł przez Przelewy24, weryfikacja przez własny backend; bez skonfigurowanego backendu wynik pozostaje zablokowany |
+| Wynik i podgląd | Zakładki zablokowane kłódką do czasu opłaty; bezpośrednie wejście na `#/wynik` lub `#/podglad` przekierowuje do płatności bez zapisywania wpisu w historii |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku — wliczony w tę samą opłatę; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
+| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór po opłacie |
 
 Dane formularza i konfiguracja płatności są zapisywane w `localStorage`.
 Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatność
@@ -48,19 +51,30 @@ Obliczenia i PDF powstają lokalnie. Jedynym zewnętrznym krokiem jest płatnoś
 
 ## Kalkulator paneli, kosztów i czasu (tylko web)
 
-W trybie wyceny liczba paneli wynika z **powierzchni**, nie z mocy:
+Liczba paneli jest dobierana automatycznie z **mocy i powierzchni** — użytkownik
+podaje tylko jedno i drugie w kroku Dane:
 
 ```
-powierzchnia użyteczna [m²] = ha × 10 000 × pokrycie [%] / 100
-liczba paneli          = floor(powierzchnia użyteczna / pole modułu [m²])
-moc z paneli [kW]       = liczba paneli × moc modułu [Wp] / 1000
-koszt materiałów        = liczba paneli × (cena modułu + konstrukcja/falownik/osprzęt)
-koszt wykonania         = liczba paneli × robocizna na panel
-czas realizacji [dni]   = ceil(liczba paneli / tempo montażu [panel/dzień])
+panele z mocy      = ceil(moc [kW] × 1000 / moc modułu [Wp])
+panele z powierzchni = floor(ha × 10 000 × pokrycie [%] / 100 / pole modułu [m²])
+liczba paneli      = minimum(panele z mocy, panele z powierzchni)
+moc z paneli [kW]  = liczba paneli × moc modułu [Wp] / 1000
+koszt materiałów   = liczba paneli × (cena modułu + konstrukcja/falownik/osprzęt)
+koszt wykonania    = liczba paneli × robocizna na panel
+czas realizacji    = ceil(liczba paneli / tempo montażu [panel/dzień])
 ```
 
-Wszystkie parametry są edytowalne w kroku **Dane**. Lista rozwijana zawiera
-gotowe presety modułów z orientacyjnymi cenami brutto z polskiego rynku:
+Jeśli powierzchnia jest za mała, aby osiągnąć zadaną moc, raport pokazuje
+maksymalną liczbę modułów mieszczących się na terenie i wyraźną uwagę
+„Powierzchnia ogranicza moc".
+
+Pozostałe parametry są **stałe** (nieedytowalne w formularzu) i zostają
+umieszczone w raporcie PDF w sekcji „Dane wejściowe": wybrany moduł, jego moc
+i pole, pokrycie, cena modułu, BOS i robocizna. Domyślnie przyjęto moduł
+Canadian Solar 600 Wp (455 zł, 2,70 m²), pokrycie 80%, 250 zł/panel BOS,
+300 zł/panel robocizny i tempo 12 paneli dziennie. Pełne źródła i lista
+9 presetów są w `js/model.js` (`ESTIMATE_DEFAULT`, `COST_SOURCE_LINE`,
+`MODULE_PRESETS`).
 
 | Moduł | Moc | Cena brutto/szt. (bursatm.pl, 31.07.2026) |
 | --- | --- | --- |
@@ -78,14 +92,8 @@ Ceny modułów 600 Wp **nie zostały potwierdzone konkretną ofertą sklepu** �
 są wyliczone z tego samego poziomu 0,76–0,82 zł/Wp co powyższe zestawienie
 bursatm.pl i wyraźnie oznaczone jako orientacyjne w `COST_SOURCE_LINE`.
 Powierzchnia modułu 600 Wp przyjęta jako **2,70 m²** (typowy format ok.
-2384 × 1134 mm). Przed finalną wyceną sprawdź aktualną ofertę wybranego
-modułu i wpisz cenę ręcznie w polach edytowalnych.
-
-Robocizna: **1000–1500 zł/kWp brutto** oraz **2000–5000 zł dla instalacji
-5 kWp** (e-greenpower.pl, 11.07.2026). W modelu przyjęto 300 zł/panel oraz
-250 zł/panel na konstrukcję, falownik i osprzęt; domyślne tempo to 12 paneli
-dziennie. Ustawienia domyślne i pełne źródła są w `js/model.js`
-(`ESTIMATE_DEFAULT`, `COST_SOURCE_LINE`). Kwoty są orientacyjne.
+2384 × 1134 mm). Robocizna: **1000–1500 zł/kWp brutto** oraz **2000–5000 zł
+dla instalacji 5 kWp** (e-greenpower.pl, 11.07.2026). Kwoty są orientacyjne.
 
 Wyniki trafiają do widoku **Wynik** oraz do sekcji „Wycena i czas realizacji"
 w PDF i podglądzie A4. Obliczenie porównuje też moc z paneli z mocą
@@ -102,34 +110,35 @@ po koszcie całkowitym:
 koszt całkowity = liczba paneli × (cena modułu + konstrukcja/falownik + robocizna)
 ```
 
-Punkt wyjścia wybiera się w kroku **Dane**:
+Nie ma już pola wyboru trybu — aplikacja zawsze liczy z obu podanych wartości:
 
-- **Mam zaplanowaną moc (kW)** — liczba paneli to
-  `ceil(moc [kW] × 1000 / moc modułu [Wp])`; sprawdzane jest też, czy moduły
-  mieszczą się na podanej powierzchni przy zadanym pokryciu. Rekomendacja to
-  najtańszy wariant, który jednocześnie osiąga moc i mieści się na terenie.
-- **Mam powierzchnię (ha)** — liczba paneli to
-  `floor(ha × 10 000 × pokrycie / pole modułu)`, czyli maksymalne wykorzystanie
-  dostępnego terenu. Rekomendacja to najtańszy wariant z rankingu.
+- liczba paneli z mocy: `ceil(moc [kW] × 1000 / moc modułu [Wp])`,
+- liczba paneli z powierzchni:
+  `floor(ha × 10 000 × pokrycie / pole modułu)`,
+- ostatecznie `min(z mocy, z powierzchni)`.
 
-Wynik (widok **Wynik**, sekcja PDF i podgląd A4) zawiera:
+Rekomendacja to najtańszy wariant spełniający oba warunki. Gdy powierzchnia
+nie pozwala osiągnąć zadanej mocy, raport pokazuje ostrzeżenie i maksymalny
+wariant mieszczący się na terenie. Wynik (widok **Wynik**, sekcja PDF
+i podgląd A4) zawiera:
 
 - rekomendację (moduł, liczba sztuk, moc, koszt całkowity, czas realizacji),
+- liczbę paneli „z mocy" i „z powierzchni" dla każdego wariantu,
 - różnicę kosztu względem najtańszego wariantu,
-- pełną tabelę rankingu (moduł, panele, moc, powierzchnia, razem),
-- przycisk **„Zastosuj najtańszy moduł"**, który wpisuje wskazany preset do
-  wyceny i przelicza wynik.
+- pełną tabelę rankingu (moduł, panele, moc, powierzchnia, razem).
 
-Jeśli żaden moduł nie mieści się na podanej powierzchni, aplikacja pokazuje
-odpowiednią uwagę zamiast błędnej rekomendacji. Tryb i wynik optymalizatora
-są zapisywane w `localStorage` razem z projektem. Ranking jest generowany
-dopiero po opłacie — tak samo jak wynik i PDF.
+Parametry modułów pozostają stałe — nie ma już przycisku zmiany presetu
+w wyniku. Wybór modułu jest częścią rekomendacji i trafia do raportu.
+
+Tryb doboru jest stały (`both`) i zapisywany w `localStorage` razem
+z projektem. Ranking jest generowany dopiero po opłacie — tak samo jak wynik
+i PDF.
 
 ---
 
 ## Trzy style raportu PDF
 
-W kroku **Dane** znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
+Po opłacie, w widoku **Wynik** lub **Podgląd**, znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
 Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
 sekcji i wymiary strony są identyczne:
 
@@ -196,20 +205,21 @@ sprawdzają m.in.:
 - bramkę: 30 zł / 3000 groszy, sesję 32-hex, adres Przelewy24, opłatę i jej zużycie,
 - blokadę wyniku i podglądu przed opłatą, przejście do wyniku po opłacie,
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
-- matematykę wyceny (panele z ha i pokrycia, materiały, robocizna, razem, dni,
-  zaokrąglenia, formatowanie zł, zgodność mocy) i obecność sekcji w widoku wyniku,
+- matematykę wyceny (panele z mocy i powierzchni, materiały, robocizna, razem,
+  dni, zaokrąglenia, formatowanie zł, zgodność mocy) i obecność sekcji w widoku wyniku,
 - 3 presety 600 Wp (marka, moc, pole 2,70 m², cena orientacyjna, opis źródła),
-- optymalizator: rosnący ranking 9 modułów, wybór dla mocy i dla powierzchni,
-  zaokrąglenie w górę przy mocy, rekomendacja omijająca moduły, które się nie
-  mieszczą, uwagi o zerowym pokryciu i zbyt małej powierzchni,
+- optymalizator: rosnący ranking 9 modułów, dobór z obu wejść, minimum mocy
+  i powierzchni, uwaga gdy powierzchnia ogranicza moc, rekomendacja omijająca
+  moduły, które się nie mieszczą, uwagi o zerowym pokryciu i zbyt małej powierzchni,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`,
   sekcję wyceny i ranking optymalizatora bez błędu renderu),
 - wszystkie 3 style PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
   wyjściowe — czyli style naprawdę się różnią),
-- wymiary podglądu A4 i pola formularza (w tym punkt wyjścia optymalizatora
-  i wybór stylu raportu).
+- wymiary podglądu A4, formularz tylko z mocą i powierzchnią, zablokowane
+  zakładki Wynik/Podgląd oraz brak otwarcia wyniku bez skonfigurowanej bramki,
+- wybór stylu raportu dopiero po opłacie.
 
-Wynik: `TOTAL 86 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 92 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
@@ -233,9 +243,10 @@ Backend (np. Cloudflare Worker, Vercel Function albo mały serwer) powinien:
    i zwrócić `{"paid": true}` tylko dla opłaconej sesji o kwocie 3000 groszy.
 
 Endpointy wpisuje właściciel w widoku **Płatność → Konfiguracja bramki**
-(zapis w `localStorage`). Dopóki są puste, aplikacja działa w **trybie testowym**:
-po kliknięciu „Potwierdź i zobacz wynik" wynik otwiera się bez pobierania opłaty.
-To jedyny tryb możliwy na czystym GitHub Pages bez backendu.
+(zapis w `localStorage`). Dopóki są puste, przycisk „Potwierdź i zobacz wynik"
+pokazuje błąd i **nie otwiera wyniku** — bramka jest szczelna również na czystym
+GitHub Pages. Wynik jest dostępny wyłącznie po pomyślnej weryfikacji przez
+własny backend (albo po zapisaniu opłaconej sesji przez testy/screenshotsy).
 
 Jedna sesja = wynik + podgląd + jeden PDF. Opłata jest zużywana dopiero po
 pomyślnym pobraniu pliku; pobranie PDF nie wymaga drugiej płatności.

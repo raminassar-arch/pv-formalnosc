@@ -193,6 +193,23 @@
     ok("zaokrąglenie w górę przy mocy",
        M.optimize("power", 1, 6.1, estOpts).cheapest.panels === 11);
 
+    const both = M.optimize("both", 1, 6, estOpts);
+    ok("dobór z obu: minimum mocy i powierzchni",
+       both.mode === "both" && both.recommended &&
+       both.recommended.panels === Math.min(both.recommended.powerPanels,
+                                           both.recommended.areaPanels) &&
+       both.recommended.meetsPower,
+       JSON.stringify(both.recommended));
+    const bothTight = M.optimize("both", 0.001, 6, estOpts);
+    ok("dobór z obu: powierzchnia ogranicza moc",
+       bothTight.recommended && bothTight.recommended.panels > 0 &&
+       !bothTight.recommended.meetsPower &&
+       bothTight.note.indexOf("Powierzchnia ogranicza moc") >= 0,
+       bothTight.note);
+    ok("wycena przyjmuje liczbę paneli z doboru",
+       M.estimate(1, 6, estOpts, 17).panels === 17 &&
+       M.estimate(1, 6, estOpts, 17).panelsFromOverride === true);
+
     // --- PDF ----------------------------------------------------------------
     const r = M.calculate(false, false, 1, 6, M.PLACE_GROUND, M.LOC_NORMAL);
     const pdf = await window.PVPdf.renderPdf(r);
@@ -223,6 +240,12 @@
     const pages = await window.PVPdf.renderPreview(r, canvas, est, optPower);
     ok("podgląd A4@300dpi", canvas.width === 2480 && canvas.height === 3508 && pages === 1,
        canvas.width + "x" + canvas.height + " pages=" + pages);
+
+    const bothEst = M.estimate(1, 6, estOpts, both.recommended.panels);
+    const bothCanvas = document.createElement("canvas");
+    const bothPages = await window.PVPdf.renderPreview(r, bothCanvas, bothEst, both);
+    ok("podgląd doboru z obu mieści się na jednej stronie A4", bothPages === 1,
+       "pages=" + bothPages);
 
     // --- trzy style raportu PDF --------------------------------------------
     const themes = window.PVPdf.themes;
@@ -258,13 +281,17 @@
 
     location.hash = "#/dane";
     await nextTick();
-    ok("formularz ma edytowalne pola wyceny",
-       !!document.querySelector("#f-preset") &&
-       !!document.querySelector("#f-panelarea") &&
-       !!document.querySelector("#f-coverage") &&
-       !!document.querySelector("#f-labor") &&
-       !!document.querySelector("#f-opt-mode") &&
-       !!document.querySelector("#f-pdf-theme"));
+    ok("formularz ma tylko moc i powierzchnię",
+       !!document.querySelector("#f-ha") && !!document.querySelector("#f-kw") &&
+       !document.querySelector("#f-place") && !document.querySelector("#f-protected") &&
+       !document.querySelector("#f-preset") && !document.querySelector("#f-panelarea") &&
+       !document.querySelector("#f-coverage") && !document.querySelector("#f-labor") &&
+       !document.querySelector("#f-opt-mode") && !document.querySelector("#f-pdf-theme") &&
+       document.querySelectorAll("#view input").length === 2);
+    ok("zakładki wynik i podgląd są zablokowane",
+       document.querySelectorAll("#steps .step.locked").length === 2 &&
+       !document.querySelector('#steps a[href="#/wynik"]') &&
+       !document.querySelector('#steps a[href="#/podglad"]'));
 
     location.hash = "#/wynik";
     await nextTick();
@@ -274,8 +301,17 @@
     await nextTick();
     ok("podgląd bez opłaty idzie do płatności", location.hash === "#/platnosc", location.hash);
 
+    location.hash = "#/platnosc";
+    await nextTick();
+    const confirmBtn = document.querySelector('[data-act="pay-confirm"]');
+    if (confirmBtn) confirmBtn.click();
+    await nextTick();
+    await nextTick();
+    ok("potwierdzenie bez bramki nie otwiera wyniku",
+       location.hash === "#/platnosc" && !P.isPaid(P.currentSession()), location.hash);
+
     const paidSession = P.newSession();
-    P.confirmTest(paidSession);
+    P.markPaid(paidSession);
     location.hash = "#/wynik";
     await nextTick();
     ok("po opłacie wynik widoczny",

@@ -234,7 +234,7 @@
                 MARGIN + 330, this.y);
       this.y += 24;
     };
-    row("Liczba paneli", e.panels + " szt.");
+    row("Liczba paneli (moc i powierzchnia)", e.panels + " szt.");
     row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²");
     row("Moc z liczby paneli", M.fmt(e.installedKw) + " kW");
     row("Koszt modułów", M.money(e.moduleZl));
@@ -279,7 +279,8 @@
     }
 
     const cols = [MARGIN, MARGIN + 430, MARGIN + 520, MARGIN + 630, MARGIN + 840];
-    const areaHead = o.mode === "power" ? "Pow. wymagana" : "Pow. zajęta";
+    const areaHead = o.mode === "both" ? "Pow. · z mocy/pow."
+      : o.mode === "power" ? "Pow. wymagana" : "Pow. zajęta";
     const heads = ["Moduł", "Panele", "Moc", areaHead, "Razem"];
     ctx.fillStyle = c.TABLE_HEAD_BG;
     ctx.fillRect(MARGIN, this.y - 4, W - 2 * MARGIN, 24);
@@ -291,9 +292,11 @@
 
     o.list.forEach(function (x) {
       const best = rec && x.id === rec.id;
-      const areaText = o.mode === "power"
-        ? (x.fitsArea ? M.fmt(x.neededHa) + " ha" : "za dużo")
-        : M.fmt(x.neededM2) + " m²";
+      const areaText = o.mode === "both"
+        ? M.fmt(x.neededHa) + " ha · " + x.powerPanels + "/" + x.areaPanels
+        : o.mode === "power"
+          ? (x.fitsArea ? M.fmt(x.neededHa) + " ha" : "za dużo")
+          : M.fmt(x.neededM2) + " m²";
       ctx.font = f.small;
       this.text(fit(x.rank + ". " + x.name + " " + M.fmt(x.wp) + " Wp", 415),
                 f.small, best ? c.CELL : c.INK, cols[0], this.y);
@@ -310,7 +313,7 @@
   Doc.prototype.render = function (r, e, o) {
     const f = this.f, c = this.c;
     if (!e) e = M.estimate(r.ha, r.kw);
-    if (!o) o = M.optimize("power", r.ha, r.kw);
+    if (!o) o = M.optimize("both", r.ha, r.kw);
 
     if (c.id !== "simple") {
       this.ctx.fillStyle = c.PRIMARY;
@@ -323,8 +326,8 @@
     if (c.id === "simple") this.rule(118);
 
     this.y = 165;
-    this.ensure(190);
-    const inputHeight = 10 + 34 + 4 * 28 + 16 + 8;
+    const inputHeight = 10 + 34 + 4 * 28 + 16 + 56 + 12 + 8;
+    this.ensure(inputHeight + 20);
     this.cardRect(this.y, inputHeight);
     this.sectionTitle("Dane wejściowe", 34);
 
@@ -338,6 +341,19 @@
     pair("Powierzchnia", M.fmt(r.ha) + " ha");
     pair("Moc", M.fmt(r.kw) + " kW");
     this.y += 16;
+    this.text("Parametry stałe (nieedytowalne w formularzu)", f.small, c.MUTED,
+              MARGIN, this.y);
+    this.y += 20;
+    this.wrapped(
+      e.presetName + " · " + M.fmt(e.options.panelWp) + " Wp · " +
+      M.fmt(e.options.panelAreaM2) + " m² · pokrycie " +
+      M.fmt(e.options.coveragePct) + "% · moduł " +
+      M.money(e.options.modulePriceZl) + "/szt. · BOS " +
+      M.money(e.options.bosPerPanelZl) + "/panel · robocizna " +
+      M.money(e.options.laborPerPanelZl) + "/panel · " +
+      e.options.panelsPerDay + " paneli/dzień",
+      f.small, c.INK, MARGIN, W - 2 * MARGIN, 18);
+    this.y += 12;
 
     this.ensure(160);
     const boxW = (W - 2 * MARGIN - 24) / 2;

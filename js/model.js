@@ -167,18 +167,24 @@
   }
 
   /**
-   * Liczba paneli z powierzchni (nie z mocy), koszty i czas realizacji.
+   * Koszty i czas realizacji dla zadanej liczby paneli. Domyślnie liczba
+   * paneli wynika z powierzchni; aplikacja przekazuje wynik doboru z mocy
+   * i powierzchni jako `panelsOverride`.
    * @param {number} ha powierzchnia po obrysie modułów (ha)
-   * @param {number} kw moc deklarowana w formularzu (tylko do porównania)
-   * @param {object} [data] ustawienia edytowalne
+   * @param {number} kw moc deklarowana w formularzu
+   * @param {object} [data] parametry modułu i kosztów
+   * @param {number} [panelsOverride] liczba paneli z automatycznego doboru
    */
-  function estimate(ha, kw, data) {
+  function estimate(ha, kw, data, panelsOverride) {
     const o = estimateOptions(data);
     const haVal = numOr(ha, 0);
     const kwVal = numOr(kw, 0);
     const usableAreaM2 = haVal * 10000 * (o.coveragePct / 100);
-    const panels = o.panelAreaM2 > 0
-      ? Math.floor(usableAreaM2 / o.panelAreaM2 + 1e-9) : 0;
+    const override = Number(panelsOverride);
+    const hasOverride = panelsOverride !== null && panelsOverride !== undefined &&
+      isFinite(override) && override >= 0;
+    const panels = hasOverride ? Math.floor(override)
+      : (o.panelAreaM2 > 0 ? Math.floor(usableAreaM2 / o.panelAreaM2 + 1e-9) : 0);
     const installedKw = panels * o.panelWp / 1000;
     const moduleZl = panels * o.modulePriceZl;
     const bosZl = panels * o.bosPerPanelZl;
@@ -190,7 +196,10 @@
     const deltaKw = installedKw - kwVal;
 
     let powerNote;
-    if (!panels) {
+    if (!panels && hasOverride) {
+      powerNote = "Przy zadanej mocy i powierzchni nie mieści się ani jeden moduł " +
+                  "o przyjętych parametrach.";
+    } else if (!panels) {
       powerNote = "Podaj dodatnią powierzchnię, aby policzyć liczbę paneli.";
     } else if (kwVal <= 0) {
       powerNote = "Uzupełnij moc w formularzu, aby porównać wynik z deklaracją.";
@@ -207,6 +216,7 @@
       options: o,
       presetName: (presetById(o.preset) || {}).name || "Własne parametry",
       usableAreaM2: usableAreaM2,
+      panelsFromOverride: hasOverride,
       panels: panels,
       panelWp: o.panelWp,
       installedKw: installedKw,
@@ -225,36 +235,52 @@
 
   /**
    * Ranking modułów wg kosztu całkowitego (moduły + konstrukcja/falownik +
-   * robocizna). Tryb "area": ile paneli mieści się na zadanej powierzchni;
-   * tryb "power": ile paneli potrzeba, by osiągnąć zadaną moc.
-   * @param {"area"|"power"} mode
+   * robocizna). Tryby "area" i "power" zostają dla zgodności z testami;
+   * "both" (używany w aplikacji) bierze pod uwagę oba wejścia naraz:
+   * liczba paneli = minimum z zapotrzebowania na moc i maksimum z powierzchni.
+   * @param {"area"|"power"|"both"} mode
    * @param {number} ha powierzchnia dostępna (ha)
    * @param {number} kw moc docelowa (kW)
-   * @param {object} [data] ustawienia edytowalne
+   * @param {object} [data] parametry modułu i kosztów
    */
   function optimize(mode, ha, kw, data) {
     const o = estimateOptions(data);
-    const m = mode === "power" ? "power" : "area";
+    const m = mode === "power" || mode === "both" ? mode : "area";
     const haVal = numOr(ha, 0), kwVal = numOr(kw, 0);
     const coverage = o.coveragePct / 100;
+    const usableM2 = haVal * 10000 * coverage;
     const list = MODULE_PRESETS.map(function (p) {
-      let panels, neededM2, neededHa, fitsArea;
+      const powerPanels = kwVal > 0 ? Math.ceil(kwVal * 1000 / p.wp - 1e-9) : 0;
+      const areaPanels = p.area > 0 ? Math.floor(usableM2 / p.area + 1e-9) : 0;
+      let panels, neededM2, neededHa, fitsArea, meetsPower, limitedBy;
       if (m === "power") {
-        panels = kwVal > 0 ? Math.ceil(kwVal * 1000 / p.wp - 1e-9) : 0;
+        panels = powerPanels;
         neededM2 = panels * p.area;
         neededHa = coverage > 0 ? neededM2 / (10000 * coverage) : 0;
         fitsArea = coverage > 0 && (haVal <= 0 || neededHa <= haVal + 1e-9);
+        meetsPower = kwVal <= 0 || panels * p.wp / 1000 >= kwVal - 1e-9;
+        limitedBy = fitsArea ? "moc" : "powierzchnia";
+      } else if (m === "both") {
+        panels = Math.min(powerPanels || areaPanels, areaPanels);
+        neededM2 = panels * p.area;
+        neededHa = coverage > 0 ? neededM2 / (10000 * coverage) : 0;
+        fitsArea = coverage > 0 && (haVal <= 0 || neededHa <= haVal + 1e-9);
+        meetsPower = kwVal <= 0 || panels * p.wp / 1000 >= kwVal - 1e-9;
+        limitedBy = kwVal <= 0 || areaPanels < powerPanels ? "powierzchnia" : "moc";
       } else {
-        const usableM2 = haVal * 10000 * coverage;
-        panels = p.area > 0 ? Math.floor(usableM2 / p.area + 1e-9) : 0;
+        panels = areaPanels;
         neededM2 = panels * p.area;
         neededHa = haVal;
         fitsArea = true;
+        meetsPower = kwVal <= 0 || panels * p.wp / 1000 >= kwVal - 1e-9;
+        limitedBy = "powierzchnia";
       }
       const perPanelZl = p.price + o.bosPerPanelZl + o.laborPerPanelZl;
       return {
         id: p.id, name: p.name, wp: p.wp, areaM2: p.area,
         modulePriceZl: p.price, panels: panels,
+        powerPanels: powerPanels, areaPanels: areaPanels,
+        meetsPower: meetsPower, limitedBy: limitedBy,
         installedKw: panels * p.wp / 1000,
         neededM2: neededM2, neededHa: neededHa, fitsArea: fitsArea,
         perPanelZl: perPanelZl, totalZl: panels * perPanelZl,
@@ -269,12 +295,20 @@
     const cheapest = list[0] || null;
     const mostExpensive = list[list.length - 1] || null;
     const fitting = list.filter(function (x) { return x.fitsArea && x.panels > 0; });
-    const recommended = fitting.length ? fitting[0] : null;
+    let recommended = null;
+    if (m === "both") {
+      const full = fitting.filter(function (x) { return x.meetsPower; });
+      recommended = full.length ? full[0] : (fitting.length ? fitting[0] : null);
+    } else {
+      recommended = fitting.length ? fitting[0] : null;
+    }
     let note;
     if (coverage <= 0) {
       note = "Pokrycie powierzchni musi być większe od zera.";
     } else if (m === "power" && kwVal <= 0) {
       note = "Podaj moc w formularzu, aby porównać warianty dla zadanej mocy.";
+    } else if (m === "both" && kwVal <= 0 && haVal <= 0) {
+      note = "Podaj moc albo powierzchnię, aby dobrać liczbę paneli.";
     } else if (m === "area" && haVal <= 0) {
       note = "Podaj powierzchnię w formularzu, aby porównać warianty dla zadanej powierzchni.";
     } else if (!list.some(function (x) { return x.panels > 0; })) {
@@ -282,11 +316,21 @@
     } else if (m === "power" && !fitting.length) {
       note = "Żaden moduł nie mieści się w podanej powierzchni przy tym pokryciu — " +
              "zwiększ powierzchnię albo zmniejsz pokrycie.";
+    } else if (m === "both" && !fitting.length) {
+      note = "Żaden moduł nie mieści się w podanej powierzchni przy tym pokryciu — " +
+             "zwiększ powierzchnię albo zmniejsz pokrycie.";
+    } else if (m === "both" && recommended && !recommended.meetsPower) {
+      note = "Powierzchnia ogranicza moc: najtańszy wariant daje " +
+             fmt(recommended.installedKw) + " kW z wymaganych " + fmt(kwVal) +
+             " kW. Pokazano maksymalną liczbę paneli mieszczącą się na terenie.";
     } else {
-      note = m === "power"
-        ? "Ranking od najtańszego wariantu osiągającego zadaną moc. Rekomendacja " +
-          "uwzględnia też dostępną powierzchnię."
-        : "Ranking od najtańszego wariantu mieszczącego się na podanej powierzchni.";
+      note = m === "both"
+        ? "Liczba paneli to minimum z zapotrzebowania na moc i maksimum z powierzchni. " +
+          "Ranking od najtańszego wariantu spełniającego oba warunki."
+        : m === "power"
+          ? "Ranking od najtańszego wariantu osiągającego zadaną moc. Rekomendacja " +
+            "uwzględnia też dostępną powierzchnię."
+          : "Ranking od najtańszego wariantu mieszczącego się na podanej powierzchni.";
     }
 
     return {
