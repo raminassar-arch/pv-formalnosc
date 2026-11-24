@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0h"></script>
-<script src="../js/payment.js?v=2.0.0h"></script>
-<script src="../js/pdf.js?v=2.0.0h"></script>
-<script src="../js/app.js?v=2.0.0h"></script>
+<script src="../js/model.js?v=2.0.0i"></script>
+<script src="../js/payment.js?v=2.0.0i"></script>
+<script src="../js/pdf.js?v=2.0.0i"></script>
+<script src="../js/app.js?v=2.0.0i"></script>
 <script>
 (function () {
   "use strict";
@@ -226,6 +226,15 @@
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
     ok("znak wodny wersji testowej", window.PVPdf.watermark === "wersja testowa, BIM architects & consultants, Rami Nassar 2026",
        String(window.PVPdf.watermark));
+
+    // --- porównanie OZE --------------------------------------------------------
+    ok("model ma compareMetrics", typeof M.compareMetrics === "function");
+    ok("model ma COMPARE_DEFAULT", !!M.COMPARE_DEFAULT && M.COMPARE_DEFAULT.pricePlnMwh > 0);
+    var cmpPv = M.compareMetrics("pv", {energyMwhYear:10, capexPln:20000, opexPlnYear:200}, {}, {pricePlnMwh:800});
+    ok("compareMetrics pv bilans", Math.abs(cmpPv.netPlnYear - 7800) < 0.01, cmpPv.netPlnYear);
+    var cmpGeo = M.compareMetrics("geotermia", {heatMwhYear:20, capexPln:50000, opexPlnYear:500, electricityCostPlnYear:1000}, {}, {pricePlnMwh:700});
+    ok("compareMetrics geo dolicza prąd", Math.abs(cmpGeo.opexPlnYear - 1500) < 0.01, cmpGeo.opexPlnYear);
+    ok("compareMetrics brak zwrotu przy bilansie <=0", M.compareMetrics("wiatr",{energyMwhYear:1,capexPln:1000,opexPlnYear:2000},{},{pricePlnMwh:100}).paybackYears === null);
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
     const pdfEst = await window.PVPdf.renderPdf(r, est, optPower);

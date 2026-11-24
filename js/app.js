@@ -111,6 +111,7 @@
         pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
           ? data.pdfTheme : window.PVPdf.defaultTheme,
         oze: (function(){ var o=Object.assign({source:"wiatr",inputs:{}}, data.oze||{}); if(!M.ozeById(o.source)) o.source="wiatr"; o.inputs=o.inputs||{}; return o; })(),
+        compare: Object.assign({ pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 }, data.compare || {}),
       };
     } catch (err) { return base; }
   }
@@ -170,9 +171,10 @@
     ["woda", "Woda", "Energetyka wodna"],
     ["geotermia", "Geotermia", "Ciepło Ziemi / pompy ciepła"],
     ["biomasa", "Biomasa", "Biomasa / biogaz / biopłyny"],
+    ["porownaj", "Porównaj", "Opłacalność wariantów OZE"],
   ];
   const OZE_TAB_IDS = ["wiatr","woda","geotermia","biomasa"];
-  const TITLES = {start:"Start",pv:"Fotowoltaika",wiatr:"Wiatr",woda:"Woda",geotermia:"Geotermia",biomasa:"Biomasa"};
+  const TITLES = {start:"Start",pv:"Fotowoltaika",wiatr:"Wiatr",woda:"Woda",geotermia:"Geotermia",biomasa:"Biomasa",porownaj:"Porównaj OZE"};
 
   function renderSteps(head) {
     const box = $("#steps");
@@ -196,7 +198,8 @@
       {id:"wiatr", icon:"WI", name:"Energetyka wiatrowa", desc:"Kalkulator orientacyjny (moc, wiatr, Cp), energia roczna, CAPEX/OPEX i checklista formalna."},
       {id:"woda", icon:"H2O", name:"Energetyka wodna", desc:"Kalkulator orientacyjny (przepływ, spadek, sprawność), energia roczna i checklista formalna."},
       {id:"geotermia", icon:"GEO", name:"Geotermia / pompy ciepła", desc:"Kalkulator orientacyjny (zapotrzebowanie, COP), koszt energii, CAPEX/OPEX i checklista formalna."},
-      {id:"biomasa", icon:"BIO", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność), energia i checklista formalna."}
+      {id:"biomasa", icon:"BIO", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność), energia i checklista formalna."},
+      {id:"porownaj", icon:"≡", name:"Porównaj warianty", desc:"Porównanie orientacyjnej opłacalności wariantów OZE na podstawie danych z zakładek: energia, CAPEX/OPEX, przychód, prosty okres zwrotu."}
     ];
     const tabCards = tabs.map(function(t){
       return '<article class="card start-tab-card">' +
@@ -214,10 +217,12 @@
       '<button class="btn" data-act="go" data-path="wiatr">Wiatr</button>' +
       '<button class="btn ghost" data-act="go" data-path="woda">Woda</button>' +
       '<button class="btn ghost" data-act="go" data-path="geotermia">Geotermia</button>' +
-      '<button class="btn ghost" data-act="go" data-path="biomasa">Biomasa</button></div></div>' +
+      '<button class="btn ghost" data-act="go" data-path="biomasa">Biomasa</button>' +
+      '<button class="btn ghost" data-act="go" data-path="porownaj">Porównaj</button></div></div>' +
       '<div class="hero-card"><span class="logo">OZE</span><strong>Co zawiera program</strong>' +
       '<ul class="plain-list small">' +
       '<li>5 osobnych zakładek technologii OZE</li>' +
+      '<li>Zakładka Porównaj: opłacalność wariantów</li>' +
       '<li>Kalkulatory orientacyjne</li>' +
       '<li>Checklisty ścieżek formalnych</li>' +
       '<li>Podgląd A4 i eksport PDF</li>' +
@@ -239,7 +244,13 @@
     return Object.assign(M.ozeDefaultInput(sourceId), saved);
   }
   function readOzeForm(sourceId) {
-    const src = M.ozeById(sourceId);
+    let sid = sourceId;
+    if (!sid) {
+      const head = normalizeRoute(route()[0]);
+      if (OZE_TAB_IDS.indexOf(head) >= 0) sid = head;
+    }
+    const src = M.ozeById(sid);
+    if (!src || OZE_TAB_IDS.indexOf(src.id) < 0) return;
     if (!src.calculator || !src.calculator.fields) return;
     const inp = Object.assign({}, ozeInput(src.id));
     src.calculator.fields.forEach(function (f) {
@@ -468,9 +479,105 @@
   function normalizeRoute(head) {
     if (head === "dane" || head === "wynik" || head === "podglad" || head === "platnosc" || head === "eksport") return "pv";
     if (head === "oze") return project && project.oze && project.oze.source && OZE_TAB_IDS.indexOf(project.oze.source)>=0 ? project.oze.source : "wiatr";
+    if (head === "porownanie" || head === "porownywarka") return "porownaj";
     if (head === "o-programie") return "start";
     if (STEPS.some(function(s){return s[0]===head;})) return head;
     return "start";
+  }
+
+  function compareInputs() {
+    const c = project.compare || {};
+    return {
+      pricePlnMwh: Math.max(0, Number(c.pricePlnMwh != null ? c.pricePlnMwh : 800)),
+      pvYieldKwhKwYear: Math.max(0, Number(c.pvYieldKwhKwYear != null ? c.pvYieldKwhKwYear : 1050)),
+      pvOpexPctYear: Math.max(0, Number(c.pvOpexPctYear != null ? c.pvOpexPctYear : 1.5))
+    };
+  }
+
+  function collectCompareRows() {
+    const cmp = compareInputs();
+    const rows = [];
+    const pvEst = currentEstimate();
+    const pvMwh = (pvEst.installedKw * cmp.pvYieldKwhKwYear) / 1000;
+    const pvCapex = pvEst.totalZl || 0;
+    const pvOpex = pvCapex * (cmp.pvOpexPctYear / 100);
+    const pvCalc = { energyMwhYear: pvMwh, capexPln: pvCapex, opexPlnYear: pvOpex };
+    const pvMetric = M.compareMetrics("pv", pvCalc, {}, cmp);
+    rows.push(Object.assign({ id: "pv", name: "Fotowoltaika (PV)", detail: M.fmt(pvEst.installedKw) + " kW, uzysk " + M.fmt(cmp.pvYieldKwhKwYear) + " kWh/kWp/rok" }, pvMetric));
+
+    OZE_TAB_IDS.forEach(function (id) {
+      const src = M.ozeById(id);
+      const input = ozeInput(id);
+      const calc = M.ozeCalculate(id, input) || {};
+      const metric = M.compareMetrics(id, calc, input, cmp);
+      let detail = "";
+      if (id === "wiatr") detail = M.fmt(input.powerKw) + " kW, wiatr " + M.fmt(input.windMs) + " m/s";
+      else if (id === "woda") detail = M.fmt(input.flowLps) + " l/s, spadek " + M.fmt(input.headM) + " m";
+      else if (id === "geotermia") detail = M.fmt(input.heatDemandKw) + " kW ciepła, COP " + M.fmt(input.cop);
+      else if (id === "biomasa") detail = M.fmt(input.fuelTonsYear) + " t/rok, " + M.fmt(input.gcvKwhKg) + " kWh/kg";
+      rows.push(Object.assign({ id: id, name: src.name, detail: detail }, metric));
+    });
+
+    rows.forEach(function (r) { r.recommended = false; });
+    const ranked = rows.filter(function(r){ return r.paybackYears != null && isFinite(r.paybackYears) && r.paybackYears > 0; }).sort(function(a,b){ return a.paybackYears - b.paybackYears; });
+    if (ranked.length) ranked[0].recommended = true;
+    return rows;
+  }
+
+  function readCompareForm() {
+    const price = document.getElementById("cmp-price");
+    const pvYield = document.getElementById("cmp-pv-yield");
+    const pvOpex = document.getElementById("cmp-pv-opex");
+    if (!project.compare) project.compare = { pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 };
+    if (price) project.compare.pricePlnMwh = Math.max(0, numberOr(price.value, project.compare.pricePlnMwh));
+    if (pvYield) project.compare.pvYieldKwhKwYear = Math.max(0, numberOr(pvYield.value, project.compare.pvYieldKwhKwYear));
+    if (pvOpex) project.compare.pvOpexPctYear = Math.max(0, numberOr(pvOpex.value, project.compare.pvOpexPctYear));
+    saveProject();
+  }
+
+  function viewCompare() {
+    const cmp = compareInputs();
+    const rows = collectCompareRows();
+    const best = rows.find(function(r){ return r.recommended; });
+    const tableRows = rows.map(function (r) {
+      const payback = r.paybackYears == null ? "brak zwrotu" : M.fmt(r.paybackYears) + " lat";
+      const rec = r.recommended ? '<span class="badge ok">Najkorzystniejszy</span>' : "";
+      const netCls = r.netPlnYear >= 0 ? "ok" : "warn";
+      return '<tr' + (r.recommended ? ' class="compare-best"' : '') + '>' +
+        '<td><strong>' + esc(r.name) + '</strong> ' + rec + '<div class="small muted">' + esc(r.detail) + '</div></td>' +
+        '<td>' + esc(M.fmt(r.energyMwhYear)) + ' MWh/rok<div class="small muted">' + esc(r.label) + '</div></td>' +
+        '<td>' + esc(M.money(r.capexPln)) + '</td>' +
+        '<td>' + esc(M.money(r.opexPlnYear)) + '/rok</td>' +
+        '<td>' + esc(M.money(r.revenuePlnYear)) + '/rok</td>' +
+        '<td><span class="badge ' + netCls + '">' + esc(M.money(r.netPlnYear)) + '/rok</span></td>' +
+        '<td><strong>' + esc(payback) + '</strong></td>' +
+        '</tr>';
+    }).join("");
+
+    const bestBox = best
+      ? '<div class="note ok"><strong>Najkorzystniejszy wariant (orientacyjnie):</strong> ' + esc(best.name) +
+        '. Prosty okres zwrotu: <strong>' + esc(M.fmt(best.paybackYears)) + ' lat</strong>, bilans roczny: <strong>' + esc(M.money(best.netPlnYear)) + '</strong>. ' +
+        'Wynik zależy od założeń ceny energii, CAPEX/OPEX i danych wpisanych w zakładkach.</div>'
+      : '<div class="note warn"><strong>Brak jednoznacznie opłacalnego wariantu</strong> przy bieżących założeniach. Sprawdź cenę energii, CAPEX/OPEX lub dane wejściowe w zakładkach.</div>';
+
+    return '<div class="page-head"><div><h1>Porównaj warianty OZE</h1><p>Porównanie orientacyjne na podstawie aktualnych danych z zakładek: Fotowoltaika, Wiatr, Woda, Geotermia i Biomasa.</p></div></div>' +
+      '<section class="panel"><h3>Założenia porównania</h3><p class="small muted">To porównanie uproszczone. Nie zastępuje audytu energetycznego, analizy finansowej ani studium wykonalności.</p>' +
+      '<div class="form-grid oze-grid">' +
+      '<div class="field"><label class="field-label" for="cmp-price">Cena energii / wartość energii [zł/MWh]</label><input id="cmp-price" type="number" min="0" step="10" value="' + esc(String(cmp.pricePlnMwh)) + '"></div>' +
+      '<div class="field"><label class="field-label" for="cmp-pv-yield">PV: uzysk jednostkowy [kWh/kWp/rok]</label><input id="cmp-pv-yield" type="number" min="0" step="10" value="' + esc(String(cmp.pvYieldKwhKwYear)) + '"></div>' +
+      '<div class="field"><label class="field-label" for="cmp-pv-opex">PV: OPEX roczny [% CAPEX]</label><input id="cmp-pv-opex" type="number" min="0" step="0.1" value="' + esc(String(cmp.pvOpexPctYear)) + '"></div>' +
+      '</div>' +
+      '<div class="row-actions"><button class="btn" data-act="cmp-calc">Przelicz porównanie</button>' +
+      '<button class="btn ghost" data-act="cmp-reset">Przywróć domyślne</button></div></section>' +
+      '<section class="panel"><h2>Wynik porównania</h2>' + bestBox +
+      '<div class="table-wrap"><table class="data-table compare-table"><thead><tr>' +
+      '<th>Wariant</th><th>Energia roczna</th><th>CAPEX</th><th>OPEX + paliwo/el.</th><th>Przychód/wartość</th><th>Bilans roczny</th><th>Prosty zwrot</th>' +
+      '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+      '<div class="note warn"><strong>Metoda:</strong> Przychód/wartość = energia roczna × cena energii. Bilans roczny = przychód/wartość − OPEX (dla geotermii doliczono koszt energii elektrycznej, dla biomasy koszt paliwa). Prosty zwrot = CAPEX / bilans roczny; gdy bilans ≤ 0, zwrot nie występuje. PV korzysta z mocy z zakładki Fotowoltaika i podanego uzysku kWh/kWp/rok.</div></section>' +
+      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Eksport porównania do PDF A4 z watermarkiem wersji testowej.</p>' +
+      '<div class="row-actions"><button class="btn primary" data-act="cmp-pdf">Pobierz PDF porównania</button>' +
+      '<button class="btn" data-act="cmp-preview">Odśwież podgląd</button></div>' +
+      '<div class="preview-wrap"><div class="paper"><canvas id="preview-canvas" width="2480" height="3508"></canvas></div></div></section>';
   }
 
   function render() {
@@ -479,6 +586,7 @@
     if (OZE_TAB_IDS.indexOf(head) >= 0) { project.oze.source = head; saveProject(); }
     let html = "";
     if (head === "pv") html = viewPv();
+    else if (head === "porownaj") html = viewCompare();
     else if (OZE_TAB_IDS.indexOf(head) >= 0) html = viewOzeSource(head);
     else { head = "start"; html = viewStart(); }
 
@@ -488,6 +596,7 @@
     document.title = (TITLES[head] || "Start") + " – Formalność OZE " + M.VERSION;
 
     if (head === "pv") initPvPreview();
+    if (head === "porownaj") initComparePreview();
     if (OZE_TAB_IDS.indexOf(head) >= 0) initOzePreview(head);
   }
 
@@ -587,6 +696,75 @@
     target.getContext('2d').drawImage(c,0,0);
   }
 
+  function buildComparePdfCanvas(rows) {
+    const PXW = window.PVPdf.constants.PXW, PXH = window.PVPdf.constants.PXH;
+    const W=1240,H=1754,M=90;
+    const c=document.createElement("canvas"); c.width=PXW; c.height=PXH;
+    const ctx=c.getContext("2d"); ctx.scale(2,2); ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#0F2742"; ctx.fillRect(0,0,W,130);
+    ctx.fillStyle="#fff"; ctx.font="bold 34px DejaVu, Arial, sans-serif"; ctx.fillText("Formalność OZE - Porównanie wariantów", M, 52);
+    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle="#B9CFDC"; ctx.fillText("Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION, M, 92);
+    const wrap=(text,x,yy,maxW,lh)=>{ const words=String(text||"").split(/\s+/); let line=""; for(const w of words){ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); yy+=lh; line=w; } else line=t; } if(line){ctx.fillText(line,x,yy); yy+=lh;} return yy; };
+    let y=170;
+    const best = rows.find(function(r){return r.recommended;});
+    ctx.fillStyle="#13263A"; ctx.font="bold 26px DejaVu, Arial, sans-serif"; ctx.fillText("Wniosek orientacyjny", M, y); y+=34;
+    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle="#33485B";
+    y = wrap(best ? ("Najkorzystniejszy wariant: " + best.name + ", prosty zwrot " + M.fmt(best.paybackYears) + " lat, bilans roczny " + M.money(best.netPlnYear) + ".") : "Brak jednoznacznie opłacalnego wariantu przy bieżących założeniach.", M, y, W-2*M, 28) + 10;
+    ctx.fillStyle="#13263A"; ctx.font="bold 24px DejaVu, Arial, sans-serif"; ctx.fillText("Porównanie", M, y); y+=30;
+    ctx.font="18px DejaVu, Arial, sans-serif";
+    ctx.fillStyle="#5A6B7B"; ctx.fillText("Wariant", M, y); ctx.fillText("Energia", M+360, y); ctx.fillText("CAPEX", M+500, y); ctx.fillText("Bilans/rok", M+680, y); ctx.fillText("Zwrot", M+900, y); y+=10;
+    ctx.strokeStyle="#D9E0E6"; ctx.beginPath(); ctx.moveTo(M,y); ctx.lineTo(W-M,y); ctx.stroke(); y+=24;
+    rows.forEach(function(r){
+      const payback = r.paybackYears == null ? "brak" : M.fmt(r.paybackYears) + " lat";
+      if (r.recommended) { ctx.fillStyle="#F3F9F0"; ctx.fillRect(M-10,y-20,W-2*M+20,30); }
+      ctx.fillStyle="#13263A"; ctx.fillText(String(r.name).slice(0,34), M, y);
+      ctx.fillStyle="#33485B"; ctx.fillText(M.fmt(r.energyMwhYear)+" MWh", M+360, y);
+      ctx.fillText(M.money(r.capexPln), M+500, y);
+      ctx.fillText(M.money(r.netPlnYear), M+680, y);
+      ctx.fillStyle = r.recommended ? "#2F6B2F" : "#33485B";
+      ctx.fillText(payback, M+900, y);
+      y += 32;
+    });
+    y += 12;
+    ctx.fillStyle="#9A4A1A"; ctx.font="bold 19px DejaVu, Arial, sans-serif";
+    y = wrap("Uwaga: porównanie orientacyjne. Przychód/wartość = energia × cena energii. Bilans = przychód − OPEX (geo: + koszt energii el., biomasa: + koszt paliwa). Prosty zwrot = CAPEX / bilans roczny.", M, Math.min(y,H-150), W-2*M, 24);
+    ctx.fillStyle="#5A6B7B"; ctx.font="18px DejaVu, Arial, sans-serif"; ctx.fillText(M.AUTHOR_LINE, M, H-50);
+    if (window.PVPdf.watermark) { ctx.save(); ctx.globalAlpha=0.1; ctx.fillStyle="#0F2742"; ctx.font="bold 90px DejaVu, Arial, sans-serif"; ctx.translate(W/2,H/2); ctx.rotate(-Math.PI/6); ctx.textAlign="center"; ctx.fillText(window.PVPdf.watermark,0,0); ctx.restore(); }
+    return c;
+  }
+
+  async function renderComparePdf() {
+    if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
+    const rows = collectCompareRows();
+    const c = buildComparePdfCanvas(rows);
+    const bytes = window.PVPdf.dataUrlBytes(c.toDataURL("image/jpeg",0.9));
+    return window.PVPdf.buildPdf([{bytes:bytes,w:window.PVPdf.constants.PXW,h:window.PVPdf.constants.PXH}]);
+  }
+
+  async function initComparePreview() {
+    const canvas = $("#preview-canvas");
+    if (!canvas) return;
+    try {
+      if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
+      const c = buildComparePdfCanvas(collectCompareRows());
+      canvas.width=c.width; canvas.height=c.height;
+      canvas.getContext("2d").clearRect(0,0,c.width,c.height);
+      canvas.getContext("2d").drawImage(c,0,0);
+    } catch (err) { console.warn(err); }
+  }
+
+  async function doComparePdf() {
+    busyStart();
+    try {
+      readCompareForm();
+      const bytes = await renderComparePdf();
+      download(bytes, "Formalnosc_OZE_porownanie_" + stamp() + ".pdf", "application/pdf");
+      toast("PDF porównania pobrany.", "ok");
+    } catch (err) {
+      toast("Nie udało się utworzyć PDF: " + err.message, "err");
+    } finally { busyStop(); }
+  }
+
   function resetForm() {
     project = emptyProject();
     saveProject();
@@ -656,6 +834,7 @@
       if (!e.target) return;
       if (numericFields.indexOf(e.target.id) >= 0) { readForm(); return; }
       if (String(e.target.id || "").indexOf("oze-") === 0) readOzeForm();
+      if (String(e.target.id || "").indexOf("cmp-") === 0) readCompareForm();
     });
 
     window.addEventListener("hashchange", render);

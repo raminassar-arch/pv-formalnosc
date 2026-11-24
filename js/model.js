@@ -686,6 +686,54 @@
     return JSON.parse(JSON.stringify(s.calculator.defaults));
   }
 
+  const COMPARE_DEFAULT = { pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 };
+
+  function compareMetrics(sourceId, calcResult, input, compareOpts) {
+    const opts = compareOpts || COMPARE_DEFAULT;
+    const price = Math.max(0, num(opts.pricePlnMwh, COMPARE_DEFAULT.pricePlnMwh));
+    const r = calcResult || {};
+    let energyMwhYear = 0, capexPln = 0, opexPlnYear = 0, label = "";
+    if (sourceId === "pv") {
+      energyMwhYear = Math.max(0, num(r.energyMwhYear, 0));
+      capexPln = Math.max(0, num(r.capexPln, 0));
+      opexPlnYear = Math.max(0, num(r.opexPlnYear, 0));
+      label = "Energia elektryczna";
+    } else if (sourceId === "wiatr") {
+      energyMwhYear = Math.max(0, num(r.energyMwhYear, 0));
+      capexPln = Math.max(0, num(r.capexPln, 0));
+      opexPlnYear = Math.max(0, num(r.opexPlnYear, 0));
+      label = "Energia elektryczna";
+    } else if (sourceId === "woda") {
+      energyMwhYear = Math.max(0, num(r.energyMwhYear, 0));
+      capexPln = Math.max(0, num(r.capexPln, 0));
+      opexPlnYear = Math.max(0, num(r.opexPlnYear, 0));
+      label = "Energia elektryczna";
+    } else if (sourceId === "geotermia") {
+      energyMwhYear = Math.max(0, num(r.heatMwhYear, 0));
+      capexPln = Math.max(0, num(r.capexPln, 0));
+      const elCost = Math.max(0, num(r.electricityCostPlnYear, 0));
+      opexPlnYear = Math.max(0, num(r.opexPlnYear, 0)) + elCost;
+      label = "Ciepło użyteczne";
+    } else if (sourceId === "biomasa") {
+      energyMwhYear = Math.max(0, num(r.energyMwhYear, 0));
+      capexPln = Math.max(0, num(r.capexPln, 0));
+      const fuel = Math.max(0, num(r.fuelCostPlnYear, 0));
+      opexPlnYear = Math.max(0, num(r.opexPlnYear, 0)) + fuel;
+      label = "Energia użyteczna";
+    }
+    const revenuePlnYear = energyMwhYear * price;
+    const netPlnYear = revenuePlnYear - opexPlnYear;
+    const paybackYears = netPlnYear > 0 ? capexPln / netPlnYear : null;
+    const lcoeLikePlnMwh = energyMwhYear > 0 ? (opexPlnYear + capexPln / 20) / energyMwhYear : null;
+    return {
+      sourceId: sourceId, label: label,
+      energyMwhYear: energyMwhYear, capexPln: capexPln, opexPlnYear: opexPlnYear,
+      revenuePlnYear: revenuePlnYear, netPlnYear: netPlnYear,
+      paybackYears: paybackYears, lcoeLikePlnMwh: lcoeLikePlnMwh,
+      pricePlnMwh: price
+    };
+  }
+
   root.PVModel = {
     VERSION: VERSION, PLACE_GROUND: PLACE_GROUND, PLACE_ROOF: PLACE_ROOF, LOC_NORMAL: LOC_NORMAL, LOC_PROTECTED: LOC_PROTECTED,
     SOURCE_LINE: SOURCE_LINE, DISCLAIMER: DISCLAIMER, AUTHOR_LINE: AUTHOR_LINE, THRESHOLDS_LINE: THRESHOLDS_LINE,
@@ -693,5 +741,6 @@
     STEPS: STEPS, PATHS: PATHS, fmt: fmt, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
     OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE,
     ozeById: ozeById, ozeDefaultInput: ozeDefaultInput, ozeCalculate: ozeCalculate,
+    COMPARE_DEFAULT: COMPARE_DEFAULT, compareMetrics: compareMetrics,
   };
 })(typeof window !== "undefined" ? window : globalThis);

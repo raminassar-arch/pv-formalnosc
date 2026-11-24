@@ -469,3 +469,6 @@ input:focus, select:focus {
 }
 .hero-card .plain-list { margin:10px 0 0; padding-left:18px; color:#dceade; }
 .hero-card .plain-list li { margin:4px 0; }
+.compare-table td,.compare-table th { vertical-align: top; }
+.compare-best { background: rgba(53,122,56,.08); }
+.table-wrap { overflow-x: auto; }
