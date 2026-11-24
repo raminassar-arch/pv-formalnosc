@@ -639,8 +639,8 @@
     },
     {
       id: "biomasa",
-      name: "Biomasa / biogaz / biopłyny",
-      short: "Bio",
+      name: "BIO",
+      short: "BIO",
       color: "#4f7a2f",
       description: "Energia z materii organicznej: biomasa stała, biogaz/biometan i biopłyny. Wymagania zależą od paliwa, technologii, emisji i sposobu wykorzystania energii.",
       govPoints: [

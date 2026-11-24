@@ -23,11 +23,13 @@
   const WATERMARK_LINES = ["BIM ARCHITECTS & CONSULTANTS", "WERSJA TESTOWA"];
   const WATERMARK = WATERMARK_LINES.join("\n");
 
-  /** Trzy wyglądy tego samego raportu. Identyczna treść i układ A4. */
+  /** Pięć wyglądów tego samego raportu. Identyczna treść i układ A4. */
   const THEMES = [
     { id: "simple",  label: "Motyw 1", name: "Biały — prosty i czytelny" },
     { id: "cards",   label: "Motyw 2", name: "Karty — sekcje w ramkach" },
     { id: "premium", label: "Motyw 3", name: "Premium — ciemnogranatowo-złoty" },
+    { id: "mono",    label: "Motyw 4", name: "Mono — wąski krój pisma" },
+    { id: "wide",    label: "Motyw 5", name: "Wide — duży krój pisma" },
   ];
 
   const PALETTES = {
@@ -64,6 +66,28 @@
       TABLE_HEAD_BG: "#EDF2F7", RULE: "#CBD6DE", ACCENT: "#2E7FB8", GOLD: "#C8A45C",
       CARD_BG: "#FFFFFF", CARD_LINE: "#CBD6DE", CARD_ACCENT: "#0F2742",
     },
+    mono: {
+      id: "mono",
+      PAGE_BG: "#FFFFFF", BEST_BG: "#EDF1F3", BEST_INK: "#243746",
+      PRIMARY: "#354B5A", ON_PRIMARY: "#FFFFFF", HEADER_SUB: "#D4E0E6",
+      INK: "#243746", BODY_INK: "#3D5362", MUTED: "#6A7C88", CELL: "#354B5A",
+      NEED: "#9A4A1A", FREE: "#146547",
+      NEED_BG: "#FFFFFF", FREE_BG: "#FFFFFF",
+      WARN_BG: "#FFFFFF", WARN_LINE: "#9A6B12",
+      TABLE_HEAD_BG: "#F2F5F7", RULE: "#BFCBD3", ACCENT: "#354B5A",
+      CARD_BG: "#FFFFFF", CARD_LINE: "#BFCBD3", CARD_ACCENT: "#354B5A",
+    },
+    wide: {
+      id: "wide",
+      PAGE_BG: "#F7FAF8", BEST_BG: "#DFF3E9", BEST_INK: "#0B5940",
+      PRIMARY: "#0C5946", ON_PRIMARY: "#FFFFFF", HEADER_SUB: "#CBE8DE",
+      INK: "#102A22", BODY_INK: "#355148", MUTED: "#5C776E", CELL: "#0C5946",
+      NEED: "#A34B18", FREE: "#0B734F",
+      NEED_BG: "#FFF1E5", FREE_BG: "#E6F6EE",
+      WARN_BG: "#FFF6DA", WARN_LINE: "#C79B32",
+      TABLE_HEAD_BG: "#E9F4EF", RULE: "#C9DEE0", ACCENT: "#0C7A64",
+      CARD_BG: "#FFFFFF", CARD_LINE: "#C9DEE0", CARD_ACCENT: "#0C5946",
+    },
   };
 
   /** Kształty nadają motywom różny charakter: ostre kąty, karty, zaokrąglenia. */
@@ -71,23 +95,52 @@
     simple:  { radius: 0,  badge: "square",  cardFill: false, lineWidth: 1 },
     cards:   { radius: 16, badge: "circle",  cardFill: true,  lineWidth: 1 },
     premium: { radius: 26, badge: "rounded", cardFill: true,  lineWidth: 2 },
+    mono:    { radius: 4,  badge: "square",  cardFill: false, lineWidth: 1 },
+    wide:    { radius: 20, badge: "circle",  cardFill: true,  lineWidth: 2 },
   };
 
   function palette(id) { return PALETTES[id] || PALETTES.premium; }
   function shape(id) { return SHAPES[id] || SHAPES.premium; }
 
-  function fontPx(pt) { return Math.max(8, Math.round(pt * 150 / 72)); }
-  function fontDef(pt, bold) {
-    return `${fontPx(pt)}px "${bold ? "DejaVu-Bold" : "DejaVu"}", sans-serif`;
+  /** Każdy motyw ma własną czcionkę i wielkość liter. */
+  const FONT_STACKS = {
+    simple:  { family: '"DejaVu", Arial, sans-serif', boldFamily: '"DejaVu-Bold", Arial, sans-serif', boldWeight: false, scale: 1.00, lineScale: 1.00 },
+    cards:   { family: 'Georgia, "Times New Roman", serif', boldWeight: true, scale: 1.02, lineScale: 1.02 },
+    premium: { family: 'Arial, Helvetica, sans-serif', boldWeight: true, scale: 1.03, lineScale: 1.03 },
+    mono:    { family: '"Courier New", "Lucida Console", monospace', boldWeight: true, scale: 0.90, lineScale: 0.94 },
+    wide:    { family: 'Tahoma, Verdana, sans-serif', boldWeight: true, scale: 1.05, lineScale: 1.05 },
+  };
+
+  function fontSpec(id) { return FONT_STACKS[id] || FONT_STACKS.premium; }
+  function themeFont(id) { return fontSpec(id); }
+  function fontPx(pt, theme) {
+    return Math.max(8, Math.round(pt * 150 / 72 * fontSpec(theme).scale));
+  }
+  function fontDef(pt, bold, theme) {
+    const spec = fontSpec(theme);
+    const family = bold && spec.boldFamily ? spec.boldFamily : spec.family;
+    return (bold && spec.boldWeight ? "bold " : "") + `${fontPx(pt, theme)}px ${family}`;
   }
 
   // Interlinia zawsze większa od wysokości czcionki — inaczej wiersze się zlewają.
-  const LINE = { small: 20, sub: 20, body: 22, h3: 24, h2: 26, footer: 20 };
-  const ROW = 24;
+  const LINE_BASE = { small: 20, sub: 20, body: 22, h3: 24, h2: 26, footer: 20 };
+  const ROW_BASE = 24;
   const CONTENT_TOP = 165;
   const CONTENT_BOTTOM = H - MARGIN - 40;
   const FOOTER_WIDTH = W - 2 * MARGIN - 120; // miejsce na numer strony
-  function lineHeight(key) { return LINE[key] || LINE.small; }
+  function lineHeightsFor(id) {
+    const k = fontSpec(id).lineScale, out = {};
+    Object.keys(LINE_BASE).forEach(function (key) {
+      out[key] = Math.max(14, Math.round(LINE_BASE[key] * k));
+    });
+    return out;
+  }
+  function rowHeightFor(id) { return Math.max(20, Math.round(ROW_BASE * fontSpec(id).lineScale)); }
+  const LINE = lineHeightsFor("premium");
+  function lineHeight(key, id) {
+    const l = lineHeightsFor(id);
+    return l[key] || l.small;
+  }
 
   /** Podział tekstu na wiersze przy zadanej czcionce i szerokości. */
   function wrapParts(ctx, text, font, maxWidth) {
@@ -159,14 +212,18 @@
   }
 
   function Doc(theme) {
+    this.theme = theme;
     this.c = palette(theme);
     this.shape = shape(theme);
+    this.line = lineHeightsFor(theme);
+    this.row = rowHeightFor(theme);
     this.pages = [];
     this.newPage();
     this.f = {
-      title: fontDef(16, true), sub: fontDef(9), h2: fontDef(12, true),
-      h3: fontDef(11, true), body: fontDef(10), small: fontDef(9),
-      big: fontDef(18, true), num: fontDef(12, true),
+      title: fontDef(16, true, theme), sub: fontDef(9, false, theme),
+      h2: fontDef(12, true, theme), h3: fontDef(11, true, theme),
+      body: fontDef(10, false, theme), small: fontDef(9, false, theme),
+      big: fontDef(18, true, theme), num: fontDef(12, true, theme),
     };
     this.setFooter([]);
   }
@@ -198,7 +255,7 @@
     list.forEach(function (line) {
       count += wrapParts(ctx, line, f.small, FOOTER_WIDTH).length;
     });
-    const block = count * LINE.footer;
+    const block = count * this.line.footer;
     this.footerLines = list;
     this.footerTop = H - MARGIN - block - 8;
     this.contentBottom = Math.min(CONTENT_BOTTOM, this.footerTop - 24);
@@ -335,7 +392,7 @@
       list.forEach(function (line) {
         wrapParts(this.ctx, line, f.small, FOOTER_WIDTH).forEach(function (part) {
           this.text(part, f.small, c.MUTED, MARGIN, fy);
-          fy += LINE.footer;
+          fy += this.line.footer;
         }, this);
       }, this);
       if (this.pages.length > 1) {
@@ -352,7 +409,7 @@
   Doc.prototype.verdictBox = function (x, y, w, need, title, desc) {
     const c = this.c, sh = this.shape, ctx = this.ctx;
     const descLines = this.countLines(desc, this.f.small, w - 40);
-    const height = 82 + descLines * LINE.small + 14;
+    const height = 82 + descLines * this.line.small + 14;
     this.box(x, y, w, height,
              sh.cardFill ? (need ? c.NEED_BG : c.FREE_BG) : null,
              need ? c.NEED : c.FREE, sh.radius);
@@ -367,7 +424,7 @@
     this.text(need ? "TAK" : "NIE", this.f.big, need ? c.NEED : c.FREE, x + 22, y + 36);
     const saved = this.y;
     this.y = y + 82;
-    this.wrapped(desc, this.f.small, c.MUTED, x + 22, w - 40, LINE.small);
+    this.wrapped(desc, this.f.small, c.MUTED, x + 22, w - 40, this.line.small);
     this.y = saved;
     return height;
   };
@@ -377,20 +434,20 @@
     const source = e.presetName + " · " + M.COST_SOURCE_LINE;
     const srcLines = this.countLines(source, f.small, W - 2 * MARGIN);
     const noteLines = this.countLines(e.powerNote, f.small, W - 2 * MARGIN);
-    const height = 10 + LINE.h2 + srcLines * LINE.small + 8 +
-                   9 * ROW + 6 + noteLines * LINE.small + 8;
+    const height = 10 + this.line.h2 + srcLines * this.line.small + 8 +
+                   9 * this.row + 6 + noteLines * this.line.small + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
-    this.sectionTitle("Wycena i czas realizacji", LINE.h2);
-    this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
+    this.sectionTitle("Wycena i czas realizacji", this.line.h2);
+    this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 8;
 
     const row = (label, value, strong) => {
       this.text(label, f.body, c.MUTED, MARGIN, this.y);
       this.text(value, strong ? f.h3 : f.body, strong ? c.CELL : c.INK,
                 MARGIN + 330, this.y);
-      this.y += ROW;
+      this.y += this.row;
     };
     row("Liczba paneli (moc i powierzchnia)", e.panels + " szt.");
     row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²");
@@ -403,7 +460,7 @@
     row("Czas realizacji",
         e.days + " dni roboczych (" + e.panelsPerDay + " paneli/dzień)");
     this.y += 6;
-    this.wrapped(e.powerNote, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
+    this.wrapped(e.powerNote, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 8;
   };
 
@@ -421,19 +478,19 @@
 
     const rec = o.recommended;
     const noteLines = this.countLines(o.note, f.small, W - 2 * MARGIN);
-    const height = 10 + LINE.h2 + noteLines * LINE.small + (rec ? 8 + ROW + 8 : 0) +
-                   ROW + o.list.length * ROW + 8;
+    const height = 10 + this.line.h2 + noteLines * this.line.small + (rec ? 8 + this.row + 8 : 0) +
+                   this.row + o.list.length * this.row + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
-    this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", LINE.h2);
-    this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
+    this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", this.line.h2);
+    this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     if (rec) {
       this.y += 8;
       this.text("Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
                 M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl),
                 f.body, c.CELL, MARGIN, this.y);
-      this.y += ROW + 8;
+      this.y += this.row + 8;
     }
 
     const cols = [MARGIN, MARGIN + 430, MARGIN + 520, MARGIN + 630, MARGIN + 840];
@@ -446,7 +503,7 @@
     heads.forEach((h, i) => this.text(fit(h, i === 0 ? 415 : 100), f.small,
                                       c.CELL, cols[i], this.y));
     this.rule(this.y + 24);
-    this.y += ROW;
+    this.y += this.row;
 
     o.list.forEach(function (x) {
       const best = rec && x.id === rec.id;
@@ -463,7 +520,7 @@
       this.text(fit(areaText, 100), f.small, c.INK, cols[3], this.y);
       this.text(fit(M.money(x.totalZl), 145), f.small, best ? c.CELL : c.INK,
                 cols[4], this.y);
-      this.y += ROW;
+      this.y += this.row;
     }, this);
     this.y += 8;
   };
@@ -487,16 +544,16 @@
       M.money(e.options.laborPerPanelZl) + "/panel · " +
       e.options.panelsPerDay + " paneli/dzień";
     const paramLines = this.countLines(params, f.small, W - 2 * MARGIN);
-    const inputHeight = 10 + LINE.h2 + 4 * ROW + 16 + 20 +
-                        paramLines * LINE.small + 12 + 8;
+    const inputHeight = 10 + this.line.h2 + 4 * this.row + 16 + 20 +
+                        paramLines * this.line.small + 12 + 8;
     this.ensure(inputHeight + 20);
     this.cardRect(this.y, inputHeight);
-    this.sectionTitle("Dane wejściowe", LINE.h2);
+    this.sectionTitle("Dane wejściowe", this.line.h2);
 
     const pair = (label, value) => {
       this.text(label, f.body, c.MUTED, MARGIN, this.y);
       this.text(value, f.body, c.INK, MARGIN + 250, this.y);
-      this.y += ROW;
+      this.y += this.row;
     };
     pair("Miejsce montażu", r.place_text);
     pair("Lokalizacja", r.location_text);
@@ -506,13 +563,13 @@
     this.text("Parametry stałe (nieedytowalne w formularzu)", f.small, c.MUTED,
               MARGIN, this.y);
     this.y += 20;
-    this.wrapped(params, f.small, c.INK, MARGIN, W - 2 * MARGIN, LINE.small);
+    this.wrapped(params, f.small, c.INK, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 12;
 
     const boxW = (W - 2 * MARGIN - 24) / 2;
     const envLines = this.countLines(r.env_desc, f.small, boxW - 40);
     const permLines = this.countLines(r.perm_desc, f.small, boxW - 40);
-    const verdictHeight = 96 + Math.max(envLines, permLines) * LINE.small;
+    const verdictHeight = 96 + Math.max(envLines, permLines) * this.line.small;
     this.ensure(verdictHeight + 20);
     const envHeight = this.verdictBox(MARGIN, this.y, boxW, r.env,
                                       "Decyzja środowiskowa", r.env_desc);
@@ -520,30 +577,30 @@
                                        "Pozwolenie na budowę", r.perm_desc);
     this.y += Math.max(envHeight, permHeight);
 
-    this.ensure(LINE.h2 + LINE.sub + 20);
-    this.sectionTitle(`Ścieżka ${r.path_no}: ${r.path_name}`, LINE.h2);
-    this.wrapped(r.path_meta, f.sub, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.sub);
+    this.ensure(this.line.h2 + this.line.sub + 20);
+    this.sectionTitle(`Ścieżka ${r.path_no}: ${r.path_name}`, this.line.h2);
+    this.wrapped(r.path_meta, f.sub, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.sub);
     this.y += 10;
 
     if (r.warning) {
       const lines = this.countLines(r.warning, f.small, W - 2 * MARGIN - 40);
-      const boxHeight = Math.max(58, 24 + lines * LINE.small);
+      const boxHeight = Math.max(58, 24 + lines * this.line.small);
       this.ensure(boxHeight + 20);
       const saved = this.y;
       this.box(MARGIN, saved, W - 2 * MARGIN, boxHeight,
                c.id === "simple" ? null : c.WARN_BG, c.WARN_LINE, this.shape.radius);
       this.y = saved + 12;
       this.wrapped(r.warning, f.small, c.INK, MARGIN + 20,
-                   W - 2 * MARGIN - 40, LINE.small);
+                   W - 2 * MARGIN - 40, this.line.small);
       this.y = saved + boxHeight + 10;
     }
 
-    this.ensure(LINE.h2 + 20);
-    this.sectionTitle("Kroki w kolejności", LINE.h2);
+    this.ensure(this.line.h2 + 20);
+    this.sectionTitle("Kroki w kolejności", this.line.h2);
 
     r.steps.forEach((step, i) => {
       const lines = this.countLines(step.desc, f.small, W - 2 * MARGIN - 70);
-      const descHeight = 50 + lines * LINE.small;
+      const descHeight = 50 + lines * this.line.small;
       this.ensure(descHeight + 20);
       this.cardRect(this.y, descHeight + 12);
       const cx = MARGIN + 15, cy = this.y + 15, sh = this.shape;
@@ -572,9 +629,9 @@
       const ink = sh.badge === "square" && !sh.cardFill ? c.ACCENT : c.ON_PRIMARY;
       this.text(num, f.num, ink, MARGIN + (30 - nw) / 2, this.y + 2);
       this.text(step.name, f.h3, c.INK, MARGIN + 44, this.y);
-      this.y += LINE.h3 + 6;
+      this.y += this.line.h3 + 6;
       this.wrapped(step.desc, f.small, c.BODY_INK,
-                   MARGIN + 44, W - 2 * MARGIN - 70, LINE.small);
+                   MARGIN + 44, W - 2 * MARGIN - 70, this.line.small);
       this.y += 16;
     });
 
@@ -688,6 +745,9 @@
     themes: THEMES,
     themePalette: palette,
     themeShape: shape,
+    themeFont: themeFont,
+    themeLineHeights: lineHeightsFor,
+    themeRowHeight: rowHeightFor,
     lineHeight: lineHeight,
     lineHeights: LINE,
     createDoc: function (theme) { return new Doc(theme); },

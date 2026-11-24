@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=9"></script>
-<script src="../js/payment.js?v=2.0.0i&n=9"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=9"></script>
-<script src="../js/app.js?v=2.0.0i&n=9"></script>
+<script src="../js/model.js?v=2.0.0i&n=10"></script>
+<script src="../js/payment.js?v=2.0.0i&n=10"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=10"></script>
+<script src="../js/app.js?v=2.0.0i&n=10"></script>
 <script>
 (function () {
   "use strict";
@@ -408,7 +408,7 @@
        window.PVModel.ozeById("geotermia").formalPath.sources.some(function(x){
          return x.url.indexOf("powietrzna-pompa-ciepla") >= 0;
        }));
-    ok("OZE Biomasa: biogaz/biometan/biopłyny w źródłach",
+    ok("OZE BIO: biogaz/biometan/biopłyny w źródłach",
        (function(){
          const u = window.PVModel.ozeById("biomasa").formalPath.sources.map(function(x){ return x.url; }).join(" ");
          return u.indexOf("mikroinstalacja2") >= 0 &&
@@ -435,6 +435,11 @@
     ok("UI: zakładka wiatr", !!document.querySelector('#steps a[href="#/wiatr"]'));
     ok("UI: zakładka woda", !!document.querySelector('#steps a[href="#/woda"]'));
     ok("UI: zakładka geotermia", !!document.querySelector('#steps a[href="#/geotermia"]'));
+    ok("UI: zakładka BIO w nawigacji",
+       (function () {
+         const a = document.querySelector('#steps a[href="#/biomasa"]');
+         return !!a && ((a.querySelector("span") || {}).textContent || "").trim() === "BIO";
+       })());
     ok("UI: strona wiatr", !!document.getElementById("oze-wiatr-powerKw"));
     ok("UI: checklista OZE bez statusów i linii weryfikacji",
        (document.querySelector("#view").textContent || "").indexOf("do potwierdzenia") < 0 &&
@@ -451,6 +456,10 @@
     ok("UI: przełączanie OZE geotermia", !!document.getElementById("oze-geotermia-heatDemandKw"));
     location.hash = "#/biomasa"; await wait(120);
     ok("UI: przełączanie OZE biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear"));
+    ok("UI: strona BIO ma nagłówek BIO",
+       ((document.querySelector("#view h1") || {}).textContent || "").trim() === "BIO");
+    ok("UI: tytuł dokumentu BIO",
+       document.title.indexOf("BIO – Formalność OZE") === 0, document.title);
 
     for (const id of ["wiatr", "woda", "geotermia", "biomasa"]) {
       location.hash = "#/" + id; await wait(120);
@@ -488,21 +497,25 @@
     ok("podgląd doboru z obu mieści się na jednej stronie A4", bothPages === 1,
        "pages=" + bothPages);
 
-    // --- trzy style raportu PDF --------------------------------------------
+    // --- pięć stylów raportu PDF -------------------------------------------
     const themes = window.PVPdf.themes;
-    ok("trzy style PDF dostępne",
-       themes.length === 3 &&
-       themes.map(function (t) { return t.id; }).join(",") === "simple,cards,premium" &&
+    ok("pięć stylów PDF dostępnych",
+       themes.length === 5 &&
+       themes.map(function (t) { return t.id; }).join(",") ===
+         "simple,cards,premium,mono,wide" &&
        window.PVPdf.defaultTheme === "premium",
        JSON.stringify(themes));
-    ok("style nazywają się Motyw 1, Motyw 2, Motyw 3",
-       themes.map(function (t) { return t.label; }).join(",") === "Motyw 1,Motyw 2,Motyw 3" &&
-       window.PVPdf.lineHeight("small") >= 20 &&
-       window.PVPdf.lineHeight("body") >= 22,
+    ok("style nazywają się Motyw 1-5",
+       themes.map(function (t) { return t.label; }).join(",") ===
+         "Motyw 1,Motyw 2,Motyw 3,Motyw 4,Motyw 5" &&
+       window.PVPdf.lineHeight("small", "mono") >= 19 &&
+       window.PVPdf.lineHeight("body", "wide") >= 23,
        themes.map(function (t) { return t.label; }).join(","));
     const shSimple = window.PVPdf.themeShape("simple"),
           shCards = window.PVPdf.themeShape("cards"),
-          shPremium = window.PVPdf.themeShape("premium");
+          shPremium = window.PVPdf.themeShape("premium"),
+          shMono = window.PVPdf.themeShape("mono"),
+          shWide = window.PVPdf.themeShape("wide");
     const cornerCalls = function (radius) {
       const calls = [];
       window.PVPdf.roundedRectPath({
@@ -512,12 +525,23 @@
       }, 0, 0, 100, 50, radius);
       return calls.join(",");
     };
-    ok("motywy: ostre kąty, zaokrąglone karty, większy promień premium",
+    ok("motywy: różne kształty i promienie narożników",
        shSimple.radius === 0 && shSimple.badge === "square" &&
        shCards.radius > 0 && shCards.badge === "circle" &&
        shPremium.radius > shCards.radius && shPremium.badge === "rounded" &&
+       shMono.radius > 0 && shMono.radius < shCards.radius &&
+       shWide.radius > 0 && shWide.radius < shPremium.radius &&
        cornerCalls(0) === "rect" && cornerCalls(12).indexOf("arcTo") >= 0,
-       [shSimple.radius, shCards.radius, shPremium.radius].join(","));
+       [shSimple.radius, shMono.radius, shCards.radius, shWide.radius,
+        shPremium.radius].join(","));
+    const themeFonts = themes.map(function (t) { return window.PVPdf.themeFont(t.id); });
+    ok("motywy: 5 różnych krojów i wielkości liter",
+       new Set(themeFonts.map(function (f) { return f.family; })).size === 5 &&
+       new Set(themeFonts.map(function (f) { return f.scale; })).size === 5 &&
+       window.PVPdf.lineHeight("body", "mono") <
+         window.PVPdf.lineHeight("body", "wide") &&
+       window.PVPdf.themeRowHeight("mono") < window.PVPdf.themeRowHeight("wide"),
+       themeFonts.map(function (f) { return f.family + "@" + f.scale; }).join(" | "));
     const themed = {};
     for (const t of themes) {
       const bytes = await window.PVPdf.renderPdf(r, est, optPower, t.id);
@@ -531,11 +555,14 @@
       ok("podgląd: styl " + t.id + " ma stronę A4",
          cv.width === 2480 && cv.height === 3508 && n === 1, "pages=" + n);
     }
+    const pdfSignature = function (bytes) {
+      let hash = bytes.length;
+      for (let i = 0; i < bytes.length; i += 97) hash = (hash * 31 + bytes[i]) >>> 0;
+      return hash + ":" + bytes.length;
+    };
     ok("style dają różne pliki",
-       themed.simple.length !== themed.cards.length &&
-       themed.cards.length !== themed.premium.length &&
-       themed.simple.length !== themed.premium.length,
-       [themed.simple.length, themed.cards.length, themed.premium.length].join(","));
+       new Set(themes.map(function (t) { return pdfSignature(themed[t.id]); })).size === 5,
+       themes.map(function (t) { return pdfSignature(themed[t.id]); }).join(" | "));
 
     // --- dostęp bez opłaty w wersji testowej (Routing w/js/app.js) ----------
     await domReady();
@@ -551,6 +578,11 @@
     ok("Start: 6 ikon-kafli jako przyciski",
        iconCards.length === 6 && iconCards.every(function (b) { return !!b.querySelector("svg"); }),
        String(iconCards.length));
+    ok("Start: kafel BIO",
+       iconCards.some(function (b) {
+         return b.getAttribute("data-path") === "biomasa" &&
+           ((b.querySelector("h3") || {}).textContent || "").trim() === "BIO";
+       }));
     const goButtons = [...document.querySelectorAll('#view button[data-act="go"]')];
     ok("Start: brak powielonych tekstowych przycisków zakładek",
        !document.querySelector("#view .hero-actions") &&
@@ -653,12 +685,12 @@
     ok("OZE pobierz PDF bez błędu",
        (document.querySelector(".toast") || {}).textContent === "PDF 300 DPI pobrany.",
        (document.querySelector(".toast") || {}).textContent);
-    ok("OZE: wybór 3 stylów podglądu/PDF",
+    ok("OZE: wybór 5 stylów podglądu/PDF",
        !!document.querySelector("#f-pdf-theme") &&
-       document.querySelectorAll("#f-pdf-theme option").length === 3 &&
+       document.querySelectorAll("#f-pdf-theme option").length === 5 &&
        Array.prototype.map.call(document.querySelectorAll("#f-pdf-theme option"),
          function (o) { return (o.textContent || "").trim(); }).join(",") ===
-         "Motyw 1,Motyw 2,Motyw 3");
+         "Motyw 1,Motyw 2,Motyw 3,Motyw 4,Motyw 5");
     const ozeOriginalTheme = document.querySelector("#f-pdf-theme").value;
     const ozePixels = {}, ozePdfImages = {};
     for (const t of themes) {
@@ -666,11 +698,11 @@
       ozePixels[t.id] = headerPixel();
       ozePdfImages[t.id] = await capturePdfImage('[data-act="oze-pdf"][data-source="wiatr"]');
     }
-    ok("OZE: 3 motywy dają różny podgląd",
-       new Set(Object.keys(ozePixels).map(function (k) { return ozePixels[k]; })).size === 3,
+    ok("OZE: 5 motywów daje różny podgląd",
+       new Set(Object.keys(ozePixels).map(function (k) { return ozePixels[k]; })).size === 5,
        JSON.stringify(ozePixels));
-    ok("OZE: 3 motywy dają różny obraz w PDF",
-       new Set(Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]); })).size === 3 &&
+    ok("OZE: 5 motywów daje różny obraz w PDF",
+       new Set(Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]); })).size === 5 &&
        Object.keys(ozePdfImages).every(function (k) { return !!ozePdfImages[k]; }),
        Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]).slice(0, 12); }).join(" | "));
     await setTheme(ozeOriginalTheme);
@@ -723,9 +755,9 @@
     ok("Porównaj pobierz PDF bez błędu",
        (document.querySelector(".toast") || {}).textContent === "PDF porównania pobrany.",
        (document.querySelector(".toast") || {}).textContent);
-    ok("Porównaj: wybór 3 stylów podglądu/PDF",
+    ok("Porównaj: wybór 5 stylów podglądu/PDF",
        !!document.querySelector("#f-pdf-theme") &&
-       document.querySelectorAll("#f-pdf-theme option").length === 3);
+       document.querySelectorAll("#f-pdf-theme option").length === 5);
     const paybackCells = Array.prototype.map.call(
        document.querySelectorAll(".compare-table tbody tr td:last-child strong"),
        function (el) { return (el.textContent || "").trim(); });
@@ -742,11 +774,11 @@
       cmpPixels[t.id] = headerPixel();
       cmpPdfImages[t.id] = await capturePdfImage('[data-act="cmp-pdf"]');
     }
-    ok("Porównaj: 3 motywy dają różny podgląd",
-       new Set(Object.keys(cmpPixels).map(function (k) { return cmpPixels[k]; })).size === 3,
+    ok("Porównaj: 5 motywów daje różny podgląd",
+       new Set(Object.keys(cmpPixels).map(function (k) { return cmpPixels[k]; })).size === 5,
        JSON.stringify(cmpPixels));
-    ok("Porównaj: 3 motywy dają różny obraz w PDF",
-       new Set(Object.keys(cmpPdfImages).map(function (k) { return bytesFingerprint(cmpPdfImages[k]); })).size === 3 &&
+    ok("Porównaj: 5 motywów daje różny obraz w PDF",
+       new Set(Object.keys(cmpPdfImages).map(function (k) { return bytesFingerprint(cmpPdfImages[k]); })).size === 5 &&
        Object.keys(cmpPdfImages).every(function (k) { return !!cmpPdfImages[k]; }),
        Object.keys(cmpPdfImages).map(function (k) { return bytesFingerprint(cmpPdfImages[k]).slice(0, 12); }).join(" | "));
     await setTheme(cmpOriginalTheme);
@@ -791,7 +823,7 @@
     const themeSelect = document.querySelector("#f-pdf-theme");
     const themePanel = themeSelect && themeSelect.closest(".panel");
     ok("PV: wybór stylu w panelu Podgląd i PDF",
-       !!themeSelect && themeSelect.querySelectorAll("option").length === 3 &&
+       !!themeSelect && themeSelect.querySelectorAll("option").length === 5 &&
        !!themePanel && (themePanel.textContent || "").indexOf("Podgląd i PDF") >= 0);
     const pvOriginalTheme = themeSelect.value;
     const pvPixels = {}, pvPdfThemes = {};
@@ -800,8 +832,8 @@
       pvPixels[t.id] = headerPixel();
       pvPdfThemes[t.id] = await captureRenderTheme('[data-act="pdf"]');
     }
-    ok("PV: 3 motywy dają różny podgląd",
-       new Set(Object.keys(pvPixels).map(function (k) { return pvPixels[k]; })).size === 3,
+    ok("PV: 5 motywów daje różny podgląd",
+       new Set(Object.keys(pvPixels).map(function (k) { return pvPixels[k]; })).size === 5,
        JSON.stringify(pvPixels));
     ok("PV: PDF używa wybranego motywu",
        themes.every(function (t) { return pvPdfThemes[t.id] === t.id; }),

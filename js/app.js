@@ -181,11 +181,11 @@
     ["wiatr", "Wiatr", "Energetyka wiatrowa"],
     ["woda", "Woda", "Energetyka wodna"],
     ["geotermia", "Geotermia", "Ciepło Ziemi / pompy ciepła"],
-    ["biomasa", "Biomasa", "Biomasa / biogaz / biopłyny"],
+    ["biomasa", "BIO", "Biogaz / biopłyny"],
     ["porownaj", "Porównaj", "Opłacalność wariantów OZE"],
   ];
   const OZE_TAB_IDS = ["wiatr","woda","geotermia","biomasa"];
-  const TITLES = {start:"Start",pv:"Fotowoltaika",wiatr:"Wiatr",woda:"Woda",geotermia:"Geotermia",biomasa:"Biomasa",porownaj:"Porównaj OZE"};
+  const TITLES = {start:"Start",pv:"Fotowoltaika",wiatr:"Wiatr",woda:"Woda",geotermia:"Geotermia",biomasa:"BIO",porownaj:"Porównaj OZE"};
 
   function renderSteps(head) {
     const box = $("#steps");
@@ -222,7 +222,7 @@
       {id:"wiatr", name:"Energetyka wiatrowa", desc:"Kalkulator orientacyjny (moc, wiatr, Cp), energia roczna i CAPEX/OPEX."},
       {id:"woda", name:"Energetyka wodna", desc:"Kalkulator orientacyjny (przepływ, spadek, sprawność) i energia roczna."},
       {id:"geotermia", name:"Geotermia / pompy ciepła", desc:"Kalkulator orientacyjny (zapotrzebowanie, COP), koszt energii i CAPEX/OPEX."},
-      {id:"biomasa", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność) i energia."},
+      {id:"biomasa", name:"BIO", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność) i energia."},
       {id:"porownaj", name:"Porównaj warianty", desc:"Orientacyjna opłacalność: energia, CAPEX/OPEX, przychód i prosty okres zwrotu."}
     ];
     const tabCards = tabs.map(function(t){
@@ -326,7 +326,7 @@
       '<section class="panel"><h2>Wynik — ' + esc(src.name) + '</h2>' + renderOzeResult(src) + '</section>' +
       '<section class="panel"><h3>' + esc(src.formalPath.title) + '</h3><p>' + esc(src.formalPath.summary) + '</p>' +
       '<div class="step-list">' + ozeStepList(src) + '</div></section>' +
-      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 i eksport PDF dla tej zakładki — 3 style do wyboru.</p>' +
+      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 i eksport PDF dla tej zakładki — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="oze-pdf" data-source="' + esc(src.id) + '">Pobierz PDF</button>' +
       '<button class="btn" data-act="oze-preview" data-source="' + esc(src.id) + '">Odśwież podgląd</button></div>' +
@@ -454,7 +454,7 @@
       "</ol></section>" +
       estimatePanel(e) +
       optimizerPanel(o) +
-      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 (300 DPI) i eksport PDF — 3 style do wyboru.</p>' +
+      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 (300 DPI) i eksport PDF — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
       '<button class="btn" data-act="pv-preview">Odśwież podgląd</button></div>' +
@@ -598,7 +598,7 @@
         'Wynik zależy od założeń ceny energii, CAPEX/OPEX i danych wpisanych w zakładkach.</div>'
       : '<div class="note warn"><strong>Brak jednoznacznie opłacalnego wariantu</strong> przy bieżących założeniach. Sprawdź cenę energii, CAPEX/OPEX lub dane wejściowe w zakładkach.</div>';
 
-    return '<div class="page-head"><div><h1>Porównaj warianty OZE</h1><p>Porównanie orientacyjne na podstawie aktualnych danych z zakładek: Fotowoltaika, Wiatr, Woda, Geotermia i Biomasa.</p></div></div>' +
+    return '<div class="page-head"><div><h1>Porównaj warianty OZE</h1><p>Porównanie orientacyjne na podstawie aktualnych danych z zakładek: Fotowoltaika, Wiatr, Woda, Geotermia i BIO.</p></div></div>' +
       '<section class="panel"><h3>Założenia porównania</h3><p class="small muted">To porównanie uproszczone. Nie zastępuje audytu energetycznego, analizy finansowej ani studium wykonalności.</p>' +
       '<div class="form-grid oze-grid">' +
       '<div class="field"><label class="field-label" for="cmp-price">Cena energii / wartość energii [zł/MWh]</label><input id="cmp-price" type="number" min="0" step="10" value="' + esc(String(cmp.pricePlnMwh)) + '"></div>' +
@@ -612,7 +612,7 @@
       '<th>Wariant</th><th>Energia roczna</th><th>CAPEX</th><th>OPEX + paliwo/el.</th><th>Przychód/wartość</th><th>Bilans roczny</th><th>Prosty zwrot</th>' +
       '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
       '<div class="note warn"><strong>Metoda:</strong> Przychód/wartość = energia roczna × cena energii. Bilans roczny = przychód/wartość − OPEX (dla geotermii doliczono koszt energii elektrycznej, dla biomasy koszt paliwa). Prosty zwrot = CAPEX / bilans roczny; gdy bilans ≤ 0, zwrot nie występuje. PV korzysta z mocy z zakładki Fotowoltaika i podanego uzysku kWh/kWp/rok.</div></section>' +
-      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd A4 i eksport porównania do PDF — 3 style do wyboru.</p>' +
+      '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd A4 i eksport porównania do PDF — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="cmp-pdf">Pobierz PDF porównania</button>' +
       '<button class="btn" data-act="cmp-preview">Odśwież podgląd</button></div>' +
@@ -731,11 +731,10 @@
 
   function buildOzePdfCanvases(src) {
     const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
-    const L = window.PVPdf.lineHeights;
     const doc = newReportDoc(
       "Formalność OZE — " + src.name,
       "Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION);
-    const f = doc.f, c = doc.c;
+    const L = doc.line, f = doc.f, c = doc.c;
 
     doc.sectionTitle("Opis źródła", L.h2);
     doc.wrapped(src.description, f.body, c.BODY_INK, MG, W - 2 * MG, L.body);
@@ -748,7 +747,7 @@
       doc.text(row[0], f.body, c.MUTED, MG, doc.y);
       doc.text(fitText(doc, row[1], W - 2 * MG - 520, f.body),
                f.body, c.INK, MG + 520, doc.y);
-      doc.y += 30;
+      doc.y += doc.row + 6;
     });
     doc.y += 12;
 
@@ -794,11 +793,10 @@
 
   function buildComparePdfCanvases(rows) {
     const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
-    const L = window.PVPdf.lineHeights;
     const doc = newReportDoc(
       "Formalność OZE - Porównanie wariantów",
       "Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION);
-    const f = doc.f, c = doc.c;
+    const L = doc.line, f = doc.f, c = doc.c;
 
     doc.sectionTitle("Wniosek orientacyjny", L.h2);
     const best = rows.find(function (row) { return row.recommended; });
@@ -839,7 +837,7 @@
                f.small, c.BODY_INK, cols[3], doc.y);
       doc.text(fitText(doc, M.fmtPayback(row.paybackYears), 150, f.small),
                f.small, row.recommended ? c.BEST_INK : c.BODY_INK, cols[4], doc.y);
-      doc.y += 32;
+      doc.y += doc.row + 8;
     });
     doc.y += 12;
 

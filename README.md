@@ -7,14 +7,14 @@ w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 **Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
 XLSX, dodano szkielet bramki płatności **30 zł przez Przelewy24** do włączenia
 w wersji produkcyjnej. **Obecna publiczna wersja testowa jest odblokowana**:
-wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano osobne zakładki **Fotowoltaika**, **Wiatr**, **Woda**, **Geotermia** i **Biomasa** z kalkulatorami orientacyjnymi oraz checklistami KPK gov.pl; PV pozostaje osobnym modułem głównym. Dodano
+wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano osobne zakładki **Fotowoltaika**, **Wiatr**, **Woda**, **Geotermia** i **BIO** z kalkulatorami orientacyjnymi oraz checklistami KPK gov.pl; PV pozostaje osobnym modułem głównym. Dodano
 też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z mocy
 i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
-(ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
-raportu PDF** (Motyw 1, Motyw 2, Motyw 3) wybierane w panelu „Podgląd i PDF”
+(ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **5 stylów
+raportu PDF** (Motyw 1–5, każdy z inną czcionką i wielkością liter) wybierane w panelu „Podgląd i PDF”
 każdej zakładki. Na zakładce **Start** znajduje się siatka 3 kolumn
-ikon-kafli (panel ze słońcem, turbina, woda, geotermia, biomasa, porównanie)
+ikon-kafli (panel ze słońcem, turbina, woda, geotermia, BIO, porównanie)
 — sama ikona jest przyciskiem otwierającym zakładkę.
 W formularzu **Dane** edytowalne są: miejsce montażu, lokalizacja, moc i powierzchnia.
 Powierzchnię można wpisać w hektarach (ha) albo metrach kwadratowych (m²)
@@ -53,8 +53,8 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
 | Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
-| Styl raportu | **Motyw 1** — biały, ostre kąty; **Motyw 2** — karty z zaokrągleniami; **Motyw 3** — premium z większym promieniem i złotymi akcentami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **5 wybieranych stylów** |
+| Styl raportu | **Motyw 1** — biały, ostre kąty, DejaVu; **Motyw 2** — karty z zaokrągleniami, Georgia; **Motyw 3** — premium z złotymi akcentami, Arial; **Motyw 4** — wąski mono, Courier New, mniejsze litery; **Motyw 5** — Tahoma z większymi literami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
 | Znak wodny | Dwie linie — „BIM ARCHITECTS & CONSULTANTS" i „WERSJA TESTOWA" — na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
 Dane formularza i stan sesji są zapisywane w `localStorage`. Obliczenia
@@ -156,10 +156,10 @@ od razu, bez opłaty).
 ## Inne OZE — osobne zakładki
 
 Każde źródło OZE ma osobną zakładkę (**Fotowoltaika**, **Wiatr**, **Woda**,
-**Geotermia**, **Biomasa**) z kalkulatorem, checklistą, podglądem i PDF.
+**Geotermia**, **BIO**) z kalkulatorem, checklistą, podglądem i PDF.
 
 - **PV** — pełny moduł pozostaje w zakładce **Fotowoltaika** (bez duplikowania).
-- **Wiatr/Woda/Geotermia/Biomasa** — kalkulatory orientacyjne z edytowalnymi założeniami.
+- **Wiatr/Woda/Geotermia/BIO** — kalkulatory orientacyjne z edytowalnymi założeniami.
 - **Ścieżki formalne** — nazwy kroków z wydruków Krajowego Punktu Kontaktowego ds. OZE
   (gov.pl/web/kontaktoze, stan na 24.11.2026); zakres procedury zależy od lokalizacji,
   skali projektu i aktualnych przepisów.
@@ -175,10 +175,10 @@ i w generowanym PDF.
 
 ---
 
-## Trzy style raportu PDF
+## Pięć stylów raportu PDF
 
 W panelu **„Podgląd i PDF"** każdej zakładki (Fotowoltaika, Wiatr, Woda,
-Geotermia, Biomasa, Porównaj) znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
+Geotermia, BIO, Porównaj) znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
 Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
 sekcji i wymiary strony są identyczne:
 
@@ -186,11 +186,14 @@ sekcji i wymiary strony są identyczne:
 | --- | --- |
 | **Motyw 1** | Białe tło bez kolorowego paska, ostre prostokąty (promień 0), cienkie linie pod tytułami sekcji, kwadratowe numerki kroków i pola decyzji tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
 | **Motyw 2** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zaokrąglonymi narożnikami (promień 16) i okrągłymi numerkami. |
-| **Motyw 3** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl. |
+| **Motyw 3** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl, czcionka Arial. |
+| **Motyw 4** | Jasny, wąski układ bez wypełnień kart (promień 4), czcionka Courier New i najmniejsze litery. |
+| **Motyw 5** | Zielony układ z zaokrąglonymi kartami (promień 20), czcionka Tahoma i największe litery. |
 
 Style mają różny „charakter” kształtów: kwadraty i prostokąty z ostrymi kątami,
-karty z zaokrągleniami oraz premium z większym promieniem. Zdefiniowano je jako
-palety i kształty w `js/pdf.js` (`PVPdf.themes`, `PALETTES`, `SHAPES`).
+karty z zaokrągleniami oraz premium z większym promieniem. Każdy motyw ma też
+własną czcionkę i skalę liter. Zdefiniowano je jako palety, kształty i zestawy
+fontów w `js/pdf.js` (`PVPdf.themes`, `PALETTES`, `SHAPES`, `FONT_STACKS`).
 Wszystkie strony mają jawnie wypełnione białe tło, więc Motyw 1 nie zależy
 od ustawień przeglądarki ani programu do PDF.
 
@@ -213,7 +216,7 @@ pv-formalnosc-web/
 ├── js/
 │   ├── model.js        # kalkulator — port 1:1 z model.py + estimate() + optimize()
 │   ├── payment.js      # bramka Przelewy24 (szkielet, bez tajnych danych)
-│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (wycena, ranking, 3 style)
+│   ├── pdf.js          # PDF 1.4 300 DPI + podgląd A4 (wycena, ranking, 5 stylów)
 │   └── app.js          # UI, routing, płatność, optymalizator, eksport PDF
 ├── assets/
 │   ├── DejaVuSans.ttf
@@ -263,12 +266,12 @@ sprawdzają m.in.:
   moduły, które się nie mieszczą, uwagi o zerowym pokryciu i zbyt małej powierzchni,
 - strukturę PDF (nagłówek 1.4, `/DCTDecode`, 2480 × 3508, poprawny `xref`, `%%EOF`,
   sekcję wyceny i ranking optymalizatora bez błędu renderu),
-- wszystkie 3 style PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
-  wyjściowe — czyli style naprawdę się różnią),
+- wszystkie 5 stylów PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
+  wyjściowe, różne czcionki i wielkości liter — czyli style naprawdę się różnią),
 - wymiary podglądu A4 oraz formularz z miejscem montażu, lokalizacją, mocą i powierzchnią,
 - wybór stylu raportu w widoku Wynik/Podgląd.
 
-Wynik: `TOTAL 216 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 225 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
