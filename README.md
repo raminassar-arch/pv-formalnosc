@@ -12,7 +12,7 @@ też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z m
 i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
 (ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
-raportu PDF** (Biały, Karty, Premium) wybierane w panelu „Podgląd i PDF”
+raportu PDF** (Motyw 1, Motyw 2, Motyw 3) wybierane w panelu „Podgląd i PDF”
 każdej zakładki. Na zakładce **Start** znajduje się siatka 3 kolumn
 ikon-kafli (panel ze słońcem, turbina, woda, geotermia, biomasa, porównanie)
 — sama ikona jest przyciskiem otwierającym zakładkę.
@@ -53,7 +53,7 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
 | Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
 | Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
-| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
+| Styl raportu | **Motyw 1** — biały, ostre kąty; **Motyw 2** — karty z zaokrągleniami; **Motyw 3** — premium z większym promieniem i złotymi akcentami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
 | Znak wodny | Dwie linie — „BIM ARCHITECTS & CONSULTANTS" i „WERSJA TESTOWA" — na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
 Dane formularza i stan sesji są zapisywane w `localStorage`. Obliczenia
@@ -181,17 +181,24 @@ Geotermia, Biomasa, Porównaj) znajduje się pole **„Styl raportu"** (zapis w 
 Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
 sekcji i wymiary strony są identyczne:
 
-| Styl | Opis |
+| Opcja w selectcie | Opis |
 | --- | --- |
-| **Biały — prosty i czytelny** | Białe tło bez kolorowego paska, ostre prostokąty (promień 0), cienkie linie pod tytułami sekcji, kwadratowe numerki kroków i pola decyzji tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
-| **Karty — sekcje w ramkach** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zaokrąglonymi narożnikami (promień 16) i okrągłymi numerkami. |
-| **Premium — ciemnogranatowo-złoty** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl. |
+| **Motyw 1** | Białe tło bez kolorowego paska, ostre prostokąty (promień 0), cienkie linie pod tytułami sekcji, kwadratowe numerki kroków i pola decyzji tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
+| **Motyw 2** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zaokrąglonymi narożnikami (promień 16) i okrągłymi numerkami. |
+| **Motyw 3** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl. |
 
 Style mają różny „charakter” kształtów: kwadraty i prostokąty z ostrymi kątami,
 karty z zaokrągleniami oraz premium z większym promieniem. Zdefiniowano je jako
 palety i kształty w `js/pdf.js` (`PVPdf.themes`, `PALETTES`, `SHAPES`).
-Wszystkie strony mają jawnie wypełnione białe tło, więc styl „Biały" nie zależy
+Wszystkie strony mają jawnie wypełnione białe tło, więc Motyw 1 nie zależy
 od ustawień przeglądarki ani programu do PDF.
+
+Interlinia jest zawsze większa od wysokości czcionki, a wysokość kart, ramek
+ostrzeżeń i pól decyzji jest liczona z faktycznej liczby zawiniętych wierszy.
+Dzięki temu napisy się nie nakładają. Gdy treść OZE lub porównania nie mieści
+się na jednej stronie, raport automatycznie przechodzi na kolejną stronę A4
+(z powtórzonym nagłówkiem, stopką i numerem strony). Podgląd A4 pokazuje
+pierwszą stronę tego samego układu, który trafia do PDF.
 
 ---
 

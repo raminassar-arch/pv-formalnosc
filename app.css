@@ -227,8 +227,8 @@ input:focus, select:focus {
 /* --- hero ----------------------------------------------------------------- */
 
 .hero {
-  display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, .8fr);
-  gap: 22px; align-items: stretch; margin-bottom: 20px;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 20px;
 }
 .hero-text {
   background: linear-gradient(145deg, var(--green-deep), var(--green));
@@ -239,14 +239,26 @@ input:focus, select:focus {
 }
 .hero-text h1 { color: #fff; font-size: 1.9rem; }
 .hero-text p { color: #cfe0d2; max-width: 60ch; }
-.hero-card {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
+.hero-contents {
+  margin-top: 22px; padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.22);
 }
-.hero-card h2 { font-size: 1.05rem; }
-.hero-card p { color: var(--muted); margin: 0 0 4px; }
+.hero-contents h2 { color: #fff; font-size: 1.05rem; margin: 0 0 10px; }
+.contents-list {
+  list-style: none; counter-reset: contents;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px; margin: 0; padding: 0;
+}
+.contents-list li {
+  counter-increment: contents;
+  display: flex; align-items: flex-start; gap: 10px;
+  color: #dceade; font-size: .94rem; line-height: 1.35;
+}
+.contents-list li::before {
+  content: counter(contents, decimal-leading-zero);
+  flex: 0 0 auto; color: #9fd0aa; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 .ring {
   --pct: 0;
   width: 92px; height: 92px; border-radius: 50%;
@@ -417,6 +429,7 @@ input:focus, select:focus {
 }
 
 @media (max-width: 600px) {
+  .contents-list { grid-template-columns: 1fr; }
   .start-tab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; }
   .start-tab-card { padding:12px; }
   .start-tab-icon { width:46px; height:46px; }
@@ -481,8 +494,6 @@ input:focus, select:focus {
   background:linear-gradient(145deg, var(--green-deep), var(--green)); color:#fff;
 }
 .start-tab-icon svg { width:38px; height:38px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
-.hero-card .plain-list { margin:10px 0 0; padding-left:18px; color:#dceade; }
-.hero-card .plain-list li { margin:4px 0; }
 .compare-table td,.compare-table th { vertical-align: top; }
 .compare-best { background: rgba(53,122,56,.08); }
 .table-wrap { overflow-x: auto; }

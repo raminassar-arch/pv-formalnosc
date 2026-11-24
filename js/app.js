@@ -236,16 +236,16 @@
       '<div class="hero-text">' +
       '<h1>Formalność OZE</h1>' +
       '<p class="lead">Aplikacja do wstępnej oceny formalności i parametrów dla odnawialnych źródeł energii. Każda technologia ma osobną zakładkę z kalkulatorem, checklistą formalną, podglądem i eksportem PDF.</p>' +
-      '</div>' +
-      '<div class="hero-card"><span class="logo">OZE</span><strong>Co zawiera program</strong>' +
-      '<ul class="plain-list small">' +
+      '<section class="hero-contents" aria-labelledby="hero-contents-title">' +
+      '<h2 id="hero-contents-title">Co zawiera program</h2>' +
+      '<ol class="contents-list">' +
       '<li>5 osobnych zakładek technologii OZE</li>' +
       '<li>Zakładka Porównaj: opłacalność wariantów</li>' +
       '<li>Kalkulatory orientacyjne</li>' +
       '<li>Checklisty KPK gov.pl</li>' +
       '<li>Podgląd A4 i eksport PDF</li>' +
-      '<li>Watermark: wersja testowa</li>' +
-      '</ul></div></section>' +
+      '</ol></section>' +
+      '</div></section>' +
       '<section class="panel"><h2>Zakładki w programie</h2><p class="muted">Wybierz technologię — wynik, podgląd i PDF znajdują się na dole każdej zakładki.</p>' +
       '<div class="start-tab-grid">' + tabCards + '</div></section>' +
       '<section class="panel"><h2>Jak korzystać</h2><ol class="plain-ol">' +
@@ -354,7 +354,8 @@
       '<select id="f-pdf-theme">' +
       window.PVPdf.themes.map(function (t) {
         return '<option value="' + esc(t.id) + '"' +
-          (t.id === project.pdfTheme ? " selected" : "") + ">" + esc(t.name) + "</option>";
+          (t.id === project.pdfTheme ? " selected" : "") + ">" +
+          esc(t.label || t.name) + "</option>";
       }).join("") +
       "</select></label>";
   }
@@ -685,124 +686,188 @@
     return {rows:rows, assumptions:r.assumptions||[], input:input};
   }
 
-  function buildOzePdfCanvas(src) {
-    const PXW = window.PVPdf.constants.PXW, PXH = window.PVPdf.constants.PXH;
-    const W=1240,H=1754,MG=90;
-    const p = previewPalette();
-    const c=document.createElement('canvas'); c.width=PXW; c.height=PXH;
-    const ctx=c.getContext('2d'); ctx.scale(2,2);
-    ctx.fillStyle=p.PAGE_BG; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle=p.PRIMARY; ctx.fillRect(0,0,W,130);
-    if (p.id === "simple") {
-      ctx.strokeStyle=p.RULE; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(0,130); ctx.lineTo(W,130); ctx.stroke();
+  /** Wspólny układ A4 dla OZE i porównania — ten sam silnik co PDF PV. */
+  function newReportDoc(title, subtitle) {
+    const doc = window.PVPdf.createDoc(currentPdfTheme());
+    doc.setFooter([M.AUTHOR_LINE]);
+    doc.header(title, subtitle);
+    doc.y = 165;
+    return doc;
+  }
+
+  function fitText(doc, value, maxWidth, font) {
+    const ctx = doc.ctx;
+    ctx.font = font;
+    let text = String(value === undefined || value === null ? "" : value);
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    while (text.length > 1 && ctx.measureText(text + "…").width > maxWidth) {
+      text = text.slice(0, -1);
     }
-    ctx.fillStyle=p.ON_PRIMARY; ctx.font='bold 34px DejaVu, Arial, sans-serif';
-    ctx.fillText('Formalność OZE — ' + src.name, MG, 52);
-    ctx.font='20px DejaVu, Arial, sans-serif'; ctx.fillStyle=p.HEADER_SUB;
-    ctx.fillText('Wynik orientacyjny · ' + M.todayPl() + ' · wersja ' + M.VERSION, MG, 92);
-    let y=170;
-    ctx.fillStyle=p.CELL; ctx.font='bold 28px DejaVu, Arial, sans-serif';
-    ctx.fillText('Opis źródła', MG, y); y+=36;
-    ctx.font='20px DejaVu, Arial, sans-serif'; ctx.fillStyle=p.BODY_INK;
-    const wrap=(text,x,yy,maxW,lh)=>{ const words=String(text||'').split(/\s+/); let line=''; for(const w of words){ const t=line?line+' '+w:w; if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); yy+=lh; line=w; } else line=t; } if(line){ctx.fillText(line,x,yy); yy+=lh;} return yy; };
-    y=wrap(src.description,MG,y,W-2*MG,28)+8;
-    ctx.fillStyle=p.CELL; ctx.font='bold 28px DejaVu, Arial, sans-serif';
-    ctx.fillText('Wynik kalkulatora (orientacyjny)', MG, y); y+=34;
-    const rep=ozeReportRows(src);
-    ctx.font='20px DejaVu, Arial, sans-serif';
-    rep.rows.forEach(function(rw){ ctx.fillStyle=p.MUTED; ctx.fillText(rw[0],MG,y); ctx.fillStyle=p.INK; ctx.fillText(String(rw[1]),MG+520,y); y+=30; });
-    y+=10; ctx.fillStyle=p.CELL; ctx.font='bold 26px DejaVu, Arial, sans-serif';
-    ctx.fillText('Ścieżka formalna — checklista', MG, y); y+=34;
-    ctx.font='19px DejaVu, Arial, sans-serif';
-    (src.formalPath.steps||[]).slice(0,8).forEach(function(st,i){ ctx.fillStyle=p.INK; const badge=st.status==='ready'?'[gotowe]':'[do potwierdzenia]'; y=wrap((i+1)+'. '+st.name+' '+badge,MG,y,W-2*MG,26); ctx.fillStyle=p.BODY_INK; y=wrap(st.desc,MG+24,y,W-2*MG-24,24)+6; });
-    y+=8; ctx.fillStyle=p.NEED; ctx.font='bold 20px DejaVu, Arial, sans-serif';
-    y=wrap('Ważne: '+M.OZE_DISCLAIMER,MG,Math.min(y,H-170),W-2*MG,24);
-    ctx.fillStyle=p.MUTED; ctx.font='18px DejaVu, Arial, sans-serif';
-    ctx.fillText(M.AUTHOR_LINE, MG, H-50);
-    if (window.PVPdf.watermark && window.PVPdf.drawWatermark) window.PVPdf.drawWatermark(ctx, p.CELL);
-    return c;
+    return text + "…";
+  }
+
+  function pdfImagesFromCanvases(canvases) {
+    const C = window.PVPdf.constants;
+    return canvases.map(function (canvas) {
+      return {
+        bytes: window.PVPdf.dataUrlBytes(canvas.toDataURL("image/jpeg", 0.9)),
+        w: C.PXW, h: C.PXH,
+      };
+    });
+  }
+
+  function drawFirstPage(target, canvases) {
+    const canvas = canvases[0];
+    previewPages = canvases.length;
+    target.width = canvas.width;
+    target.height = canvas.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(canvas, 0, 0);
+  }
+
+  function buildOzePdfCanvases(src) {
+    const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
+    const L = window.PVPdf.lineHeights;
+    const doc = newReportDoc(
+      "Formalność OZE — " + src.name,
+      "Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION);
+    const f = doc.f, c = doc.c;
+
+    doc.sectionTitle("Opis źródła", L.h2);
+    doc.wrapped(src.description, f.body, c.BODY_INK, MG, W - 2 * MG, L.body);
+    doc.y += 12;
+
+    doc.ensure(L.h2 + 40);
+    doc.sectionTitle("Wynik kalkulatora (orientacyjny)", L.h2);
+    ozeReportRows(src).rows.forEach(function (row) {
+      doc.ensure(34);
+      doc.text(row[0], f.body, c.MUTED, MG, doc.y);
+      doc.text(fitText(doc, row[1], W - 2 * MG - 520, f.body),
+               f.body, c.INK, MG + 520, doc.y);
+      doc.y += 30;
+    });
+    doc.y += 12;
+
+    doc.ensure(L.h2 + 40);
+    doc.sectionTitle("Ścieżka formalna — checklista", L.h2);
+    (src.formalPath.steps || []).slice(0, 8).forEach(function (step, i) {
+      const badge = step.status === "ready" ? "[gotowe]" : "[do potwierdzenia]";
+      const title = (i + 1) + ". " + step.name + " " + badge;
+      const titleLines = doc.countLines(title, f.h3, W - 2 * MG - 70);
+      const descLines = doc.countLines(step.desc, f.small, W - 2 * MG - 70);
+      const height = 10 + titleLines * L.h3 + 6 + descLines * L.small + 12;
+      doc.ensure(height + 20);
+      doc.cardRect(doc.y, height);
+      doc.y += 10;
+      doc.wrapped(title, f.h3, c.INK, MG + 44, W - 2 * MG - 70, L.h3);
+      doc.y += 6;
+      doc.wrapped(step.desc, f.small, c.BODY_INK, MG + 44, W - 2 * MG - 70, L.small);
+      doc.y += 12;
+    });
+
+    const disclaimer = "Ważne: " + M.OZE_DISCLAIMER;
+    const discLines = doc.countLines(disclaimer, f.small, W - 2 * MG - 44);
+    const discHeight = 24 + discLines * L.small;
+    doc.ensure(discHeight + 20);
+    doc.box(MG, doc.y, W - 2 * MG, discHeight,
+            c.id === "simple" ? null : c.WARN_BG, c.WARN_LINE, doc.shape.radius);
+    doc.y += 12;
+    doc.wrapped(disclaimer, f.small, c.NEED, MG + 22, W - 2 * MG - 44, L.small);
+    doc.y += 12;
+
+    doc.finish([M.AUTHOR_LINE]);
+    return doc.pages.map(function (page) { return page.canvas; });
   }
 
   async function renderOzePdf(src) {
     if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
-    const c = buildOzePdfCanvas(src);
-    const bytes = window.PVPdf.dataUrlBytes(c.toDataURL('image/jpeg',0.9));
-    return window.PVPdf.buildPdf([{bytes:bytes,w:window.PVPdf.constants.PXW,h:window.PVPdf.constants.PXH}]);
+    return window.PVPdf.buildPdf(pdfImagesFromCanvases(buildOzePdfCanvases(src)));
   }
 
   async function renderOzePdfPreview(src, target) {
     if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
-    const c = buildOzePdfCanvas(src);
-    target.width=c.width; target.height=c.height;
-    target.getContext('2d').clearRect(0,0,c.width,c.height);
-    target.getContext('2d').drawImage(c,0,0);
+    drawFirstPage(target, buildOzePdfCanvases(src));
   }
 
-  function buildComparePdfCanvas(rows) {
-    const PXW = window.PVPdf.constants.PXW, PXH = window.PVPdf.constants.PXH;
-    const W=1240,H=1754,MG=90;
-    const p = previewPalette();
-    const c=document.createElement("canvas"); c.width=PXW; c.height=PXH;
-    const ctx=c.getContext("2d"); ctx.scale(2,2);
-    ctx.fillStyle=p.PAGE_BG; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle=p.PRIMARY; ctx.fillRect(0,0,W,130);
-    if (p.id === "simple") {
-      ctx.strokeStyle=p.RULE; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(0,130); ctx.lineTo(W,130); ctx.stroke();
-    }
-    ctx.fillStyle=p.ON_PRIMARY; ctx.font="bold 34px DejaVu, Arial, sans-serif";
-    ctx.fillText("Formalność OZE - Porównanie wariantów", MG, 52);
-    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle=p.HEADER_SUB;
-    ctx.fillText("Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION, MG, 92);
-    const wrap=(text,x,yy,maxW,lh)=>{ const words=String(text||"").split(/\s+/); let line=""; for(const w of words){ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); yy+=lh; line=w; } else line=t; } if(line){ctx.fillText(line,x,yy); yy+=lh;} return yy; };
-    let y=170;
-    const best = rows.find(function(r){return r.recommended;});
-    ctx.fillStyle=p.CELL; ctx.font="bold 26px DejaVu, Arial, sans-serif";
-    ctx.fillText("Wniosek orientacyjny", MG, y); y+=34;
-    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle=p.BODY_INK;
-    y = wrap(best ? ("Najkorzystniejszy wariant: " + best.name + ", prosty zwrot " + M.fmtPayback(best.paybackYears) + ", bilans roczny " + M.money(best.netPlnYear) + ".") : "Brak jednoznacznie opłacalnego wariantu przy bieżących założeniach.", MG, y, W-2*MG, 28) + 10;
-    ctx.fillStyle=p.CELL; ctx.font="bold 24px DejaVu, Arial, sans-serif";
-    ctx.fillText("Porównanie", MG, y); y+=30;
-    ctx.font="18px DejaVu, Arial, sans-serif";
-    ctx.fillStyle=p.MUTED; ctx.fillText("Wariant", MG, y); ctx.fillText("Energia", MG+360, y); ctx.fillText("CAPEX", MG+500, y); ctx.fillText("Bilans/rok", MG+680, y); ctx.fillText("Zwrot", MG+900, y); y+=10;
-    ctx.strokeStyle=p.RULE; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(MG,y); ctx.lineTo(W-MG,y); ctx.stroke(); y+=24;
-    rows.forEach(function(r){
-      const payback = M.fmtPayback(r.paybackYears);
-      if (r.recommended) { ctx.fillStyle=p.BEST_BG; ctx.fillRect(MG-10,y-20,W-2*MG+20,30); }
-      ctx.fillStyle=p.INK; ctx.fillText(String(r.name).slice(0,34), MG, y);
-      ctx.fillStyle=p.BODY_INK; ctx.fillText(M.fmt(r.energyMwhYear)+" MWh", MG+360, y);
-      ctx.fillText(M.money(r.capexPln), MG+500, y);
-      ctx.fillText(M.money(r.netPlnYear), MG+680, y);
-      ctx.fillStyle = r.recommended ? p.BEST_INK : p.BODY_INK;
-      ctx.fillText(payback, MG+900, y);
-      y += 32;
+  function buildComparePdfCanvases(rows) {
+    const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
+    const L = window.PVPdf.lineHeights;
+    const doc = newReportDoc(
+      "Formalność OZE - Porównanie wariantów",
+      "Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION);
+    const f = doc.f, c = doc.c;
+
+    doc.sectionTitle("Wniosek orientacyjny", L.h2);
+    const best = rows.find(function (row) { return row.recommended; });
+    const verdict = best
+      ? "Najkorzystniejszy wariant: " + best.name + ", prosty zwrot " +
+        M.fmtPayback(best.paybackYears) + ", bilans roczny " +
+        M.money(best.netPlnYear) + "."
+      : "Brak jednoznacznie opłacalnego wariantu przy bieżących założeniach.";
+    doc.ensure(doc.countLines(verdict, f.body, W - 2 * MG) * L.body + 12);
+    doc.wrapped(verdict, f.body, c.BODY_INK, MG, W - 2 * MG, L.body);
+    doc.y += 12;
+
+    doc.ensure(L.h2 + 40);
+    doc.sectionTitle("Porównanie", L.h2);
+    const cols = [MG, MG + 360, MG + 500, MG + 680, MG + 900];
+    const heads = ["Wariant", "Energia", "CAPEX", "Bilans/rok", "Zwrot"];
+    doc.ensure(34);
+    doc.box(MG, doc.y - 4, W - 2 * MG, 24,
+            c.TABLE_HEAD_BG, null, Math.min(8, doc.shape.radius));
+    heads.forEach(function (head, i) {
+      doc.text(head, f.small, c.CELL, cols[i], doc.y);
     });
-    y += 12;
-    ctx.fillStyle=p.NEED; ctx.font="bold 19px DejaVu, Arial, sans-serif";
-    y = wrap("Uwaga: porównanie orientacyjne. Przychód/wartość = energia × cena energii. Bilans = przychód − OPEX (geo: + koszt energii el., biomasa: + koszt paliwa). Prosty zwrot = CAPEX / bilans roczny.", MG, Math.min(y,H-150), W-2*MG, 24);
-    ctx.fillStyle=p.MUTED; ctx.font="18px DejaVu, Arial, sans-serif"; ctx.fillText(M.AUTHOR_LINE, MG, H-50);
-    if (window.PVPdf.watermark && window.PVPdf.drawWatermark) window.PVPdf.drawWatermark(ctx, p.CELL);
-    return c;
+    doc.rule(doc.y + 24);
+    doc.y += 30;
+
+    rows.forEach(function (row) {
+      doc.ensure(36);
+      if (row.recommended) {
+        doc.box(MG - 10, doc.y - 16, W - 2 * MG + 20, 30,
+                c.BEST_BG, null, Math.min(8, doc.shape.radius));
+      }
+      doc.text(fitText(doc, row.name, 340, f.small), f.small, c.INK, cols[0], doc.y);
+      doc.text(fitText(doc, M.fmt(row.energyMwhYear) + " MWh", 130, f.small),
+               f.small, c.BODY_INK, cols[1], doc.y);
+      doc.text(fitText(doc, M.money(row.capexPln), 170, f.small),
+               f.small, c.BODY_INK, cols[2], doc.y);
+      doc.text(fitText(doc, M.money(row.netPlnYear), 210, f.small),
+               f.small, c.BODY_INK, cols[3], doc.y);
+      doc.text(fitText(doc, M.fmtPayback(row.paybackYears), 150, f.small),
+               f.small, row.recommended ? c.BEST_INK : c.BODY_INK, cols[4], doc.y);
+      doc.y += 32;
+    });
+    doc.y += 12;
+
+    const note = "Uwaga: porównanie orientacyjne. Przychód/wartość = energia × " +
+      "cena energii. Bilans = przychód − OPEX (geo: + koszt energii el., " +
+      "biomasa: + koszt paliwa). Prosty zwrot = CAPEX / bilans roczny.";
+    const noteLines = doc.countLines(note, f.small, W - 2 * MG - 44);
+    const noteHeight = 24 + noteLines * L.small;
+    doc.ensure(noteHeight + 20);
+    doc.box(MG, doc.y, W - 2 * MG, noteHeight,
+            c.id === "simple" ? null : c.WARN_BG, c.WARN_LINE, doc.shape.radius);
+    doc.y += 12;
+    doc.wrapped(note, f.small, c.NEED, MG + 22, W - 2 * MG - 44, L.small);
+    doc.y += 12;
+
+    doc.finish([M.AUTHOR_LINE]);
+    return doc.pages.map(function (page) { return page.canvas; });
   }
 
   async function renderComparePdf() {
     if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
-    const rows = collectCompareRows();
-    const c = buildComparePdfCanvas(rows);
-    const bytes = window.PVPdf.dataUrlBytes(c.toDataURL("image/jpeg",0.9));
-    return window.PVPdf.buildPdf([{bytes:bytes,w:window.PVPdf.constants.PXW,h:window.PVPdf.constants.PXH}]);
+    return window.PVPdf.buildPdf(
+      pdfImagesFromCanvases(buildComparePdfCanvases(collectCompareRows())));
   }
 
   async function initComparePreview() {
     const canvas = $("#preview-canvas");
     if (!canvas) return;
     if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
-    const c = buildComparePdfCanvas(collectCompareRows());
-    canvas.width=c.width; canvas.height=c.height;
-    canvas.getContext("2d").clearRect(0,0,c.width,c.height);
-    canvas.getContext("2d").drawImage(c,0,0);
+    drawFirstPage(canvas, buildComparePdfCanvases(collectCompareRows()));
   }
 
   async function doComparePdf() {

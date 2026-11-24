@@ -25,9 +25,9 @@
 
   /** Trzy wyglądy tego samego raportu. Identyczna treść i układ A4. */
   const THEMES = [
-    { id: "simple",  name: "Biały — prosty i czytelny" },
-    { id: "cards",   name: "Karty — sekcje w ramkach" },
-    { id: "premium", name: "Premium — ciemnogranatowo-złoty" },
+    { id: "simple",  label: "Motyw 1", name: "Biały — prosty i czytelny" },
+    { id: "cards",   label: "Motyw 2", name: "Karty — sekcje w ramkach" },
+    { id: "premium", label: "Motyw 3", name: "Premium — ciemnogranatowo-złoty" },
   ];
 
   const PALETTES = {
@@ -79,6 +79,33 @@
   function fontPx(pt) { return Math.max(8, Math.round(pt * 150 / 72)); }
   function fontDef(pt, bold) {
     return `${fontPx(pt)}px "${bold ? "DejaVu-Bold" : "DejaVu"}", sans-serif`;
+  }
+
+  // Interlinia zawsze większa od wysokości czcionki — inaczej wiersze się zlewają.
+  const LINE = { small: 20, sub: 20, body: 22, h3: 24, h2: 26, footer: 20 };
+  const ROW = 24;
+  const CONTENT_TOP = 165;
+  const CONTENT_BOTTOM = H - MARGIN - 40;
+  const FOOTER_WIDTH = W - 2 * MARGIN - 120; // miejsce na numer strony
+  function lineHeight(key) { return LINE[key] || LINE.small; }
+
+  /** Podział tekstu na wiersze przy zadanej czcionce i szerokości. */
+  function wrapParts(ctx, text, font, maxWidth) {
+    ctx.font = font;
+    const parts = [];
+    String(text).split("\n").forEach((para) => {
+      const words = para.split(" ").filter((w) => w.length > 0);
+      if (!words.length) { parts.push(""); return; }
+      let line = "";
+      words.forEach((word) => {
+        const test = line ? line + " " + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          parts.push(line); line = word;
+        } else { line = test; }
+      });
+      if (line) parts.push(line);
+    });
+    return parts.length ? parts : [""];
   }
 
   /** Ścieżka prostokąta z promieniem narożnika (0 = ostre kąty). */
@@ -141,6 +168,7 @@
       h3: fontDef(11, true), body: fontDef(10), small: fontDef(9),
       big: fontDef(18, true), num: fontDef(12, true),
     };
+    this.setFooter([]);
   }
 
   Doc.prototype.newPage = function () {
@@ -154,11 +182,26 @@
     drawWatermark(ctx);
     this.pages.push({ canvas: canvas, ctx: ctx });
     this.ctx = ctx;
-    this.y = MARGIN;
+    this.y = this.headerArgs ? CONTENT_TOP : MARGIN;
+    if (this.headerArgs) this.header(this.headerArgs[0], this.headerArgs[1]);
   };
 
   Doc.prototype.ensure = function (height) {
-    if (this.y + height > H - MARGIN) this.newPage();
+    if (this.y + height > this.contentBottom) this.newPage();
+  };
+
+  /** Rezerwuje miejsce na stopkę przed startem treści — bez nachodzenia na nią. */
+  Doc.prototype.setFooter = function (lines) {
+    const ctx = this.ctx, f = this.f;
+    const list = lines || [];
+    let count = 0;
+    list.forEach(function (line) {
+      count += wrapParts(ctx, line, f.small, FOOTER_WIDTH).length;
+    });
+    const block = count * LINE.footer;
+    this.footerLines = list;
+    this.footerTop = H - MARGIN - block - 8;
+    this.contentBottom = Math.min(CONTENT_BOTTOM, this.footerTop - 24);
   };
 
   Doc.prototype.text = function (value, font, fill, x, y) {
@@ -196,22 +239,7 @@
 
   /** Liczba linii po zawijaniu — do wyliczenia wysokości karty przed rysowaniem. */
   Doc.prototype.countLines = function (text, font, maxWidth) {
-    const ctx = this.ctx;
-    ctx.font = font;
-    let count = 0;
-    String(text).split("\n").forEach((para) => {
-      const words = para.split(" ").filter((w) => w.length > 0);
-      if (!words.length) { count++; return; }
-      let line = "";
-      words.forEach((word) => {
-        const test = line ? line + " " + word : word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-          count++; line = word;
-        } else { line = test; }
-      });
-      if (line) count++;
-    });
-    return Math.max(1, count);
+    return wrapParts(this.ctx, text, font, maxWidth).length;
   };
 
   Doc.prototype.rule = function (y) {
@@ -273,24 +301,75 @@
     this.y += advance;
   };
 
+  /** Nagłówek powtarzany na każdej stronie (również przy podziale na strony). */
+  Doc.prototype.header = function (title, subtitle) {
+    const f = this.f, c = this.c;
+    this.headerArgs = [title, subtitle];
+    if (c.id !== "simple") {
+      this.ctx.fillStyle = c.PRIMARY;
+      this.ctx.fillRect(0, 0, W, 130);
+    }
+    this.text(title, f.title, c.ON_PRIMARY, MARGIN, 26);
+    if (c.id === "premium") {
+      this.ctx.font = f.sub;
+      const pillW = this.ctx.measureText(subtitle).width + 24;
+      this.ctx.fillStyle = c.GOLD;
+      roundedRectPath(this.ctx, MARGIN - 12, 72, pillW, 26, 13);
+      this.ctx.fill();
+      this.text(subtitle, f.sub, c.PRIMARY, MARGIN, 77);
+    } else {
+      this.text(subtitle, f.sub, c.HEADER_SUB, MARGIN, 80);
+    }
+    if (c.id === "simple") this.rule(118);
+  };
+
+  /** Stopka na dole każdej strony; nie współdzieli już ruchomego y treści. */
+  Doc.prototype.finish = function (lines) {
+    const f = this.f, c = this.c;
+    this.setFooter(lines);
+    const list = this.footerLines, top = this.footerTop;
+    this.pages.forEach(function (page, index) {
+      this.ctx = page.ctx;
+      this.rule(top - 14);
+      let fy = top;
+      list.forEach(function (line) {
+        wrapParts(this.ctx, line, f.small, FOOTER_WIDTH).forEach(function (part) {
+          this.text(part, f.small, c.MUTED, MARGIN, fy);
+          fy += LINE.footer;
+        }, this);
+      }, this);
+      if (this.pages.length > 1) {
+        this.ctx.textAlign = "right";
+        this.text(`strona ${index + 1} z ${this.pages.length}`,
+                  f.small, c.MUTED, W - MARGIN, top);
+        this.ctx.textAlign = "left";
+      }
+    }, this);
+    return this.pages.length;
+  };
+
+  /** Karta decyzji — wysokość zależy od liczby wierszy opisu. */
   Doc.prototype.verdictBox = function (x, y, w, need, title, desc) {
     const c = this.c, sh = this.shape, ctx = this.ctx;
-    this.box(x, y, w, 140,
+    const descLines = this.countLines(desc, this.f.small, w - 40);
+    const height = 82 + descLines * LINE.small + 14;
+    this.box(x, y, w, height,
              sh.cardFill ? (need ? c.NEED_BG : c.FREE_BG) : null,
              need ? c.NEED : c.FREE, sh.radius);
     ctx.fillStyle = need ? c.NEED : c.FREE;
     if (sh.radius === 0) {
-      ctx.fillRect(x, y, 8, 140);
+      ctx.fillRect(x, y, 8, height);
     } else {
-      roundedRectPath(ctx, x, y, 12, 140, Math.min(6, sh.radius));
+      roundedRectPath(ctx, x, y, 12, height, Math.min(6, sh.radius));
       ctx.fill();
     }
     this.text(title, this.f.h3, c.INK, x + 22, y + 12);
-    this.text(need ? "TAK" : "NIE", this.f.big, need ? c.NEED : c.FREE, x + 22, y + 38);
+    this.text(need ? "TAK" : "NIE", this.f.big, need ? c.NEED : c.FREE, x + 22, y + 36);
     const saved = this.y;
-    this.y = y + 88;
-    this.wrapped(desc, this.f.small, c.MUTED, x + 22, w - 40, 17);
+    this.y = y + 82;
+    this.wrapped(desc, this.f.small, c.MUTED, x + 22, w - 40, LINE.small);
     this.y = saved;
+    return height;
   };
 
   Doc.prototype.estimateSection = function (e) {
@@ -298,19 +377,20 @@
     const source = e.presetName + " · " + M.COST_SOURCE_LINE;
     const srcLines = this.countLines(source, f.small, W - 2 * MARGIN);
     const noteLines = this.countLines(e.powerNote, f.small, W - 2 * MARGIN);
-    const height = 10 + 28 + srcLines * 16 + 8 + 9 * 24 + 6 + noteLines * 16 + 8;
+    const height = 10 + LINE.h2 + srcLines * LINE.small + 8 +
+                   9 * ROW + 6 + noteLines * LINE.small + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
-    this.sectionTitle("Wycena i czas realizacji", 28);
-    this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, 16);
+    this.sectionTitle("Wycena i czas realizacji", LINE.h2);
+    this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
     this.y += 8;
 
     const row = (label, value, strong) => {
       this.text(label, f.body, c.MUTED, MARGIN, this.y);
       this.text(value, strong ? f.h3 : f.body, strong ? c.CELL : c.INK,
                 MARGIN + 330, this.y);
-      this.y += 24;
+      this.y += ROW;
     };
     row("Liczba paneli (moc i powierzchnia)", e.panels + " szt.");
     row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²");
@@ -323,7 +403,7 @@
     row("Czas realizacji",
         e.days + " dni roboczych (" + e.panelsPerDay + " paneli/dzień)");
     this.y += 6;
-    this.wrapped(e.powerNote, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, 16);
+    this.wrapped(e.powerNote, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
     this.y += 8;
   };
 
@@ -341,19 +421,19 @@
 
     const rec = o.recommended;
     const noteLines = this.countLines(o.note, f.small, W - 2 * MARGIN);
-    const height = 10 + 28 + noteLines * 16 + (rec ? 8 + 32 : 0) +
-                   28 + o.list.length * 24 + 8;
+    const height = 10 + LINE.h2 + noteLines * LINE.small + (rec ? 8 + ROW + 8 : 0) +
+                   ROW + o.list.length * ROW + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
-    this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", 28);
-    this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, 16);
+    this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", LINE.h2);
+    this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.small);
     if (rec) {
       this.y += 8;
       this.text("Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
                 M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl),
                 f.body, c.CELL, MARGIN, this.y);
-      this.y += 32;
+      this.y += ROW + 8;
     }
 
     const cols = [MARGIN, MARGIN + 430, MARGIN + 520, MARGIN + 630, MARGIN + 840];
@@ -365,8 +445,8 @@
     ctx.font = f.small;
     heads.forEach((h, i) => this.text(fit(h, i === 0 ? 415 : 100), f.small,
                                       c.CELL, cols[i], this.y));
-    this.rule(this.y + 21);
-    this.y += 28;
+    this.rule(this.y + 24);
+    this.y += ROW;
 
     o.list.forEach(function (x) {
       const best = rec && x.id === rec.id;
@@ -383,7 +463,7 @@
       this.text(fit(areaText, 100), f.small, c.INK, cols[3], this.y);
       this.text(fit(M.money(x.totalZl), 145), f.small, best ? c.CELL : c.INK,
                 cols[4], this.y);
-      this.y += 24;
+      this.y += ROW;
     }, this);
     this.y += 8;
   };
@@ -393,35 +473,30 @@
     if (!e) e = M.estimate(r.ha, r.kw);
     if (!o) o = M.optimize("both", r.ha, r.kw);
 
-    if (c.id !== "simple") {
-      this.ctx.fillStyle = c.PRIMARY;
-      this.ctx.fillRect(0, 0, W, 130);
-    }
-    this.text("Formalność OZE — raport", f.title,
-              c.ON_PRIMARY, MARGIN, 26);
-    const sub = `Wynik analizy · wersja ${M.VERSION} · ${M.todayPl()}`;
-    if (c.id === "premium") {
-      this.ctx.font = f.sub;
-      const pillW = this.ctx.measureText(sub).width + 24;
-      this.ctx.fillStyle = c.GOLD;
-      roundedRectPath(this.ctx, MARGIN - 12, 72, pillW, 26, 13);
-      this.ctx.fill();
-      this.text(sub, f.sub, c.PRIMARY, MARGIN, 77);
-    } else {
-      this.text(sub, f.sub, c.HEADER_SUB, MARGIN, 80);
-    }
-    if (c.id === "simple") this.rule(118);
+    this.setFooter([M.SOURCE_LINE, M.DISCLAIMER, M.AUTHOR_LINE]);
+    this.header("Formalność OZE — raport",
+                `Wynik analizy · wersja ${M.VERSION} · ${M.todayPl()}`);
+    this.y = CONTENT_TOP;
 
-    this.y = 165;
-    const inputHeight = 10 + 34 + 4 * 28 + 16 + 56 + 12 + 8;
+    const params =
+      e.presetName + " · " + M.fmt(e.options.panelWp) + " Wp · " +
+      M.fmt(e.options.panelAreaM2) + " m² · pokrycie " +
+      M.fmt(e.options.coveragePct) + "% · moduł " +
+      M.money(e.options.modulePriceZl) + "/szt. · BOS " +
+      M.money(e.options.bosPerPanelZl) + "/panel · robocizna " +
+      M.money(e.options.laborPerPanelZl) + "/panel · " +
+      e.options.panelsPerDay + " paneli/dzień";
+    const paramLines = this.countLines(params, f.small, W - 2 * MARGIN);
+    const inputHeight = 10 + LINE.h2 + 4 * ROW + 16 + 20 +
+                        paramLines * LINE.small + 12 + 8;
     this.ensure(inputHeight + 20);
     this.cardRect(this.y, inputHeight);
-    this.sectionTitle("Dane wejściowe", 34);
+    this.sectionTitle("Dane wejściowe", LINE.h2);
 
     const pair = (label, value) => {
       this.text(label, f.body, c.MUTED, MARGIN, this.y);
       this.text(value, f.body, c.INK, MARGIN + 250, this.y);
-      this.y += 28;
+      this.y += ROW;
     };
     pair("Miejsce montażu", r.place_text);
     pair("Lokalizacja", r.location_text);
@@ -431,45 +506,44 @@
     this.text("Parametry stałe (nieedytowalne w formularzu)", f.small, c.MUTED,
               MARGIN, this.y);
     this.y += 20;
-    this.wrapped(
-      e.presetName + " · " + M.fmt(e.options.panelWp) + " Wp · " +
-      M.fmt(e.options.panelAreaM2) + " m² · pokrycie " +
-      M.fmt(e.options.coveragePct) + "% · moduł " +
-      M.money(e.options.modulePriceZl) + "/szt. · BOS " +
-      M.money(e.options.bosPerPanelZl) + "/panel · robocizna " +
-      M.money(e.options.laborPerPanelZl) + "/panel · " +
-      e.options.panelsPerDay + " paneli/dzień",
-      f.small, c.INK, MARGIN, W - 2 * MARGIN, 18);
+    this.wrapped(params, f.small, c.INK, MARGIN, W - 2 * MARGIN, LINE.small);
     this.y += 12;
 
-    this.ensure(160);
     const boxW = (W - 2 * MARGIN - 24) / 2;
-    this.verdictBox(MARGIN, this.y, boxW, r.env, "Decyzja środowiskowa", r.env_desc);
-    this.verdictBox(MARGIN + boxW + 24, this.y, boxW, r.perm,
-                    "Pozwolenie na budowę", r.perm_desc);
-    this.y += 140;
+    const envLines = this.countLines(r.env_desc, f.small, boxW - 40);
+    const permLines = this.countLines(r.perm_desc, f.small, boxW - 40);
+    const verdictHeight = 96 + Math.max(envLines, permLines) * LINE.small;
+    this.ensure(verdictHeight + 20);
+    const envHeight = this.verdictBox(MARGIN, this.y, boxW, r.env,
+                                      "Decyzja środowiskowa", r.env_desc);
+    const permHeight = this.verdictBox(MARGIN + boxW + 24, this.y, boxW, r.perm,
+                                       "Pozwolenie na budowę", r.perm_desc);
+    this.y += Math.max(envHeight, permHeight);
 
-    this.ensure(60);
-    this.sectionTitle(`Ścieżka ${r.path_no}: ${r.path_name}`, 30);
-    this.wrapped(r.path_meta, f.sub, c.MUTED, MARGIN, W - 2 * MARGIN, 20);
+    this.ensure(LINE.h2 + LINE.sub + 20);
+    this.sectionTitle(`Ścieżka ${r.path_no}: ${r.path_name}`, LINE.h2);
+    this.wrapped(r.path_meta, f.sub, c.MUTED, MARGIN, W - 2 * MARGIN, LINE.sub);
     this.y += 10;
 
     if (r.warning) {
+      const lines = this.countLines(r.warning, f.small, W - 2 * MARGIN - 40);
+      const boxHeight = Math.max(58, 24 + lines * LINE.small);
+      this.ensure(boxHeight + 20);
       const saved = this.y;
-      this.y += 12;
-      this.box(MARGIN, saved, W - 2 * MARGIN, 58,
+      this.box(MARGIN, saved, W - 2 * MARGIN, boxHeight,
                c.id === "simple" ? null : c.WARN_BG, c.WARN_LINE, this.shape.radius);
-      this.wrapped(r.warning, f.small, c.INK, MARGIN + 20, W - 2 * MARGIN - 40, 18);
-      this.y = saved + 68;
+      this.y = saved + 12;
+      this.wrapped(r.warning, f.small, c.INK, MARGIN + 20,
+                   W - 2 * MARGIN - 40, LINE.small);
+      this.y = saved + boxHeight + 10;
     }
 
-    this.ensure(36);
-    this.sectionTitle("Kroki w kolejności", 36);
+    this.ensure(LINE.h2 + 20);
+    this.sectionTitle("Kroki w kolejności", LINE.h2);
 
     r.steps.forEach((step, i) => {
-      this.ctx.font = f.small;
       const lines = this.countLines(step.desc, f.small, W - 2 * MARGIN - 70);
-      const descHeight = 60 + 18 * lines;
+      const descHeight = 50 + lines * LINE.small;
       this.ensure(descHeight + 20);
       this.cardRect(this.y, descHeight + 12);
       const cx = MARGIN + 15, cy = this.y + 15, sh = this.shape;
@@ -498,21 +572,16 @@
       const ink = sh.badge === "square" && !sh.cardFill ? c.ACCENT : c.ON_PRIMARY;
       this.text(num, f.num, ink, MARGIN + (30 - nw) / 2, this.y + 2);
       this.text(step.name, f.h3, c.INK, MARGIN + 44, this.y);
-      this.y += 34;
+      this.y += LINE.h3 + 6;
       this.wrapped(step.desc, f.small, c.BODY_INK,
-                   MARGIN + 44, W - 2 * MARGIN - 70, 18);
+                   MARGIN + 44, W - 2 * MARGIN - 70, LINE.small);
       this.y += 16;
     });
 
     this.estimateSection(e);
     this.optimizerSection(o);
 
-    this.ensure(90);
-    this.rule(this.y);
-    this.y += 12;
-    [M.SOURCE_LINE, M.DISCLAIMER, M.AUTHOR_LINE].forEach((line) => {
-      this.wrapped(line, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, 17);
-    });
+    this.finish([M.SOURCE_LINE, M.DISCLAIMER, M.AUTHOR_LINE]);
   };
 
   // --- zapis PDF -----------------------------------------------------------
@@ -619,11 +688,15 @@
     themes: THEMES,
     themePalette: palette,
     themeShape: shape,
+    lineHeight: lineHeight,
+    lineHeights: LINE,
+    createDoc: function (theme) { return new Doc(theme); },
     roundedRectPath: roundedRectPath,
     drawWatermark: drawWatermark,
     watermark: WATERMARK,
     watermarkLines: WATERMARK_LINES,
     defaultTheme: "premium",
-    constants: { W: W, H: H, S: S, PXW: PXW, PXH: PXH, PAGE_W: PAGE_W, PAGE_H: PAGE_H },
+    constants: { W: W, H: H, MARGIN: MARGIN, S: S, PXW: PXW, PXH: PXH,
+                 PAGE_W: PAGE_W, PAGE_H: PAGE_H },
   };
 })(typeof window !== "undefined" ? window : globalThis);

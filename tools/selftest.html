@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=8"></script>
-<script src="../js/payment.js?v=2.0.0i&n=8"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=8"></script>
-<script src="../js/app.js?v=2.0.0i&n=8"></script>
+<script src="../js/model.js?v=2.0.0i&n=9"></script>
+<script src="../js/payment.js?v=2.0.0i&n=9"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=9"></script>
+<script src="../js/app.js?v=2.0.0i&n=9"></script>
 <script>
 (function () {
   "use strict";
@@ -23,6 +23,7 @@
   const lines = [];
   let pass = 0, fail = 0;
   const consoleErrors = [];
+  let lastPdfPageCount = 0;
   const origConsoleError = console.error;
   console.error = function () {
     consoleErrors.push([].slice.call(arguments).join(" "));
@@ -69,6 +70,7 @@
     const orig = pdf.buildPdf;
     let captured = null;
     pdf.buildPdf = function (images) {
+      lastPdfPageCount = images ? images.length : 0;
       const bytes = images && images[0] && images[0].bytes;
       if (bytes && bytes.length) {
         captured = new Uint8Array(bytes);
@@ -473,6 +475,11 @@
        themes.map(function (t) { return t.id; }).join(",") === "simple,cards,premium" &&
        window.PVPdf.defaultTheme === "premium",
        JSON.stringify(themes));
+    ok("style nazywają się Motyw 1, Motyw 2, Motyw 3",
+       themes.map(function (t) { return t.label; }).join(",") === "Motyw 1,Motyw 2,Motyw 3" &&
+       window.PVPdf.lineHeight("small") >= 20 &&
+       window.PVPdf.lineHeight("body") >= 22,
+       themes.map(function (t) { return t.label; }).join(","));
     const shSimple = window.PVPdf.themeShape("simple"),
           shCards = window.PVPdf.themeShape("cards"),
           shPremium = window.PVPdf.themeShape("premium");
@@ -597,7 +604,10 @@
        (document.querySelector(".toast") || {}).textContent);
     ok("OZE: wybór 3 stylów podglądu/PDF",
        !!document.querySelector("#f-pdf-theme") &&
-       document.querySelectorAll("#f-pdf-theme option").length === 3);
+       document.querySelectorAll("#f-pdf-theme option").length === 3 &&
+       Array.prototype.map.call(document.querySelectorAll("#f-pdf-theme option"),
+         function (o) { return (o.textContent || "").trim(); }).join(",") ===
+         "Motyw 1,Motyw 2,Motyw 3");
     const ozeOriginalTheme = document.querySelector("#f-pdf-theme").value;
     const ozePixels = {}, ozePdfImages = {};
     for (const t of themes) {
@@ -613,6 +623,36 @@
        Object.keys(ozePdfImages).every(function (k) { return !!ozePdfImages[k]; }),
        Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]).slice(0, 12); }).join(" | "));
     await setTheme(ozeOriginalTheme);
+
+    // Długie opisy nie mogą się nakładać — muszą przejść na kolejną stronę A4.
+    const originalOzeById = M.ozeById;
+    const longText = " Szczegółowy opis wymagań i procedur sprawdzany w urzędzie " +
+      "gminy oraz z innymi instytucjami, w tym z jednostkami oceny jakości " +
+      "powietrza i administratorami sieci, może być dłuższy niż jedna strona.";
+    M.ozeById = function (id) {
+      const src = originalOzeById.call(M, id);
+      const steps = [];
+      for (let i = 0; i < 8; i++) {
+        steps.push({
+          name: "Etap " + (i + 1) + " — czynności weryfikacyjne",
+          status: i % 2 ? "ready" : "todo",
+          desc: "Należy wykonać czynności " + (i + 1) + longText.repeat(10),
+        });
+      }
+      return Object.assign({}, src, {
+        description: src.description + longText + longText,
+        formalPath: Object.assign({}, src.formalPath, { steps: steps }),
+      });
+    };
+    location.hash = "#/wiatr"; await wait(300);
+    const longOzeBytes = await capturePdfImage(
+      '[data-act="oze-pdf"][data-source="wiatr"]');
+    ok("OZE: długi raport ma wiele stron i bez błędu",
+       lastPdfPageCount >= 2 && lastPdfPageCount <= 8 && !!longOzeBytes,
+       "pages=" + lastPdfPageCount +
+       " bytes=" + (longOzeBytes ? longOzeBytes.length : 0) +
+       " toast=" + ((document.querySelector(".toast") || {}).textContent || ""));
+    M.ozeById = originalOzeById;
 
     location.hash="#/porownaj"; await wait(250);
     ok("Porównaj ma przyciski PDF i podglądu",

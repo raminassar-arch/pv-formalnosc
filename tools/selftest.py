@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
@@ -54,7 +55,8 @@ def main() -> int:
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    profile = Path(os.environ.get("TEMP", ".")) / "pv-formalnosc-web-selftest"
+    # Unikalny profil = świeży cache statycznych assetów przy każdym uruchomieniu.
+    profile = Path(tempfile.mkdtemp(prefix="pv-formalnosc-selftest-"))
     cmd = [
         find_browser(),
         "--headless=new", "--disable-gpu", "--no-first-run", "--no-sandbox",
@@ -69,6 +71,7 @@ def main() -> int:
                               encoding="utf-8", errors="replace")
     finally:
         server.shutdown()
+        shutil.rmtree(profile, ignore_errors=True)
 
     dom = proc.stdout
     match = re.search(r"<pre id=\"out\">(.*?)</pre>", dom, re.S)
