@@ -414,6 +414,7 @@
     await nextTick();
     ok("formularz ma tylko moc i powierzchnię",
        !!document.querySelector("#f-ha") && !!document.querySelector("#f-kw") &&
+       !!document.querySelector("#f-area-unit") && !!document.querySelector("#f-power-unit") &&
        !document.querySelector("#f-place") && !document.querySelector("#f-protected") &&
        !document.querySelector("#f-preset") && !document.querySelector("#f-panelarea") &&
        !document.querySelector("#f-coverage") && !document.querySelector("#f-labor") &&
@@ -487,6 +488,24 @@
     ok("PV: wpisanie 5000 m² daje 0,5 ha",
        (document.querySelector("#view").textContent || "").indexOf("5000 m² (0,5 ha)") >= 0,
        (document.querySelector("#view").textContent || "").slice(0, 120));
+
+    ok("PV: wybór jednostki mocy",
+       !!document.getElementById("f-power-unit") && document.getElementById("f-power-unit").value === "kW");
+    const powerUnit = document.getElementById("f-power-unit");
+    powerUnit.value = "W";
+    powerUnit.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(150);
+    ok("PV: przełączenie mocy na W",
+       !!document.getElementById("f-w") &&
+       Number(document.getElementById("f-w").value) === 6000,
+       (document.getElementById("f-w") || {}).value);
+    document.getElementById("f-w").value = "6500";
+    document.getElementById("f-w").dispatchEvent(new Event("input", { bubbles: true }));
+    document.querySelector('[data-act="pv-scroll-result"]').click();
+    await wait(150);
+    ok("PV: wpisanie 6500 W daje 6,5 kW",
+       (document.querySelector("#view").textContent || "").indexOf("6,5 kW") >= 0,
+       (document.querySelector("#view").textContent || "").slice(0, 160));
 
     location.hash="#/biomasa"; await wait(80);
       ok("UI: strona biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear")); ok("nawigacja ma PV", !!document.querySelector('#steps a[href="#/pv"]'),

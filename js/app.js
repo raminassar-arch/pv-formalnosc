@@ -87,7 +87,7 @@
 
   function emptyProject() {
     return {
-      roof: false, protectedArea: false, ha: 1, areaUnit: "ha", kw: 6,
+      roof: false, protectedArea: false, ha: 1, areaUnit: "ha", kw: 6, powerUnit: "kW",
       est: M.estimateOptions(),
       optMode: "both",
       pdfTheme: window.PVPdf.defaultTheme,
@@ -108,6 +108,7 @@
         ha: numberOr(data.ha, base.ha),
         areaUnit: data.areaUnit === "m2" ? "m2" : "ha",
         kw: numberOr(data.kw, base.kw),
+        powerUnit: data.powerUnit === "W" ? "W" : "kW",
         est: M.estimateOptions(data.est),
         optMode: "both", // dobór z mocy i powierzchni — brak pola do edycji
         pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
@@ -430,7 +431,8 @@
       '<div class="field"><span class="field-label">Lokalizacja</span><span>' + esc(r.location_text) + "</span></div>" +
       '<div class="field"><span class="field-label">Powierzchnia</span><span>' +
       esc(M.fmt(Math.round(r.ha * 10000 * 100) / 100)) + " m² (" + esc(M.fmt(r.ha)) + " ha)</span></div>" +
-      '<div class="field"><span class="field-label">Moc</span><span>' + esc(M.fmt(r.kw)) + " kW</span></div>" +
+      '<div class="field"><span class="field-label">Moc</span><span>' + esc(M.fmt(r.kw)) + " kW (" +
+      esc(M.fmt(Math.round(r.kw * 1000))) + " W)</span></div>" +
       "</div></section>" +
       '<section class="panel"><div class="verdict-grid">' +
       verdictBox(r.env, "Decyzja środowiskowa", r.env_desc) +
@@ -464,6 +466,13 @@
       '<option value="m2"' + (inM2 ? " selected" : "") + ">metry kwadratowe (m²)</option>" +
       '</select><span class="hint">1 ha = 10 000 m².</span></div>';
     const areaValue = inM2 ? Math.round(p.ha * 10000 * 100) / 100 : p.ha;
+    const inW = p.powerUnit === "W";
+    const powerUnitField = '<div class="field"><label class="field-label" for="f-power-unit">Jednostka mocy</label>' +
+      '<select id="f-power-unit">' +
+      '<option value="kW"' + (inW ? "" : " selected") + ">kilowaty (kW)</option>" +
+      '<option value="W"' + (inW ? " selected" : "") + ">waty (W)</option>" +
+      '</select><span class="hint">1 kW = 1000 W.</span></div>';
+    const powerValue = inW ? Math.round(p.kw * 1000 * 100) / 100 : p.kw;
     return '<section class="panel"><h2>Dane instalacji</h2><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span>' +
       '<span class="readonly-value">' + esc(p.roof ? M.PLACE_ROOF : M.PLACE_GROUND) + "</span>" +
@@ -474,7 +483,9 @@
       unitField +
       numField(inM2 ? "f-m2" : "f-ha", inM2 ? "Powierzchnia (m²)" : "Powierzchnia (ha)",
         areaValue, inM2 ? "100" : "0.01", "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
-      numField("f-kw", "Moc deklarowana (kW)", p.kw, "0.1", "Liczba paneli jest dobierana z mocy i powierzchni.") +
+      powerUnitField +
+      numField(inW ? "f-w" : "f-kw", inW ? "Moc deklarowana (W)" : "Moc deklarowana (kW)",
+        powerValue, inW ? "1" : "0.1", "Liczba paneli jest dobierana z mocy i powierzchni.") +
       "</div>" +
       '<div class="row-actions"><button class="btn primary" data-act="pv-scroll-result">Pokaż wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
@@ -784,13 +795,15 @@
 
   /** W formularzu czyta wyłącznie moc i powierzchnię — reszta jest stała. */
   function readForm() {
-    const kw = $("#f-kw");
-    if (!kw) return;
+    const kw = $("#f-kw"), w = $("#f-w");
+    if (!kw && !w) return;
     const m2 = $("#f-m2"), ha = $("#f-ha");
     project.ha = project.areaUnit === "m2" && m2
       ? numberOr(m2.value, 0) / 10000
       : ha ? numberOr(ha.value, 0) : project.ha;
-    project.kw = numberOr(kw.value, 0);
+    project.kw = project.powerUnit === "W" && w
+      ? numberOr(w.value, 0) / 1000
+      : kw ? numberOr(kw.value, 0) : project.kw;
     project.est = M.estimateOptions(project.est);
     saveProject();
   }
@@ -847,7 +860,7 @@
       }
     });
 
-    const numericFields = ["f-ha", "f-m2", "f-kw"];
+    const numericFields = ["f-ha", "f-m2", "f-kw", "f-w"];
     document.addEventListener("change", function (e) {
       if (!e.target) return;
       if (e.target.id === "f-pdf-theme") {
@@ -862,6 +875,14 @@
         if (e.target.value !== "m2" && e.target.value !== "ha") return;
         readForm();
         project.areaUnit = e.target.value;
+        saveProject();
+        render();
+        return;
+      }
+      if (e.target.id === "f-power-unit") {
+        if (e.target.value !== "kW" && e.target.value !== "W") return;
+        readForm();
+        project.powerUnit = e.target.value;
         saveProject();
         render();
       }
