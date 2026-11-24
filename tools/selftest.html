@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i"></script>
-<script src="../js/payment.js?v=2.0.0i"></script>
-<script src="../js/pdf.js?v=2.0.0i"></script>
-<script src="../js/app.js?v=2.0.0i"></script>
+<script src="../js/model.js?v=2.0.0i&n=2"></script>
+<script src="../js/payment.js?v=2.0.0i&n=2"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=2"></script>
+<script src="../js/app.js?v=2.0.0i&n=2"></script>
 <script>
 (function () {
   "use strict";
@@ -419,6 +419,14 @@
        !document.querySelector("#f-preset") && !document.querySelector("#f-panelarea") &&
        !document.querySelector("#f-coverage") && !document.querySelector("#f-labor") &&
        !document.querySelector("#f-opt-mode"));
+    const powerInput = document.querySelector("#f-kw") || document.querySelector("#f-w");
+    const powerField = powerInput ? powerInput.closest(".field") : null;
+    const panelNote = [...document.querySelectorAll("#view p.panel-note")]
+       .find(function (el) { return (el.textContent || "").indexOf("Liczba paneli jest dobierana") >= 0; });
+    ok("Podpowiedź o liczbie paneli jest pod formularzem, nie pod mocą",
+       !!panelNote && !!powerField &&
+       (powerField.compareDocumentPosition(panelNote) & Node.DOCUMENT_POSITION_FOLLOWING) === 4 &&
+       (powerField.textContent || "").indexOf("Liczba paneli jest dobierana") < 0);
     ok("zakładki ukryte: płatność/wynik/podgląd/o programie",
        !document.querySelector('#steps a[href="#/platnosc"]') &&
        !document.querySelector('#steps a[href="#/wynik"]') &&

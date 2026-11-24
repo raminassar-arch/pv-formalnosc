@@ -485,8 +485,9 @@
         areaValue, inM2 ? "100" : "0.01", "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
       powerUnitField +
       numField(inW ? "f-w" : "f-kw", inW ? "Moc deklarowana (W)" : "Moc deklarowana (kW)",
-        powerValue, inW ? "1" : "0.1", "Liczba paneli jest dobierana z mocy i powierzchni.") +
+        powerValue, inW ? "1" : "0.1") +
       "</div>" +
+      '<p class="small muted panel-note">Liczba paneli jest dobierana z mocy i powierzchni.</p>' +
       '<div class="row-actions"><button class="btn primary" data-act="pv-scroll-result">Pokaż wynik</button>' +
       '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
       '<p class="small muted">' + esc(M.THRESHOLDS_LINE) + "</p></section>";
