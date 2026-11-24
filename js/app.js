@@ -91,6 +91,7 @@
       est: M.estimateOptions(),
       optMode: "both",
       pdfTheme: window.PVPdf.defaultTheme,
+      oze: { source: "wiatr", inputs: {} },
     };
   }
 
@@ -109,6 +110,7 @@
         optMode: "both", // dobór z mocy i powierzchni — brak pola do edycji
         pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
           ? data.pdfTheme : window.PVPdf.defaultTheme,
+        oze: (function(){ var o=Object.assign({source:"wiatr",inputs:{}}, data.oze||{}); if(!M.ozeById(o.source)) o.source="wiatr"; o.inputs=o.inputs||{}; return o; })(),
       };
     } catch (err) { return base; }
   }
@@ -149,7 +151,7 @@
   // --- routing -------------------------------------------------------------
 
   const TITLES = {
-    start: "Start", dane: "Dane", wynik: "Wynik", podglad: "Podgląd",
+    start: "Start", dane: "Dane", oze: "Inne OZE", wynik: "Wynik", podglad: "Podgląd",
     platnosc: "Płatność", "o-programie": "O programie",
   };
 
@@ -167,9 +169,10 @@
 
   const STEPS = [
     ["start", "Start", "Wprowadzenie"],
-    ["dane", "Dane", "Parametry instalacji"],
+    ["dane", "Dane PV", "Parametry instalacji"],
+    ["oze", "Inne OZE", "Wiatr, woda, geo, biomasa"],
     ["platnosc", "Płatność", "Dostęp do wyniku · 30 zł"],
-    ["wynik", "Wynik", "Ścieżka formalna"],
+    ["wynik", "Wynik PV", "Ścieżka formalna"],
     ["podglad", "Podgląd", "Strona A4"],
     ["o-programie", "O programie", "Informacje"],
   ];
@@ -196,35 +199,114 @@
   function viewStart() {
     return '<section class="hero">' +
       '<div class="hero-text">' +
-      "<h1>Formalności dla instalacji fotowoltaicznej</h1>" +
+      "<h1>Formalności OZE: PV + inne źródła</h1>" +
       (TEST
-        ? "<p><strong>Wersja testowa — dostęp bez opłaty.</strong> Podaj parametry instalacji " +
-          "i zobacz ścieżkę z gov.pl, listę kroków, liczbę paneli z mocy i powierzchni, " +
-          "koszty, czas realizacji oraz raport PDF 300 DPI.</p>"
-        : "<p>Podaj parametry instalacji, opłać 30 zł przez Przelewy24 i zobacz ścieżkę z gov.pl, " +
-          "listę kroków, liczbę paneli z powierzchni, koszty i czas realizacji oraz raport PDF 300 DPI. Płatność otwiera dostęp do wyniku.</p>") +
+        ? '<p class="lead"><strong>Wersja testowa:</strong> moduł PV działa jak dotychczas, a nowa zakładka <strong>Inne OZE</strong> dodaje sekcje, kalkulatory orientacyjne i szablony ścieżek formalnych dla wiatru, wody, geotermii oraz biomasy/biogazu. Wynik PV, podgląd A4 i raport PDF są dostępne bez opłaty.</p>'
+        : '<p class="lead">Wprowadź dane PV, sprawdź inne źródła OZE, przejdź płatność 30 zł i zobacz wynik. Moduł PV ma pełny raport PDF 300 DPI.</p>') +
       '<div class="hero-actions">' +
-      '<button class="btn primary" data-act="go" data-path="dane">Rozpocznij analizę</button>' +
-      '<button class="btn gold" data-act="go" data-path="platnosc">' +
-      (TEST ? "Wynik i PDF — bez opłaty" : "Płatność · 30 zł") + "</button>" +
-      "</div></div>" +
-      '<div class="hero-card">' +
-      '<span class="badge">' + esc(M.THRESHOLDS_LINE) + "</span>" +
-      "<h2>Co otrzymasz</h2>" +
-      "<p><strong>Ścieżka formalna i wycena</strong></p>" +
-      '<p class="small">Decyzje TAK/NIE, liczba paneli, koszty, czas realizacji ' +
-      (TEST ? "i raport PDF 300 DPI — dostępne bez opłaty (wersja testowa).</p>"
-            : "i raport PDF 300 DPI — dostępne po opłacie 30 zł.</p>") +
-      "</div></section>" +
-      '<section class="panel"><h2>Jak to działa</h2>' +
-      '<p class="small muted">Dane formularza są zapisywane wyłącznie w Twojej przeglądarce ' +
-      (TEST
-        ? "(localStorage). Wersja testowa pokazuje wynik, podgląd i PDF bez płatności. " +
-          "Podgląd i PDF powstają lokalnie, bez drukarki i bez serwera.</p>"
-        : "(localStorage). Po ich wprowadzeniu następuje płatność 30 zł w Przelewy24 — dopiero " +
-          "po jej potwierdzeniu pokazywany jest wynik. Podgląd i PDF powstają lokalnie, bez drukarki " +
-          "i bez serwera.</p>") +
-      '<p class="small">' + esc(M.DISCLAIMER) + "</p></section>";
+      '<button class="btn gold" data-act="go" data-path="dane">Kalkulator PV</button>' +
+      '<button class="btn" data-act="go" data-path="oze">Inne OZE</button>' +
+      '<a class="btn ghost" href="#/o-programie">O programie</a></div></div>' +
+      '<div class="hero-card"><span class="logo">OZE</span><strong>Nowa zakładka</strong>' +
+      '<p>Wiatr · Woda · Geotermia · Biomasa/Biogaz</p></div></section>' +
+      '<div class="card-grid">' +
+      card("PV — pełny moduł", "Istniejący kalkulator PV, ścieżka formalna, wycena, optymalizator i raport PDF pozostają bez zmian merytorycznych.") +
+      card("Inne OZE", "Nowe sekcje i kalkulatory orientacyjne dla wiatru, wody, geotermii oraz biomasy/biogazu.") +
+      card("Ścieżki formalne", "Szablony checklist do potwierdzenia w źródłach urzędowych — bez niezweryfikowanych progów prawnych.") +
+      card("Źródła i disclaimery", "Karty oparte o gov.pl + materiały pomocnicze BGK; każdy wynik wymaga potwierdzenia przed realizacją.") +
+      '</div>' +
+      '<section class="panel"><h2>Jak to działa</h2><ol class="plain-ol">' +
+      '<li><strong>Dane PV</strong> — pełny kalkulator i ścieżka formalna fotowoltaiki.</li>' +
+      '<li><strong>Inne OZE</strong> — wybierz źródło, policz orientacyjny wynik i przejrzyj checklistę formalną.</li>' +
+      (TEST ? '<li><strong>Wynik PV</strong> — wersja testowa pokazuje wynik PV bez opłaty; OZE jest dostępne informacyjnie.</li>'
+            : '<li><strong>Płatność/Wynik PV</strong> — płatność odblokowuje pełny wynik PV i PDF.</li>') +
+      '</ol></section>';
+  }
+
+  function ozeInput(sourceId) {
+    const src = M.ozeById(sourceId);
+    const saved = (project.oze && project.oze.inputs && project.oze.inputs[sourceId]) || {};
+    return Object.assign(M.ozeDefaultInput(sourceId), saved);
+  }
+
+  function readOzeForm() {
+    const src = M.ozeById(project.oze.source);
+    if (!src.calculator || !src.calculator.fields) return;
+    const inp = Object.assign({}, ozeInput(src.id));
+    src.calculator.fields.forEach(function (f) {
+      const el = document.getElementById("oze-" + f.key);
+      if (el) inp[f.key] = numberOr(el.value, inp[f.key]);
+    });
+    project.oze.inputs[src.id] = inp;
+    saveProject();
+  }
+
+  function renderOzeResult(src) {
+    if (!src.calculator || src.calculator.kind === "link") {
+      return '<div class="oze-result muted">Ten moduł ma pełny kalkulator w zakładce <a href="#/dane">Dane PV</a>.</div>';
+    }
+    const input = ozeInput(src.id);
+    const r = M.ozeCalculate(src.id, input) || {};
+    let rows = [];
+    if (src.id === "wiatr") {
+      rows = [["Moc z wiatru (orient.)", M.fmt(r.powerFromWindKw) + " kW"], ["Energia roczna", M.fmt(r.energyMwhYear) + " MWh/rok"], ["Powierzchnia wirnika", M.fmt(r.areaM2) + " m²"], ["CAPEX orient.", M.money(r.capexPln)], ["OPEX roczny orient.", M.money(r.opexPlnYear)]];
+    } else if (src.id === "woda") {
+      rows = [["Moc elektryczna (orient.)", M.fmt(r.powerKw) + " kW"], ["Energia roczna", M.fmt(r.energyMwhYear) + " MWh/rok"], ["Przepływ", M.fmt(r.flowM3s) + " m³/s"], ["CAPEX orient.", M.money(r.capexPln)], ["OPEX roczny orient.", M.money(r.opexPlnYear)]];
+    } else if (src.id === "geotermia") {
+      rows = [["Ciepło roczne", M.fmt(r.heatMwhYear) + " MWh/rok"], ["Energia el. do napędu", M.fmt(r.electricityMwhYear) + " MWh/rok"], ["Koszt energii el.", M.money(r.electricityCostPlnYear) + "/rok"], ["CAPEX orient.", M.money(r.capexPln)], ["OPEX roczny orient.", M.money(r.opexPlnYear)]];
+    } else if (src.id === "biomasa") {
+      rows = [["Energia użyteczna", M.fmt(r.energyMwhYear) + " MWh/rok"], ["Średnia moc", M.fmt(r.avgPowerKw) + " kW"], ["Koszt paliwa", M.money(r.fuelCostPlnYear) + "/rok"], ["CAPEX orient.", M.money(r.capexPln)], ["OPEX roczny orient.", M.money(r.opexPlnYear)]];
+    }
+    return '<div class="oze-result">' +
+      '<div class="kpi-row">' + rows.slice(0,3).map(function (x) { return '<div class="kpi"><span>' + esc(x[0]) + '</span><strong>' + esc(x[1]) + '</strong></div>'; }).join("") + '</div>' +
+      '<table class="data-table"><tbody>' + rows.map(function (x) { return '<tr><th>' + esc(x[0]) + '</th><td>' + esc(x[1]) + '</td></tr>'; }).join("") + '</tbody></table>' +
+      '<div class="note warn"><strong>Założenia orientacyjne:</strong><ul>' + (r.assumptions||[]).map(function(a){return '<li>'+esc(a)+'</li>';}).join("") + '</ul></div>' +
+      '</div>';
+  }
+
+  function viewOze() {
+    const src = M.ozeById(project.oze && project.oze.source);
+    project.oze.source = src.id;
+    const input = ozeInput(src.id);
+    const cards = M.OZE_SOURCES.map(function (s) {
+      const active = s.id === src.id;
+      return '<button class="oze-card' + (active ? ' active' : '') + '" data-act="oze-source" data-source="' + esc(s.id) + '">' +
+        '<span class="oze-dot" style="background:' + esc(s.color) + '"></span>' +
+        '<strong>' + esc(s.name) + '</strong><span>' + esc(s.short) + '</span></button>';
+    }).join("");
+    const govPoints = (src.govPoints || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join("");
+    let calcHtml = '';
+    if (src.calculator && src.calculator.kind === 'link') {
+      calcHtml = '<div class="panel"><h3>Kalkulator</h3><p>Pełny kalkulator i ścieżka formalna PV są w głównym module.</p><a class="btn gold" href="#/dane">Przejdź do Dane PV</a></div>';
+    } else if (src.calculator) {
+      const fields = src.calculator.fields.map(function (f) {
+        const val = input[f.key];
+        return '<div class="field"><label class="field-label" for="oze-' + esc(f.key) + '">' + esc(f.label) + '</label>' +
+          '<input id="oze-' + esc(f.key) + '" type="number" inputmode="decimal" step="' + esc(String(f.step||0.1)) + '" min="' + esc(String(f.min==null?0:f.min)) + '"' + (f.max!=null?' max="'+esc(String(f.max))+'"':'') + ' value="' + esc(String(val==null?"":val)) + '">' +
+          '</div>';
+      }).join("");
+      calcHtml = '<div class="panel"><h3>Kalkulator orientacyjny</h3><div class="form-grid oze-grid">' + fields + '</div>' +
+        '<div class="row-actions"><button class="btn" data-act="oze-calc">Przelicz</button><button class="btn ghost" data-act="oze-reset">Przywróć domyślne</button></div>' +
+        renderOzeResult(src) + '</div>';
+    }
+    const steps = (src.formalPath.steps || []).map(function (st, i) {
+      const badge = st.status === 'ready' ? '<span class="badge ok">gotowe</span>' : '<span class="badge warn">do potwierdzenia</span>';
+      return '<div class="step-card"><div class="step-no">' + (i+1) + '</div><div class="step-body"><h4>' + esc(st.name) + ' ' + badge + '</h4><p>' + esc(st.desc) + '</p>' +
+        (st.sourceHint ? '<p class="small muted">Źródło/weryfikacja: ' + esc(st.sourceHint) + '</p>' : '') + '</div></div>';
+    }).join("");
+    const sources = (src.formalPath.sources || []).map(function (s) {
+      return '<li><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a>' + (s.date ? ' <span class="muted">(' + esc(s.date) + ')</span>' : '') + (s.note ? '<div class="small muted">' + esc(s.note) + '</div>' : '') + '</li>';
+    }).join("");
+    return '<div class="page-head"><div><h1>Inne odnawialne źródła energii</h1>' +
+      '<p>Nowa zakładka: sekcje źródłowe, kalkulatory orientacyjne i szablony ścieżek formalnych. Moduł PV pozostaje osobny i bez zmian.</p></div></div>' +
+      '<section class="panel"><div class="oze-cards">' + cards + '</div></section>' +
+      '<section class="panel"><h2>' + esc(src.name) + '</h2><p>' + esc(src.description) + '</p>' +
+      '<div class="note"><strong>Zakres wg gov.pl (opisowo):</strong><ul>' + govPoints + '</ul></div>' +
+      '<div class="note warn"><strong>Ważne:</strong> ' + esc(M.OZE_DISCLAIMER) + '</div></section>' +
+      calcHtml +
+      '<section class="panel"><h3>' + esc(src.formalPath.title) + '</h3><p>' + esc(src.formalPath.summary) + '</p>' +
+      '<div class="step-list">' + steps + '</div>' +
+      '<h4>Źródła do weryfikacji</h4><ul class="plain-list">' + sources + '</ul></section>';
   }
 
   function numField(id, label, value, step, hint) {
@@ -500,6 +582,7 @@
 
     let html = "";
     if (head === "dane") html = viewDane();
+    else if (head === "oze") html = viewOze();
     else if (head === "wynik") html = viewWynik();
     else if (head === "podglad") html = viewPodglad();
     else if (head === "platnosc") html = viewPlatnosc();
@@ -647,6 +730,17 @@
       else if (act === "pay-open") openPayment();
       else if (act === "pay-confirm") confirmAndShowResult();
       else if (act === "pdf") doPdf();
+      else if (act === "oze-source") {
+        project.oze.source = btn.getAttribute("data-source") || "wiatr";
+        if (!M.ozeById(project.oze.source)) project.oze.source = "wiatr";
+        saveProject(); render();
+      } else if (act === "oze-calc") {
+        readOzeForm(); render(); toast("Kalkulator OZE przeliczony (wynik orientacyjny).", "ok");
+      } else if (act === "oze-reset") {
+        const id = project.oze.source;
+        project.oze.inputs[id] = M.ozeDefaultInput(id); saveProject(); render();
+        toast("Przywrócono domyślne wartości kalkulatora.", "ok");
+      }
     });
 
     const numericFields = ["f-ha", "f-kw"];
@@ -662,7 +756,9 @@
       }
     });
     document.addEventListener("input", function (e) {
-      if (e.target && numericFields.indexOf(e.target.id) >= 0) readForm();
+      if (!e.target) return;
+      if (numericFields.indexOf(e.target.id) >= 0) { readForm(); return; }
+      if (String(e.target.id || "").indexOf("oze-") === 0) readOzeForm();
     });
 
     window.addEventListener("hashchange", render);

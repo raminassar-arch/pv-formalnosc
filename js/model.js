@@ -398,27 +398,300 @@
     };
   }
 
+
+  // --------------------------------------------------------------------------
+  // OZE — inne odnawialne źródła energii (zakładka informacyjno-kalkulatorowa)
+  // --------------------------------------------------------------------------
+  // Zakres kart opisowych zgodny z: gov.pl/web/edukacja-ekologiczna/
+  // odnawialne-zrodla-energii-czym-sa-i-co-nalezy-o-nich-wiedziec (26.07.2022).
+  // Kalkulatory i ścieżki formalne są ORIENTACYJNE. Nie kodujemy niezweryfikowanych
+  // progów prawnych — elementy wymagające potwierdzenia są jawnie oznaczone.
+
+  const OZE_DISCLAIMER =
+    "Informacje mają charakter orientacyjny i edukacyjny. Nie stanowią porady prawnej, " +
+    "projektowej ani decyzji administracyjnej. Przed realizacją potwierdź wymagania w " +
+    "właściwych źródłach (gov.pl, biznes.gov.pl, URE, GDOŚ/Wody Polskie, gmina/starostwo) " +
+    "oraz aktualnych przepisach.";
+
+  const OZE_GOV_SOURCE = {
+    label: "gov.pl — Edukacja ekologiczna: Odnawialne źródła energii. Czym są i co należy o nich wiedzieć?",
+    url: "https://www.gov.pl/web/edukacja-ekologiczna/odnawialne-zrodla-energii-czym-sa-i-co-nalezy-o-nich-wiedziec",
+    date: "26.07.2022",
+    note: "Źródło opisowe; cytuje ustawę z 20.02.2015 r. o odnawialnych źródłach energii (Dz.U. 2015 poz. 478)."
+  };
+
+  const OZE_BGK_SOURCE = {
+    label: "BGK — Przewodnik do sporządzania Analizy Wykonalności (projekty OZE), wrzesień 2024",
+    url: "https://www.bgk.pl/files/public/Fundusze_Europejskie_dla_regionow/Przewodnik_do_analizy_wykonalnosci_OZE.pdf",
+    date: "09.2024",
+    note: "Materiał pomocniczy dla analizy wykonalności; nie zastępuje przepisów ani indywidualnej decyzji organu."
+  };
+
+  function ozeStep(name, desc, status, sourceHint) {
+    return { name: name, desc: desc, status: status || "verify", sourceHint: sourceHint || "" };
+  }
+
+  const OZE_SOURCES = [
+    {
+      id: "pv",
+      name: "Energetyka słoneczna (PV)",
+      short: "PV",
+      color: "#c8a24a",
+      description: "Energia promieniowania słonecznego zamieniana na energię elektryczną lub ciepło. W tej aplikacji pełny moduł dotyczy instalacji fotowoltaicznej.",
+      govPoints: [
+        "Energia słoneczna jest wykorzystywana m.in. przez kolektory słoneczne i panele fotowoltaiczne.",
+        "Jest dostępna powszechnie, ale zależy od nasłonecznienia, pory dnia i roku."
+      ],
+      calculator: { kind: "link", label: "Otwórz kalkulator PV", href: "#/dane" },
+      formalPath: {
+        title: "Ścieżka formalna PV — moduł główny",
+        summary: "Pełna ścieżka formalna PV jest już dostępna w zakładkach Dane/Wynik/Podgląd.",
+        steps: [
+          ozeStep("Użyj głównego modułu PV", "Przejdź do Dane, wpisz moc i powierzchnię, a następnie wygeneruj wynik i raport PDF.", "ready", "Moduł PV Formalność w tej aplikacji")
+        ],
+        sources: [OZE_GOV_SOURCE]
+      }
+    },
+    {
+      id: "wiatr",
+      name: "Energetyka wiatrowa",
+      short: "Wiatr",
+      color: "#2f7f98",
+      description: "Energia kinetyczna wiatru przetwarzana na energię elektryczną przez turbiny wiatrowe. Skala projektów może obejmować mikroinstalacje, instalacje przydomowe lub farmy wiatrowe.",
+      govPoints: [
+        "Energetyka wiatrowa wykorzystuje siłę wiatru do napędu turbin.",
+        "Lokalizacja zależy od warunków wiatrowych i uwarunkowań środowiskowych/przestrzennych."
+      ],
+      calculator: {
+        kind: "wind",
+        defaults: { powerKw: 10, diameterM: 5.5, windMs: 6.0, cp: 0.35, efficiency: 0.9, hoursYear: 2600, capexPlnKw: 9000, opexPct: 2.5 },
+        fields: [
+          { key: "powerKw", label: "Moc znamionowa turbiny [kW]", min: 0, step: 0.1 },
+          { key: "diameterM", label: "Średnica wirnika [m]", min: 0, step: 0.1 },
+          { key: "windMs", label: "Średnia prędkość wiatru [m/s]", min: 0, step: 0.1 },
+          { key: "cp", label: "Współczynnik mocy Cp (0–0,59)", min: 0, max: 0.59, step: 0.01 },
+          { key: "efficiency", label: "Sprawność układu [0–1]", min: 0, max: 1, step: 0.01 },
+          { key: "hoursYear", label: "Równoważne godziny pracy [h/rok]", min: 0, step: 1 },
+          { key: "capexPlnKw", label: "CAPEX orientacyjny [zł/kW]", min: 0, step: 100 },
+          { key: "opexPct", label: "OPEX roczny [% CAPEX]", min: 0, step: 0.1 }
+        ]
+      },
+      formalPath: {
+        title: "Ścieżka formalna — energetyka wiatrowa (szkielet do potwierdzenia)",
+        summary: "Lista kontrolna obejmuje typowe obszary formalne. Konkretne progi, wymagane decyzje i wyjątki należy potwierdzić dla lokalizacji i mocy.",
+        steps: [
+          ozeStep("Wstępna ocena lokalizacji i zasobów wiatru", "Sprawdź warunki wiatrowe, ograniczenia terenowe, sąsiedztwo zabudowy, infrastrukturę i dostęp do sieci.", "verify", "Analiza lokalizacji; prawo miejscowe/środowiskowe — do potwierdzenia"),
+          ozeStep("Ustalenie statusu planistycznego", "Sprawdź MPZP/warunki zabudowy lub inne decyzje planistyczne. Dla energetyki wiatrowej często występują szczególne ograniczenia lokalizacyjne — wymagają potwierdzenia w aktualnych przepisach.", "verify", "Planowanie przestrzenne; przepisy szczególne — do potwierdzenia"),
+          ozeStep("Przyłączenie do sieci / rozliczenie energii", "Ustal tryb przyłączenia, moc przyłączeniową, warunki techniczne lub procedurę dla mikro/małej instalacji.", "verify", "Operator sieci, Prawo energetyczne, ustawa OZE — do potwierdzenia"),
+          ozeStep("Pozwolenia/zgłoszenia budowlane i środowiskowe", "Zweryfikuj, czy wymagane jest pozwolenie na budowę, zgłoszenie, ocena oddziaływania na środowisko lub inne decyzje. Zależy od skali i lokalizacji.", "verify", "Prawo budowlane, procedura OOŚ — do potwierdzenia"),
+          ozeStep("Koncesja/rejestr/wytwórca", "Potwierdź, czy działalność wymaga koncesji, wpisu do rejestru, czy korzysta ze zwolnienia — zależnie od mocy i modelu.", "verify", "Prawo energetyczne / URE / ustawa OZE — do potwierdzenia"),
+          ozeStep("Odbiory, eksploatacja i BHP", "Zapewnij odbiory techniczne, wymagania serwisowe, bezpieczeństwo i dokumentację powykonawczą.", "verify", "Przepisy techniczne, BHP, wymagania producenta/OSD")
+        ],
+        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+      }
+    },
+    {
+      id: "woda",
+      name: "Energetyka wodna",
+      short: "Woda",
+      color: "#1f6d8c",
+      description: "Energia przepływu lub spadku wody wykorzystywana w elektrowniach wodnych. Wymaga szczególnej oceny hydrologicznej i wodnoprawnej.",
+      govPoints: [
+        "Energetyka wodna wykorzystuje energię płynącej wody do produkcji energii elektrycznej.",
+        "Małe elektrownie wodne mogą być lokalnym źródłem energii, ale wymagają oceny wpływu na środowisko wodne."
+      ],
+      calculator: {
+        kind: "hydro",
+        defaults: { flowLps: 250, headM: 8, efficiency: 0.7, hoursYear: 4500, capexPlnKw: 12000, opexPct: 2.0 },
+        fields: [
+          { key: "flowLps", label: "Przepływ [l/s]", min: 0, step: 1 },
+          { key: "headM", label: "Spadek [m]", min: 0, step: 0.1 },
+          { key: "efficiency", label: "Sprawność całkowita [0–1]", min: 0, max: 1, step: 0.01 },
+          { key: "hoursYear", label: "Godziny pracy [h/rok]", min: 0, step: 1 },
+          { key: "capexPlnKw", label: "CAPEX orientacyjny [zł/kW]", min: 0, step: 100 },
+          { key: "opexPct", label: "OPEX roczny [% CAPEX]", min: 0, step: 0.1 }
+        ]
+      },
+      formalPath: {
+        title: "Ścieżka formalna — energetyka wodna (szkielet do potwierdzenia)",
+        summary: "Projekty wodne zwykle wymagają analizy wodnoprawnej i środowiskowej. Poniżej szkielet kontrolny — bez twardych progów.",
+        steps: [
+          ozeStep("Ocena hydrologiczna i lokalizacyjna", "Sprawdź przepływ, spadek, zmienność sezonową, dostęp do cieku, ograniczenia środowiskowe i możliwość przyłączenia.", "verify", "Dane hydrologiczne, analiza lokalna — do potwierdzenia"),
+          ozeStep("Kwestie wodnoprawne", "Zweryfikuj, czy wymagane jest pozwolenie wodnoprawne, zgłoszenie wodnoprawne lub inne decyzje. Zakres zależy od rodzaju robót i oddziaływania.", "verify", "Prawo wodne / Wody Polskie — do potwierdzenia"),
+          ozeStep("Środowisko i tereny chronione", "Sprawdź konieczność OOŚ, inwentaryzacji przyrodniczej, decyzji dot. terenów chronionych i przepływu nienaruszalnego.", "verify", "OOŚ, RDOŚ/GDOŚ, Wody Polskie — do potwierdzenia"),
+          ozeStep("Planowanie przestrzenne i prawo budowlane", "Ustal MPZP/WZ lub inne warunki oraz wymagany tryb budowlany dla urządzeń, budowli i infrastruktury.", "verify", "Planowanie przestrzenne / Prawo budowlane — do potwierdzenia"),
+          ozeStep("Przyłączenie, koncesja/rejestr", "Potwierdź warunki przyłączenia do sieci i status wytwórcy (koncesja, rejestr, zwolnienie) w zależności od mocy i modelu sprzedaży.", "verify", "Prawo energetyczne / URE / OSD — do potwierdzenia"),
+          ozeStep("Eksploatacja i monitoring", "Ustal obowiązki eksploatacyjne, monitoring hydrologiczny/środowiskowy i serwis.", "verify", "Decyzje administracyjne, wymagania techniczne — do potwierdzenia")
+        ],
+        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+      }
+    },
+    {
+      id: "geotermia",
+      name: "Energetyka geotermalna / pompy ciepła",
+      short: "Geo",
+      color: "#7a4f2a",
+      description: "Wykorzystanie ciepła Ziemi: od płytkich instalacji z pompami ciepła po głęboką geotermię. Formalności zależą od skali, głębokości i sposobu korzystania z wód/zasobów.",
+      govPoints: [
+        "Geotermia wykorzystuje ciepło wnętrza Ziemi, m.in. wody geotermalne i gruntowe.",
+        "Może służyć do ogrzewania, ciepłej wody użytkowej lub produkcji energii elektrycznej w odpowiednich warunkach."
+      ],
+      calculator: {
+        kind: "geo",
+        defaults: { heatDemandKw: 12, cop: 4.0, hoursSeason: 2000, electricityPlnMwh: 900, capexPlnKw: 4500, opexPct: 1.5 },
+        fields: [
+          { key: "heatDemandKw", label: "Zapotrzebowanie na ciepło [kW]", min: 0, step: 0.1 },
+          { key: "cop", label: "COP/SCOP [–]", min: 0.1, step: 0.1 },
+          { key: "hoursSeason", label: "Godziny pracy sezonowej [h/rok]", min: 0, step: 1 },
+          { key: "electricityPlnMwh", label: "Cena energii el. [zł/MWh]", min: 0, step: 10 },
+          { key: "capexPlnKw", label: "CAPEX orientacyjny [zł/kW ciepła]", min: 0, step: 100 },
+          { key: "opexPct", label: "OPEX roczny [% CAPEX]", min: 0, step: 0.1 }
+        ]
+      },
+      formalPath: {
+        title: "Ścieżka formalna — geotermia / pompy ciepła (szkielet do potwierdzenia)",
+        summary: "Wymagania mocno zależą od technologii (gruntowa/powietrzna/wodna/głęboka geotermia). Potwierdź wymagania dla konkretnego przypadku.",
+        steps: [
+          ozeStep("Dobór technologii i analiza gruntu/zasobu", "Ustal, czy to pompa ciepła, odwierty, wymiennik gruntowy czy głęboka geotermia. Zweryfikuj warunki geologiczne i przestrzeń montażu.", "verify", "Projekt techniczny, warunki geologiczne — do potwierdzenia"),
+          ozeStep("Wymagania wodnoprawne/geologiczne", "Dla odwiertów, ujęć wód lub głębokiej geotermii mogą być wymagane decyzje wodnoprawne/geologiczne. Zakres potwierdź przed realizacją.", "verify", "Prawo geologiczne i górnicze / Prawo wodne — do potwierdzenia"),
+          ozeStep("Planowanie, budowa i odbiory", "Sprawdź, czy wymagane jest zgłoszenie/pozwolenie budowlane, odbiory instalacji i wymagania producenta.", "verify", "Prawo budowlane, normy, dokumentacja techniczna — do potwierdzenia"),
+          ozeStep("Zasilanie elektryczne i sieć", "Potwierdź parametry zasilania, ewentualną zmianę mocy przyłączeniowej i wpływ na instalację elektryczną budynku.", "verify", "Warunki techniczne, OSD, projekt elektryczny — do potwierdzenia"),
+          ozeStep("Dotacje/rozliczenia i dokumenty", "Jeśli planowane wsparcie, zweryfikuj wymagania programu (audyt, standard urządzenia, wykonawca, faktury).", "verify", "Program wsparcia / operator programu — do potwierdzenia")
+        ],
+        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+      }
+    },
+    {
+      id: "biomasa",
+      name: "Biomasa / biogaz / biopłyny",
+      short: "Bio",
+      color: "#4f7a2f",
+      description: "Energia z materii organicznej: biomasa stała, biogaz/biometan i biopłyny. Wymagania zależą od paliwa, technologii, emisji i sposobu wykorzystania energii.",
+      govPoints: [
+        "Biomasa to materia organiczna wykorzystywana do produkcji ciepła, energii elektrycznej lub paliw.",
+        "Biogaz powstaje m.in. w procesie fermentacji; biopłyny to paliwa ciekłe pochodzenia biologicznego."
+      ],
+      calculator: {
+        kind: "biomass",
+        defaults: { fuelTonsYear: 120, gcvKwhKg: 4.2, efficiency: 0.75, hoursYear: 4000, pricePlnTon: 900, capexPlnKw: 5000, opexPct: 4.0 },
+        fields: [
+          { key: "fuelTonsYear", label: "Paliwo/substrat [t/rok]", min: 0, step: 0.1 },
+          { key: "gcvKwhKg", label: "Wartość opałowa [kWh/kg]", min: 0, step: 0.01 },
+          { key: "efficiency", label: "Sprawność systemu [0–1]", min: 0, max: 1, step: 0.01 },
+          { key: "hoursYear", label: "Godziny pracy [h/rok]", min: 0, step: 1 },
+          { key: "pricePlnTon", label: "Koszt paliwa [zł/t]", min: 0, step: 1 },
+          { key: "capexPlnKw", label: "CAPEX orientacyjny [zł/kW]", min: 0, step: 100 },
+          { key: "opexPct", label: "OPEX roczny [% CAPEX]", min: 0, step: 0.1 }
+        ]
+      },
+      formalPath: {
+        title: "Ścieżka formalna — biomasa / biogaz / biopłyny (szkielet do potwierdzenia)",
+        summary: "Formalności zależą od rodzaju paliwa, mocy, emisji i lokalizacji. Poniżej lista kontrolna do weryfikacji.",
+        steps: [
+          ozeStep("Identyfikacja technologii i paliwa", "Określ, czy projekt dotyczy kotła na biomasę, biogazowni, biometanu czy biopłynów. Potwierdź parametry paliwa i dostaw.", "verify", "Ustawa OZE, specyfikacja techniczna — do potwierdzenia"),
+          ozeStep("Lokalizacja, planowanie i budowa", "Sprawdź MPZP/WZ, wymagania budowlane, przeciwpożarowe i technologiczne dla instalacji.", "verify", "Planowanie przestrzenne / Prawo budowlane / przepisy ppoż. — do potwierdzenia"),
+          ozeStep("Emisje i wymagania środowiskowe", "Zweryfikuj wymagania emisyjne, pozwolenia/zgłoszenia środowiskowe, gospodarkę odpadami/popiołem oraz zapach/hałas dla biogazu.", "verify", "Prawo ochrony środowiska, decyzje środowiskowe — do potwierdzenia"),
+          ozeStep("Przyłączenie, koncesja/rejestr", "Potwierdź warunki przyłączenia i status: koncesja, rejestr, zwolnienie lub inne obowiązki zależne od mocy i rodzaju działalności.", "verify", "Prawo energetyczne / URE / KOWR / ustawa OZE — do potwierdzenia"),
+          ozeStep("Paliwo, jakość i rozliczenia", "Zabezpiecz łańcuch dostaw paliwa, dokumentację jakości, rozliczenia energii/ciepła i obowiązki sprawozdawcze.", "verify", "Umowy, certyfikaty, wymagania programu/rozliczeń — do potwierdzenia")
+        ],
+        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+      }
+    }
+  ];
+
+  function ozeById(id) {
+    for (let i = 0; i < OZE_SOURCES.length; i++) if (OZE_SOURCES[i].id === id) return OZE_SOURCES[i];
+    return OZE_SOURCES[0];
+  }
+
+  function num(x, fallback) { const n = Number(x); return Number.isFinite(n) ? n : (fallback || 0); }
+  function clamp(x, min, max) { x = num(x, min); if (x < min) x = min; if (x > max) x = max; return x; }
+
+  function calcWind(input) {
+    const d = input || {};
+    const powerKw = Math.max(0, num(d.powerKw, 10));
+    const diameterM = Math.max(0, num(d.diameterM, 5.5));
+    const windMs = Math.max(0, num(d.windMs, 6));
+    const cp = clamp(d.cp, 0, 0.59);
+    const efficiency = clamp(d.efficiency, 0, 1);
+    const hoursYear = Math.max(0, num(d.hoursYear, 2600));
+    const capexPlnKw = Math.max(0, num(d.capexPlnKw, 9000));
+    const opexPct = Math.max(0, num(d.opexPct, 2.5));
+    const rho = 1.225;
+    const area = Math.PI * Math.pow(diameterM / 2, 2);
+    const pKw = (0.5 * rho * area * Math.pow(windMs, 3) * cp * efficiency) / 1000;
+    const energyKwhYear = pKw * hoursYear;
+    const capex = powerKw * capexPlnKw;
+    return { areaM2: area, powerFromWindKw: pKw, energyMwhYear: energyKwhYear / 1000, capexPln: capex, opexPlnYear: capex * (opexPct / 100),
+      assumptions: ["Wzór orientacyjny: P = 0,5 · ρ · A · v³ · Cp · η; ρ = 1,225 kg/m³.", "Rzeczywista produkcja zależy od krzywej mocy turbiny, rozkładu wiatru, strat i ograniczeń sieciowych.", "CAPEX/OPEX są orientacyjne — wymagają oferty i analizy lokalnej."] };
+  }
+
+  function calcHydro(input) {
+    const d = input || {};
+    const flowLps = Math.max(0, num(d.flowLps, 250));
+    const headM = Math.max(0, num(d.headM, 8));
+    const efficiency = clamp(d.efficiency, 0, 1);
+    const hoursYear = Math.max(0, num(d.hoursYear, 4500));
+    const capexPlnKw = Math.max(0, num(d.capexPlnKw, 12000));
+    const opexPct = Math.max(0, num(d.opexPct, 2));
+    const q = flowLps / 1000;
+    const pKw = (1000 * 9.81 * q * headM * efficiency) / 1000;
+    const capex = pKw * capexPlnKw;
+    return { flowM3s: q, powerKw: pKw, energyMwhYear: (pKw * hoursYear) / 1000, capexPln: capex, opexPlnYear: capex * (opexPct / 100),
+      assumptions: ["Wzór orientacyjny: P = ρ · g · Q · H · η; ρ=1000 kg/m³, g=9,81 m/s².", "Nie uwzględnia zmienności przepływu, przepływu nienaruszalnego, strat hydrotechnicznych ani ograniczeń środowiskowych.", "Wymagana weryfikacja hydrologiczna i wodnoprawna."] };
+  }
+
+  function calcGeo(input) {
+    const d = input || {};
+    const heatDemandKw = Math.max(0, num(d.heatDemandKw, 12));
+    const cop = Math.max(0.1, num(d.cop, 4));
+    const hoursSeason = Math.max(0, num(d.hoursSeason, 2000));
+    const electricityPlnMwh = Math.max(0, num(d.electricityPlnMwh, 900));
+    const capexPlnKw = Math.max(0, num(d.capexPlnKw, 4500));
+    const opexPct = Math.max(0, num(d.opexPct, 1.5));
+    const heatKwhYear = heatDemandKw * hoursSeason;
+    const elKwhYear = cop > 0 ? heatKwhYear / cop : 0;
+    const capex = heatDemandKw * capexPlnKw;
+    return { heatMwhYear: heatKwhYear / 1000, electricityMwhYear: elKwhYear / 1000, electricityCostPlnYear: (elKwhYear / 1000) * electricityPlnMwh, capexPln: capex, opexPlnYear: capex * (opexPct / 100),
+      assumptions: ["Wzór orientacyjny: E_el = E_ciepła / COP; E_ciepła = moc_ciepła · godziny.", "COP/SCOP zależy od temperatury źródła, emiterów ciepła, sterowania i jakości wykonania.", "CAPEX/OPEX orientacyjne; dla gruntowych/wodnych/głębokiej geotermii wymagany projekt."] };
+  }
+
+  function calcBiomass(input) {
+    const d = input || {};
+    const fuelTonsYear = Math.max(0, num(d.fuelTonsYear, 120));
+    const gcvKwhKg = Math.max(0, num(d.gcvKwhKg, 4.2));
+    const efficiency = clamp(d.efficiency, 0, 1);
+    const hoursYear = Math.max(0, num(d.hoursYear, 4000));
+    const pricePlnTon = Math.max(0, num(d.pricePlnTon, 900));
+    const capexPlnKw = Math.max(0, num(d.capexPlnKw, 5000));
+    const opexPct = Math.max(0, num(d.opexPct, 4));
+    const energyKwhYear = fuelTonsYear * 1000 * gcvKwhKg * efficiency;
+    const avgPowerKw = hoursYear > 0 ? energyKwhYear / hoursYear : 0;
+    const capex = avgPowerKw * capexPlnKw;
+    return { energyMwhYear: energyKwhYear / 1000, avgPowerKw: avgPowerKw, fuelCostPlnYear: fuelTonsYear * pricePlnTon, capexPln: capex, opexPlnYear: capex * (opexPct / 100),
+      assumptions: ["Wzór orientacyjny: E_użyteczna = masa · wartość opałowa · sprawność.", "Nie zastępuje analizy paliwa, wilgotności, emisji, logistyki i wymagań środowiskowych.", "Dla biogazu/biometanu/biopłynów parametry należy dobrać wg konkretnej technologii."] };
+  }
+
+  function ozeCalculate(sourceId, input) {
+    if (sourceId === "wiatr") return calcWind(input);
+    if (sourceId === "woda") return calcHydro(input);
+    if (sourceId === "geotermia") return calcGeo(input);
+    if (sourceId === "biomasa") return calcBiomass(input);
+    return null;
+  }
+
+  function ozeDefaultInput(sourceId) {
+    const s = ozeById(sourceId);
+    if (!s.calculator || !s.calculator.defaults) return {};
+    return JSON.parse(JSON.stringify(s.calculator.defaults));
+  }
+
   root.PVModel = {
-    VERSION: VERSION,
-    PLACE_GROUND: PLACE_GROUND,
-    PLACE_ROOF: PLACE_ROOF,
-    LOC_NORMAL: LOC_NORMAL,
-    LOC_PROTECTED: LOC_PROTECTED,
-    SOURCE_LINE: SOURCE_LINE,
-    DISCLAIMER: DISCLAIMER,
-    AUTHOR_LINE: AUTHOR_LINE,
-    THRESHOLDS_LINE: THRESHOLDS_LINE,
-    COST_SOURCE_LINE: COST_SOURCE_LINE,
-    MODULE_PRESETS: MODULE_PRESETS,
-    ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
-    STEPS: STEPS,
-    PATHS: PATHS,
-    fmt: fmt,
-    money: money,
-    todayPl: todayPl,
-    calculate: calculate,
-    estimateOptions: estimateOptions,
-    estimate: estimate,
-    optimize: optimize,
+    VERSION: VERSION, PLACE_GROUND: PLACE_GROUND, PLACE_ROOF: PLACE_ROOF, LOC_NORMAL: LOC_NORMAL, LOC_PROTECTED: LOC_PROTECTED,
+    SOURCE_LINE: SOURCE_LINE, DISCLAIMER: DISCLAIMER, AUTHOR_LINE: AUTHOR_LINE, THRESHOLDS_LINE: THRESHOLDS_LINE,
+    COST_SOURCE_LINE: COST_SOURCE_LINE, MODULE_PRESETS: MODULE_PRESETS, ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
+    STEPS: STEPS, PATHS: PATHS, fmt: fmt, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
+    OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE,
+    ozeById: ozeById, ozeDefaultInput: ozeDefaultInput, ozeCalculate: ozeCalculate,
   };
 })(typeof window !== "undefined" ? window : globalThis);

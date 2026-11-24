@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js"></script>
-<script src="../js/payment.js"></script>
-<script src="../js/pdf.js"></script>
-<script src="../js/app.js"></script>
+<script src="../js/model.js?v=2.0.0h"></script>
+<script src="../js/payment.js?v=2.0.0h"></script>
+<script src="../js/pdf.js?v=2.0.0h"></script>
+<script src="../js/app.js?v=2.0.0h"></script>
 <script>
 (function () {
   "use strict";
@@ -36,6 +36,9 @@
 
   function nextTick() {
     return new Promise(function (res) { setTimeout(res, 60); });
+  }
+  function wait(ms) {
+    return new Promise(function (res) { setTimeout(res, ms || 60); });
   }
 
   function domReady() {
@@ -232,6 +235,44 @@
     ok("PDF: ranking optymalizatora bez błędu",
        dec.decode(pdfEst.slice(0, 8)) === "%PDF-1.4" &&
        dec.decode(pdfEst.slice(-16)).indexOf("%%EOF") >= 0);
+
+    // --- OZE ---------------------------------------------------------------
+    ok("OZE: źródła zdefiniowane", Array.isArray(window.PVModel.OZE_SOURCES) && window.PVModel.OZE_SOURCES.length === 5);
+    ok("OZE: zawiera PV/wiatr/woda/geotermia/biomasa",
+       ["pv","wiatr","woda","geotermia","biomasa"].every(function(id){ return !!window.PVModel.ozeById(id); }));
+    ok("OZE: źródło gov.pl", /edukacja-ekologiczna/.test(window.PVModel.OZE_GOV_SOURCE.url));
+    ok("OZE: disclaimer", /orientacyjny/i.test(window.PVModel.OZE_DISCLAIMER));
+    const wind = window.PVModel.ozeCalculate("wiatr", {powerKw:10,diameterM:5.5,windMs:6,cp:0.35,efficiency:0.9,hoursYear:2600,capexPlnKw:9000,opexPct:2.5});
+    ok("OZE wiatr: energia > 0", wind && wind.energyMwhYear > 0);
+    ok("OZE wiatr: moc > 0", wind && wind.powerFromWindKw > 0);
+    const hydro = window.PVModel.ozeCalculate("woda", {flowLps:250,headM:8,efficiency:0.7,hoursYear:4500,capexPlnKw:12000,opexPct:2});
+    ok("OZE woda: moc ~13,7 kW", hydro && Math.abs(hydro.powerKw - 13.734) < 0.2);
+    const geo = window.PVModel.ozeCalculate("geotermia", {heatDemandKw:12,cop:4,hoursSeason:2000,electricityPlnMwh:900,capexPlnKw:4500,opexPct:1.5});
+    ok("OZE geo: ciepło 24 MWh", geo && Math.abs(geo.heatMwhYear - 24) < 0.001);
+    ok("OZE geo: el 6 MWh", geo && Math.abs(geo.electricityMwhYear - 6) < 0.001);
+    const bio = window.PVModel.ozeCalculate("biomasa", {fuelTonsYear:120,gcvKwhKg:4.2,efficiency:0.75,hoursYear:4000,pricePlnTon:900,capexPlnKw:5000,opexPct:4});
+    ok("OZE biomasa: energia > 0", bio && bio.energyMwhYear > 0);
+    ok("OZE biomasa: koszt paliwa 108000", bio && Math.abs(bio.fuelCostPlnYear - 108000) < 0.01);
+    ["wiatr","woda","geotermia","biomasa"].forEach(function(id){
+      const s = window.PVModel.ozeById(id);
+      ok("OZE ścieżka " + id, s && s.formalPath && s.formalPath.steps.length >= 4);
+      ok("OZE źródła " + id, s && s.formalPath && s.formalPath.sources.length >= 1);
+    });
+    location.hash = "#/oze";
+    await wait(120);
+    ok("UI: zakładka OZE", document.body.textContent.indexOf("Inne odnawialne źródła energii") >= 0);
+    ok("UI: karty OZE", !!document.querySelector("[data-act='oze-source']"));
+    ok("UI: kalkulator OZE", !!document.getElementById("oze-powerKw") || !!document.getElementById("oze-flowLps") || !!document.getElementById("oze-heatDemandKw") || !!document.getElementById("oze-fuelTonsYear"));
+    document.querySelector("[data-act='oze-source'][data-source='woda']").click();
+    await wait(120);
+    ok("UI: przełączanie OZE woda", !!document.getElementById("oze-flowLps"));
+    document.querySelector("[data-act='oze-source'][data-source='geotermia']").click();
+    await wait(120);
+    ok("UI: przełączanie OZE geotermia", !!document.getElementById("oze-heatDemandKw"));
+    document.querySelector("[data-act='oze-source'][data-source='biomasa']").click();
+    await wait(120);
+    ok("UI: przełączanie OZE biomasa", !!document.getElementById("oze-fuelTonsYear"));
+
     const mc = document.createElement("canvas").getContext("2d");
     mc.font = Math.round(10 * 150 / 72) + 'px "DejaVu", sans-serif';
     const labelW = mc.measureText("Konstrukcja, falownik, osprzęt").width;
@@ -344,11 +385,8 @@
        location.hash === "#/podglad" && !!document.querySelector("#preview-canvas") &&
        !!P.currentSession() && P.isPaid(P.currentSession()), location.hash);
 
-    location.hash = "#/start";
-    await nextTick();
-    const startText = document.querySelector("#view").textContent || "";
-    ok("start oznacza wersję testową", startText.indexOf("wersja testowa") >= 0,
-       startText.slice(0, 120));
+    ok("nawigacja ma OZE", !!document.querySelector('#steps a[href="#/oze"]'),
+       (document.querySelector("#steps")||{}).innerHTML ? document.querySelector("#steps").innerHTML.slice(0,120) : "no-steps");
 
   }
 

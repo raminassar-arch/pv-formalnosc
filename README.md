@@ -1,4 +1,4 @@
-# PV Formalność — wersja web (v2.0.0)
+# PV Formalność — wersja web (v2.0.0 + Inne OZE)
 
 Statyczna wersja aplikacji **PV Formalność 2.0.0** — te same teksty, progi i
 kolejność kroków co w wersji desktopowej (Python/customtkinter), uruchamiana
@@ -7,7 +7,7 @@ w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 **Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
 XLSX, dodano szkielet bramki płatności **30 zł przez Przelewy24** do włączenia
 w wersji produkcyjnej. **Obecna publiczna wersja testowa jest odblokowana**:
-wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano
+wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano zakładkę **Inne OZE** z sekcjami, kalkulatorami orientacyjnymi i szablonami ścieżek formalnych dla wiatru, wody, geotermii oraz biomasy/biogazu (PV pozostaje osobnym modułem głównym). Dodano
 też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z mocy
 i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
@@ -147,6 +147,21 @@ od razu, bez opłaty).
 
 ---
 
+## Inne OZE (nowa zakładka)
+
+Zakładka **Inne OZE** dodaje sekcje zgodne z zakresem gov.pl (edukacja ekologiczna):
+energetyka wiatrowa, solarna/PV, wodna, geotermalna, biomasa/biogaz/biopłyny.
+
+- **PV** — link do istniejącego, pełnego modułu PV (bez duplikowania).
+- **Wiatr/Woda/Geotermia/Biomasa** — kalkulatory orientacyjne z edytowalnymi założeniami.
+- **Ścieżki formalne** — szablony checklist do potwierdzenia; statusy „do potwierdzenia”
+  oznaczają, że konkretne progi/decyzje zależą od lokalizacji, mocy i aktualnych przepisów.
+- **Źródła**: gov.pl (opis OZE, 26.07.2022) + BGK Przewodnik analizy wykonalności OZE (09.2024).
+
+Wyniki kalkulatorów OZE są orientacyjne i nie stanowią porady prawnej/projektowej.
+
+---
+
 ## Trzy style raportu PDF
 
 W widoku **Wynik** lub **Podgląd** znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
@@ -230,7 +245,7 @@ sprawdzają m.in.:
 - wymiary podglądu A4 i formularz tylko z mocą i powierzchnią,
 - wybór stylu raportu w widoku Wynik/Podgląd.
 
-Wynik: `TOTAL 95 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 120 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
