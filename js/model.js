@@ -441,7 +441,7 @@
     label: "Krajowy Punkt Kontaktowy ds. OZE (gov.pl) — wydruki procesów inwestycyjnych",
     url: "https://www.gov.pl/web/kontaktoze/",
     date: "24.11.2026",
-    note: "Listy kroków są uproszczonym odwzorowaniem wydruków KPK. Status „do potwierdzenia” oznacza, że zakres procedury zależy od konkretnego projektu."
+    note: "Listy kroków są uproszczonym odwzorowaniem wydruków KPK. Zakres procedury zależy od konkretnego projektu."
   };
 
   function kpkSource(label, url, note) {
@@ -449,7 +449,7 @@
       label: label + " — KPK gov.pl",
       url: url,
       date: "24.11.2026",
-      note: note || "Wydruk procesu inwestycyjnego — do potwierdzenia."
+      note: note || "Wydruk procesu inwestycyjnego."
     };
   }
 
@@ -521,8 +521,8 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — energetyka wiatrowa (KPK, do potwierdzenia)",
-        summary: "Kroki uporządkowane według wydruków KPK.gov.pl. Konkretne progi, decyzje i wyjątki należy potwierdzić dla lokalizacji i skali projektu.",
+        title: "Ścieżka formalna — energetyka wiatrowa",
+        summary: "Kroki uporządkowane. Konkretne progi, decyzje i wyjątki w zależności do lokalizacji i skali projektu.",
         steps: [
           ozeStep("Uzyskanie decyzji o środowiskowych uwarunkowaniach", "KPK wskazuje decyzję środowiskową jako pierwszy etap w typowej ścieżce lądowych instalacji wiatrowych. Potwierdź zakres dla projektu.", "verify", "KPK gov.pl — instalacje wiatrowe na lądzie"),
           ozeStep("Planistyka", "Krok „Planistyka” w procedurach KPK: sprawdź plan miejscowy albo warunki zabudowy oraz uwarunkowania lokalizacyjne.", "verify", "KPK gov.pl — mała i wielkoskalowa instalacja wiatrowa"),
@@ -568,8 +568,8 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — energetyka wodna (KPK, do potwierdzenia)",
-        summary: "Kroki uporządkowane według wydruków KPK.gov.pl. Zakres wymagań wodnoprawnych i środowiskowych potwierdź dla konkretnego cieku i inwestycji.",
+        title: "Ścieżka formalna — energetyka wodna",
+        summary: "Kroki uporządkowane. Zakres wymagań wodnoprawnych i środowiskowych w zależności do konkretnego cieku i inwestycji.",
         steps: [
           ozeStep("Uzyskanie decyzji o środowiskowych uwarunkowaniach", "KPK wskazuje decyzję środowiskową jako pierwszy etap procesu inwestycyjno-budowlanego elektrowni wodnej.", "verify", "KPK gov.pl — mikro, mała i wielkoskalowa instalacja wodna"),
           ozeStep("Procedury planistyczne", "Krok KPK dotyczący ustaleń planistycznych i warunków zagospodarowania terenu.", "verify", "KPK gov.pl — instalacje wodne"),
@@ -612,7 +612,7 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — geotermia / pompy ciepła (KPK, do potwierdzenia)",
+        title: "Ścieżka formalna — geotermia / pompy ciepła",
         summary: "Kroki zestawione z wydruków KPK dla pomp ciepła, robót geologicznych, wód termalnych i realizacji inwestycji. Wymagania zależą od technologii i lokalizacji.",
         steps: [
           ozeStep("Powietrzna pompa ciepła", "KPK opisuje powietrzną pompę ciepła jako niemal maksymalnie odformalizowaną; dla gruntowej do 30 m wskazuje brak procedur przy standardowym procesie. Ewentualne obowiązki (np. CRO) potwierdź w źródle.", "verify", "KPK gov.pl — powietrzna i gruntowa pompa ciepła do 30 m"),
@@ -662,7 +662,7 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — biomasa / biogaz / biopłyny (KPK, do potwierdzenia)",
+        title: "Ścieżka formalna — biomasa / biogaz / biopłyny",
         summary: "Kroki wspólne dla wydruków KPK dotyczących biomasy, biogazu, biometanu i biopłynów. Szczegóły zależą od paliwa, technologii i lokalizacji.",
         steps: [
           ozeStep("Decyzja o środowiskowych uwarunkowaniach i procedury planistyczne", "KPK wskazuje decyzję środowiskową oraz procedury planistyczne jako etapy typowej ścieżki inwestycyjnej instalacji biomasowych, biogazowych i biopłynowych.", "verify", "KPK gov.pl — instalacje biomasowe, biogazowe, biometanowe i biopłynowe"),

@@ -16,11 +16,12 @@ raportu PDF** (Motyw 1, Motyw 2, Motyw 3) wybierane w panelu „Podgląd i PDF�
 każdej zakładki. Na zakładce **Start** znajduje się siatka 3 kolumn
 ikon-kafli (panel ze słońcem, turbina, woda, geotermia, biomasa, porównanie)
 — sama ikona jest przyciskiem otwierającym zakładkę.
-W formularzu **Dane** edytowalne są wyłącznie moc i powierzchnia — powierzchnię
-można wpisać w hektarach (ha) albo metrach kwadratowych (m²) (1 ha = 10 000 m²),
-a moc w kilowatach (kW) albo watach (W) (1 kW = 1000 W).
-Pozostałe parametry są stałe i widoczne w raporcie. Wynik, podgląd A4 i PDF znajdują
-się na dole każdej zakładki; zakładki Płatność, Wynik, Podgląd i O programie są ukryte.
+W formularzu **Dane** edytowalne są: miejsce montażu, lokalizacja, moc i powierzchnia.
+Powierzchnię można wpisać w hektarach (ha) albo metrach kwadratowych (m²)
+(1 ha = 10 000 m²), a moc w kilowatach (kW) albo watach (W) (1 kW = 1000 W).
+Pozostałe parametry wyceny są stałe i widoczne w raporcie. Wynik, podgląd A4 i PDF
+znajdują się na dole każdej zakładki; zakładki Płatność, Wynik, Podgląd i O programie
+są ukryte.
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 > **BUDOWA TESTOWA — wersja publiczna odblokowana.** W `js/payment.js`
@@ -47,7 +48,7 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Kalkulator | Pełny port `pv_formalnosc/model.py` — 10 ścieżek, progi 2 ha / 0,5 ha / 150 kW / 1 MW, komunikaty i uwaga o braku opisu przypadku na gov.pl |
 | Wycena (tylko web) | Liczba paneli z obu wejść (moc i powierzchnia), koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; stałe parametry i 9 gotowych presetów modułów (także 600 Wp) |
 | Dobór najtańszego wariantu (tylko web) | Ranking wszystkich modułów po koszcie całkowitym, liczba paneli = minimum zapotrzebowania na moc i maksimum z powierzchni; rekomendacja i uwaga, gdy powierzchnia ogranicza moc |
-| Formularz | Edytowalne tylko moc w kW lub W (1 kW = 1000 W) oraz powierzchnia w ha lub m² (1 ha = 10 000 m²); miejsce montażu i lokalizacja widoczne jako wartości stałe; pozostałe parametry wyceny pokazywane w raporcie |
+| Formularz | Edytowalne: miejsce montażu, lokalizacja, moc w kW lub W (1 kW = 1000 W) oraz powierzchnia w ha lub m² (1 ha = 10 000 m²); pozostałe parametry wyceny pokazywane w raporcie |
 | Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, wybór stylu PDF, źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
@@ -160,8 +161,8 @@ Każde źródło OZE ma osobną zakładkę (**Fotowoltaika**, **Wiatr**, **Woda*
 - **PV** — pełny moduł pozostaje w zakładce **Fotowoltaika** (bez duplikowania).
 - **Wiatr/Woda/Geotermia/Biomasa** — kalkulatory orientacyjne z edytowalnymi założeniami.
 - **Ścieżki formalne** — nazwy kroków z wydruków Krajowego Punktu Kontaktowego ds. OZE
-  (gov.pl/web/kontaktoze, stan na 24.11.2026); statusy „do potwierdzenia" oznaczają,
-  że zakres procedury zależy od konkretnego projektu i aktualnych przepisów.
+  (gov.pl/web/kontaktoze, stan na 24.11.2026); zakres procedury zależy od lokalizacji,
+  skali projektu i aktualnych przepisów.
 - **Źródła**: gov.pl (opis OZE, 26.07.2022), KPK gov.pl (wydruki procesów inwestycyjnych)
   oraz BGK Przewodnik analizy wykonalności OZE (09.2024).
 
@@ -264,10 +265,10 @@ sprawdzają m.in.:
   sekcję wyceny i ranking optymalizatora bez błędu renderu),
 - wszystkie 3 style PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
   wyjściowe — czyli style naprawdę się różnią),
-- wymiary podglądu A4 i formularz tylko z mocą i powierzchnią,
+- wymiary podglądu A4 oraz formularz z miejscem montażu, lokalizacją, mocą i powierzchnią,
 - wybór stylu raportu w widoku Wynik/Podgląd.
 
-Wynik: `TOTAL 120 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 216 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 

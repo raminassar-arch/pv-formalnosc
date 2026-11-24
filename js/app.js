@@ -302,9 +302,8 @@
 
   function ozeStepList(src) {
     return (src.formalPath.steps || []).map(function (st, i) {
-      const badge = st.status === 'ready' ? '<span class="badge ok">gotowe</span>' : '<span class="badge warn">do potwierdzenia</span>';
-      return '<div class="step-card"><div class="step-no">' + (i+1) + '</div><div class="step-body"><h4>' + esc(st.name) + ' ' + badge + '</h4><p>' + esc(st.desc) + '</p>' +
-        (st.sourceHint ? '<p class="small muted">Źródło/weryfikacja: ' + esc(st.sourceHint) + '</p>' : '') + '</div></div>';
+      return '<div class="step-card"><div class="step-no">' + (i+1) + '</div><div class="step-body"><h4>' +
+        esc(st.name) + '</h4><p>' + esc(st.desc) + '</p></div></div>';
     }).join("");
   }
 
@@ -322,7 +321,7 @@
       '<section class="panel"><div class="note"><strong>Zakres wg gov.pl (opisowo):</strong><ul>' + govPoints + '</ul></div>' +
       '<div class="note warn"><strong>Ważne:</strong> ' + esc(M.OZE_DISCLAIMER) + '</div></section>' +
       '<section class="panel"><h3>Kalkulator orientacyjny</h3><div class="form-grid oze-grid">' + fields + '</div>' +
-      '<div class="row-actions"><button class="btn" data-act="oze-calc" data-source="' + esc(src.id) + '">Przelicz</button>' +
+      '<div class="row-actions"><button class="btn primary" data-act="oze-calc" data-source="' + esc(src.id) + '">Wynik</button>' +
       '<button class="btn ghost" data-act="oze-reset" data-source="' + esc(src.id) + '">Przywróć domyślne</button></div></section>' +
       '<section class="panel"><h2>Wynik — ' + esc(src.name) + '</h2>' + renderOzeResult(src) + '</section>' +
       '<section class="panel"><h3>' + esc(src.formalPath.title) + '</h3><p>' + esc(src.formalPath.summary) + '</p>' +
@@ -481,12 +480,16 @@
       '</select><span class="hint">1 kW = 1000 W.</span></div>';
     const powerValue = inW ? Math.round(p.kw * 1000 * 100) / 100 : p.kw;
     return '<section class="panel"><h2>Dane instalacji</h2><div class="grid">' +
-      '<div class="field"><span class="field-label">Miejsce montażu</span>' +
-      '<span class="readonly-value">' + esc(p.roof ? M.PLACE_ROOF : M.PLACE_GROUND) + "</span>" +
-      '<span class="hint">Wartość stała (nieedytowalna).</span></div>' +
-      '<div class="field"><span class="field-label">Lokalizacja</span>' +
-      '<span class="readonly-value">' + esc(p.protectedArea ? M.LOC_PROTECTED : M.LOC_NORMAL) + "</span>" +
-      '<span class="hint">Wartość stała (nieedytowalna).</span></div>' +
+      '<div class="field wide"><label class="field-label" for="f-place">Miejsce montażu</label>' +
+      '<select id="f-place">' +
+      '<option value="ground"' + (p.roof ? "" : " selected") + ">" +
+      esc(M.PLACE_GROUND) + "</option>" +
+      '<option value="roof"' + (p.roof ? " selected" : "") + ">" +
+      esc(M.PLACE_ROOF) + "</option></select></div>" +
+      '<div class="field wide"><span class="field-label">Lokalizacja</span>' +
+      '<label class="checkline"><input type="checkbox" id="f-protected"' +
+      (p.protectedArea ? " checked" : "") + "><span>" + esc(M.LOC_PROTECTED) +
+      ' <small class="muted">(próg 0,5 ha zamiast 2 ha)</small></span></label></div>' +
       unitField +
       numField(inM2 ? "f-m2" : "f-ha", inM2 ? "Powierzchnia (m²)" : "Powierzchnia (ha)",
         areaValue, inM2 ? "100" : "0.01", "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
@@ -495,8 +498,8 @@
         powerValue, inW ? "1" : "0.1") +
       "</div>" +
       '<p class="small muted panel-note">Liczba paneli jest dobierana z mocy i powierzchni.</p>' +
-      '<div class="row-actions"><button class="btn primary" data-act="pv-scroll-result">Pokaż wynik</button>' +
-      '<button class="btn" data-act="reset">Wyczyść formularz</button></div>' +
+      '<div class="row-actions"><button class="btn primary" data-act="pv-scroll-result">Wynik</button>' +
+      '<button class="btn ghost" data-act="reset">Wyczyść formularz</button></div>' +
       '<p class="small muted">' + esc(M.THRESHOLDS_LINE) + "</p></section>";
   }
 
@@ -602,7 +605,7 @@
       '<div class="field"><label class="field-label" for="cmp-pv-yield">PV: uzysk jednostkowy [kWh/kWp/rok]</label><input id="cmp-pv-yield" type="number" min="0" step="10" value="' + esc(String(cmp.pvYieldKwhKwYear)) + '"></div>' +
       '<div class="field"><label class="field-label" for="cmp-pv-opex">PV: OPEX roczny [% CAPEX]</label><input id="cmp-pv-opex" type="number" min="0" step="0.1" value="' + esc(String(cmp.pvOpexPctYear)) + '"></div>' +
       '</div>' +
-      '<div class="row-actions"><button class="btn" data-act="cmp-calc">Przelicz porównanie</button>' +
+      '<div class="row-actions"><button class="btn primary" data-act="cmp-calc">Wynik</button>' +
       '<button class="btn ghost" data-act="cmp-reset">Przywróć domyślne</button></div></section>' +
       '<section class="panel"><h2>Wynik porównania</h2>' + bestBox +
       '<div class="table-wrap"><table class="data-table compare-table"><thead><tr>' +
@@ -752,8 +755,7 @@
     doc.ensure(L.h2 + 40);
     doc.sectionTitle("Ścieżka formalna — checklista", L.h2);
     (src.formalPath.steps || []).slice(0, 8).forEach(function (step, i) {
-      const badge = step.status === "ready" ? "[gotowe]" : "[do potwierdzenia]";
-      const title = (i + 1) + ". " + step.name + " " + badge;
+      const title = (i + 1) + ". " + step.name;
       const titleLines = doc.countLines(title, f.h3, W - 2 * MG - 70);
       const descLines = doc.countLines(step.desc, f.small, W - 2 * MG - 70);
       const height = 10 + titleLines * L.h3 + 6 + descLines * L.small + 12;
@@ -889,10 +891,13 @@
     toast("Formularz wyczyszczony.", "ok");
   }
 
-  /** W formularzu czyta wyłącznie moc i powierzchnię — reszta jest stała. */
+  /** Czyta miejsce montażu, lokalizację, moc i powierzchnię z formularza PV. */
   function readForm() {
     const kw = $("#f-kw"), w = $("#f-w");
     if (!kw && !w) return;
+    const place = $("#f-place"), prot = $("#f-protected");
+    if (place) project.roof = place.value === "roof";
+    if (prot) project.protectedArea = !!prot.checked;
     const m2 = $("#f-m2"), ha = $("#f-ha");
     project.ha = project.areaUnit === "m2" && m2
       ? numberOr(m2.value, 0) / 10000
@@ -910,7 +915,7 @@
     const app = document.getElementById("app");
     app.innerHTML =
       '<header class="topbar">' +
-      '<a class="brand" href="#/start"><span class="logo">PV</span>' +
+      '<a class="brand" href="#/start"><span class="logo">BIM OZE</span>' +
       '<span class="brand-text"><strong>Formalność OZE</strong><small>wersja web ' +
       esc(M.VERSION) + "</small></span></a>" +
       '<div class="topbar-tools">' +
@@ -985,6 +990,11 @@
         readForm();
         project.powerUnit = e.target.value;
         saveProject();
+        render();
+        return;
+      }
+      if (e.target.id === "f-place" || e.target.id === "f-protected") {
+        readForm();
         render();
       }
     });
