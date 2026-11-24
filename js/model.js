@@ -76,6 +76,12 @@
     return s.replace(".", ",");
   }
 
+  /** Prosty okres zwrotu — zawsze dwa miejsca po przecinku. */
+  function fmtPayback(years) {
+    if (years == null || !isFinite(Number(years))) return "brak zwrotu";
+    return Number(years).toFixed(2).replace(".", ",") + " lat";
+  }
+
   function todayPl() {
     const d = new Date();
     const p = (v) => (v < 10 ? "0" : "") + v;
@@ -410,7 +416,7 @@
   // progów prawnych — elementy wymagające potwierdzenia są jawnie oznaczone.
 
   const OZE_DISCLAIMER =
-    "Informacje mają charakter orientacyjny i edukacyjny. Nie stanowią porady prawnej, " +
+    "Informacje mają charakter orientacyjny. Nie stanowią porady prawnej, " +
     "projektowej ani decyzji administracyjnej. Checklisty odzwierciedlają nazwy kroków " +
     "z wydruków Krajowego Punktu Kontaktowego ds. OZE (KPK gov.pl, stan na 24.11.2026); " +
     "nie przesądzają o wymaganiach dla konkretnej inwestycji. Przed realizacją potwierdź " +
@@ -826,7 +832,7 @@
     VERSION: VERSION, PLACE_GROUND: PLACE_GROUND, PLACE_ROOF: PLACE_ROOF, LOC_NORMAL: LOC_NORMAL, LOC_PROTECTED: LOC_PROTECTED,
     SOURCE_LINE: SOURCE_LINE, DISCLAIMER: DISCLAIMER, AUTHOR_LINE: AUTHOR_LINE, THRESHOLDS_LINE: THRESHOLDS_LINE,
     COST_SOURCE_LINE: COST_SOURCE_LINE, MODULE_PRESETS: MODULE_PRESETS, ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
-    STEPS: STEPS, PATHS: PATHS, fmt: fmt, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
+    STEPS: STEPS, PATHS: PATHS, fmt: fmt, fmtPayback: fmtPayback, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
     OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE, OZE_KPK_SOURCE: OZE_KPK_SOURCE,
     ozeById: ozeById, ozeDefaultInput: ozeDefaultInput, ozeCalculate: ozeCalculate,
     COMPARE_DEFAULT: COMPARE_DEFAULT, compareMetrics: compareMetrics,

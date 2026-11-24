@@ -12,20 +12,29 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=2"></script>
-<script src="../js/payment.js?v=2.0.0i&n=2"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=2"></script>
-<script src="../js/app.js?v=2.0.0i&n=2"></script>
+<script src="../js/model.js?v=2.0.0i&n=6"></script>
+<script src="../js/payment.js?v=2.0.0i&n=6"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=6"></script>
+<script src="../js/app.js?v=2.0.0i&n=6"></script>
 <script>
 (function () {
   "use strict";
   const out = document.getElementById("out");
   const lines = [];
   let pass = 0, fail = 0;
+  const consoleErrors = [];
+  const origConsoleError = console.error;
+  console.error = function () {
+    consoleErrors.push([].slice.call(arguments).join(" "));
+    origConsoleError.apply(console, arguments);
+  };
+  window.addEventListener("error", function (e) { consoleErrors.push("window.onerror: " + e.message); });
+  window.addEventListener("unhandledrejection", function (e) { consoleErrors.push("unhandledrejection: " + e.reason); });
 
   function ok(name, condition, detail) {
     if (condition) { pass++; lines.push("PASS  " + name); }
     else { fail++; lines.push("FAIL  " + name + (detail ? "  -> " + detail : "")); }
+    out.textContent = lines.join("\n");
   }
 
   function finish() {
@@ -45,6 +54,71 @@
     if (!c) return false;
     const d = c.getContext("2d").getImageData(10, 10, 1, 1).data;
     return d[3] === 255;
+  }
+
+  function headerPixel() {
+    const c = document.querySelector("#preview-canvas");
+    if (!c) return "";
+    const d = c.getContext("2d").getImageData(20, 20, 1, 1).data;
+    return [d[0], d[1], d[2]].join(",");
+  }
+
+  // Przechwyć obraz JPEG, który trafia do PDF — bez faktycznego pobierania pliku.
+  async function capturePdfImage(btnSel) {
+    const pdf = window.PVPdf;
+    const orig = pdf.buildPdf;
+    let captured = null;
+    pdf.buildPdf = function (images) {
+      const bytes = images && images[0] && images[0].bytes;
+      if (bytes && bytes.length) {
+        captured = new Uint8Array(bytes);
+        return new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52]);
+      }
+      return orig.apply(pdf, arguments);
+    };
+    try {
+      const btn = document.querySelector(btnSel);
+      if (!btn) return null;
+      btn.click();
+      await wait(600);
+    } finally {
+      pdf.buildPdf = orig;
+    }
+    return captured;
+  }
+
+  // PV używa bezpośrednio PVPdf.renderPdf(theme) — sprawdź przekazany motyw.
+  async function captureRenderTheme(btnSel) {
+    const pdf = window.PVPdf;
+    const orig = pdf.renderPdf;
+    let seen = null;
+    pdf.renderPdf = function (r, e, o, theme) {
+      seen = theme;
+      return new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52]);
+    };
+    try {
+      const btn = document.querySelector(btnSel);
+      if (!btn) return null;
+      btn.click();
+      await wait(400);
+    } finally {
+      pdf.renderPdf = orig;
+    }
+    return seen;
+  }
+
+  function bytesFingerprint(bytes) {
+    if (!bytes) return "";
+    return bytes.length + ":" + Array.prototype.map.call(bytes.subarray(0, 64), function (b) { return b; }).join(",");
+  }
+
+  async function setTheme(id) {
+    const sel = document.querySelector("#f-pdf-theme");
+    if (!sel) return false;
+    sel.value = id;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(320);
+    return true;
   }
 
   function domReady() {
@@ -230,8 +304,21 @@
     ok("PDF: JPEG /DCTDecode", text.indexOf("/DCTDecode") >= 0);
     ok("PDF: A4 2480x3508", text.indexOf("/Width 2480 /Height 3508") >= 0);
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
-    ok("znak wodny wersji testowej", window.PVPdf.watermark === "wersja testowa, BIM architects & consultants, Rami Nassar 2026",
+    ok("znak wodny wersji testowej w dwóch liniach",
+       window.PVPdf.watermark === "BIM ARCHITECTS & CONSULTANTS\nWERSJA TESTOWA" &&
+       window.PVPdf.watermarkLines.length === 2 &&
+       window.PVPdf.watermarkLines[0] === "BIM ARCHITECTS & CONSULTANTS" &&
+       window.PVPdf.watermarkLines[1] === "WERSJA TESTOWA" &&
+       typeof window.PVPdf.drawWatermark === "function",
        String(window.PVPdf.watermark));
+    const wmCalls = [];
+    window.PVPdf.drawWatermark({
+      save: function () {}, restore: function () {}, translate: function () {}, rotate: function () {},
+      fillText: function (line) { wmCalls.push(line); }
+    }, "#000000");
+    ok("znak wodny rysuje dwie linie",
+       wmCalls.length === 2 && wmCalls[0] === "BIM ARCHITECTS & CONSULTANTS" && wmCalls[1] === "WERSJA TESTOWA",
+       wmCalls.join(" | "));
 
     // --- porównanie OZE --------------------------------------------------------
     ok("model ma compareMetrics", typeof M.compareMetrics === "function");
@@ -241,6 +328,9 @@
     var cmpGeo = M.compareMetrics("geotermia", {heatMwhYear:20, capexPln:50000, opexPlnYear:500, electricityCostPlnYear:1000}, {}, {pricePlnMwh:700});
     ok("compareMetrics geo dolicza prąd", Math.abs(cmpGeo.opexPlnYear - 1500) < 0.01, cmpGeo.opexPlnYear);
     ok("compareMetrics brak zwrotu przy bilansie <=0", M.compareMetrics("wiatr",{energyMwhYear:1,capexPln:1000,opexPlnYear:2000},{},{pricePlnMwh:100}).paybackYears === null);
+    ok("fmtPayback: dwa miejsca (0)", M.fmtPayback(0) === "0,00 lat", M.fmtPayback(0));
+    ok("fmtPayback: dwa miejsca (3,14159)", M.fmtPayback(3.14159) === "3,14 lat", M.fmtPayback(3.14159));
+    ok("fmtPayback: brak zwrotu", M.fmtPayback(null) === "brak zwrotu", M.fmtPayback(null));
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
     const pdfEst = await window.PVPdf.renderPdf(r, est, optPower);
@@ -257,6 +347,8 @@
        ["pv","wiatr","woda","geotermia","biomasa"].every(function(id){ return !!window.PVModel.ozeById(id); }));
     ok("OZE: źródło gov.pl", /edukacja-ekologiczna/.test(window.PVModel.OZE_GOV_SOURCE.url));
     ok("OZE: disclaimer", /orientacyjny/i.test(window.PVModel.OZE_DISCLAIMER));
+    ok("OZE: disclaimer bez słowa edukacyjny",
+       window.PVModel.OZE_DISCLAIMER.indexOf("edukacyjny") < 0);
     ok("OZE: disclaimer KPK z datą źródeł",
        /KPK/.test(window.PVModel.OZE_DISCLAIMER) &&
        window.PVModel.OZE_DISCLAIMER.indexOf("24.11.2026") >= 0);
@@ -345,8 +437,9 @@
     ok("UI: KPK i statusy do potwierdzenia w widoku OZE",
        (document.querySelector("#view").textContent || "").indexOf("KPK gov.pl") >= 0 &&
        document.querySelectorAll("#view .badge.warn").length >= 8);
-    ok("UI: linki źródeł KPK w widoku OZE",
-       Array.prototype.some.call(document.querySelectorAll("#view a[href]"), function(a){
+    ok("UI: sekcja źródła do weryfikacji usunięta",
+       (document.querySelector("#view").textContent || "").indexOf("Źródła do weryfikacji") < 0 &&
+       !Array.prototype.some.call(document.querySelectorAll("#view a[href]"), function(a){
          return /gov\.pl\/web\/kontaktoze\//.test(a.getAttribute("href") || "");
        }));
     location.hash = "#/woda"; await wait(120);
@@ -407,6 +500,20 @@
     ok("wersja testowa włączona", P.isTestMode() === true);
     ok("brak konfiguracji na start", P.configured() === false);
 
+    location.hash = "#/start"; await wait(150);
+    const startText = document.querySelector("#view").textContent || "";
+    const iconCards = [...document.querySelectorAll("#view .start-tab-grid > button.start-tab-card")];
+    ok("Start: 6 ikon-kafli jako przyciski",
+       iconCards.length === 6 && iconCards.every(function (b) { return !!b.querySelector("svg"); }),
+       String(iconCards.length));
+    ok("Start: brak przycisku Otwórz zakładkę", startText.indexOf("Otwórz zakładkę") < 0);
+    ok("Start: brak (do potwierdzenia)", startText.indexOf("do potwierdzenia") < 0);
+    const iconGrid = document.querySelector("#view .start-tab-grid");
+    const iconCols = iconGrid ? getComputedStyle(iconGrid).gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0;
+    ok("Start: siatka ikon w 3-4 kolumnach", iconCols >= 3 && iconCols <= 4, String(iconCols));
+    iconCards[0].click(); await wait(150);
+    ok("Start: ikona otwiera zakładkę", location.hash === "#/pv", location.hash);
+
     location.hash = "#/pv";
     await nextTick();
     const resetBtn = document.querySelector('[data-act="reset"]');
@@ -434,6 +541,8 @@
        !document.querySelector('#steps a[href="#/o-programie"]'));
     ok("wynik PV w zakładce",
        !!document.querySelector("#pv-wynik") && !!document.querySelector("#view .verdict-grid"));
+    ok("PV: nagłówek Wynik analizy usunięty",
+       (document.querySelector("#view").textContent || "").indexOf("Wynik analizy") < 0);
     const wynikText = document.querySelector("#view").textContent || "";
     ok("wynik pokazuje wycenę i czas",
        !!document.querySelector("#view .est-panel") &&
@@ -463,6 +572,24 @@
     ok("OZE pobierz PDF bez błędu",
        (document.querySelector(".toast") || {}).textContent === "PDF 300 DPI pobrany.",
        (document.querySelector(".toast") || {}).textContent);
+    ok("OZE: wybór 3 stylów podglądu/PDF",
+       !!document.querySelector("#f-pdf-theme") &&
+       document.querySelectorAll("#f-pdf-theme option").length === 3);
+    const ozeOriginalTheme = document.querySelector("#f-pdf-theme").value;
+    const ozePixels = {}, ozePdfImages = {};
+    for (const t of themes) {
+      await setTheme(t.id);
+      ozePixels[t.id] = headerPixel();
+      ozePdfImages[t.id] = await capturePdfImage('[data-act="oze-pdf"][data-source="wiatr"]');
+    }
+    ok("OZE: 3 motywy dają różny podgląd",
+       new Set(Object.keys(ozePixels).map(function (k) { return ozePixels[k]; })).size === 3,
+       JSON.stringify(ozePixels));
+    ok("OZE: 3 motywy dają różny obraz w PDF",
+       new Set(Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]); })).size === 3 &&
+       Object.keys(ozePdfImages).every(function (k) { return !!ozePdfImages[k]; }),
+       Object.keys(ozePdfImages).map(function (k) { return bytesFingerprint(ozePdfImages[k]).slice(0, 12); }).join(" | "));
+    await setTheme(ozeOriginalTheme);
 
     location.hash="#/porownaj"; await wait(250);
     ok("Porównaj ma przyciski PDF i podglądu",
@@ -477,6 +604,33 @@
     ok("Porównaj pobierz PDF bez błędu",
        (document.querySelector(".toast") || {}).textContent === "PDF porównania pobrany.",
        (document.querySelector(".toast") || {}).textContent);
+    ok("Porównaj: wybór 3 stylów podglądu/PDF",
+       !!document.querySelector("#f-pdf-theme") &&
+       document.querySelectorAll("#f-pdf-theme option").length === 3);
+    const paybackCells = Array.prototype.map.call(
+       document.querySelectorAll(".compare-table tbody tr td:last-child strong"),
+       function (el) { return (el.textContent || "").trim(); });
+    ok("Porównaj: prosty zwrot zawsze z 2 miejscami",
+       paybackCells.length === 5 &&
+       paybackCells.every(function (t) { return /^\d+,\d{2} lat$/.test(t) || t === "brak zwrotu"; }),
+       paybackCells.join(" | "));
+    ok("Porównaj: podsumowanie zwrotu z 2 miejscami",
+       /Prosty okres zwrotu:\s*\d+,\d{2} lat/.test(document.querySelector("#view").textContent || ""));
+    const cmpOriginalTheme = document.querySelector("#f-pdf-theme").value;
+    const cmpPixels = {}, cmpPdfImages = {};
+    for (const t of themes) {
+      await setTheme(t.id);
+      cmpPixels[t.id] = headerPixel();
+      cmpPdfImages[t.id] = await capturePdfImage('[data-act="cmp-pdf"]');
+    }
+    ok("Porównaj: 3 motywy dają różny podgląd",
+       new Set(Object.keys(cmpPixels).map(function (k) { return cmpPixels[k]; })).size === 3,
+       JSON.stringify(cmpPixels));
+    ok("Porównaj: 3 motywy dają różny obraz w PDF",
+       new Set(Object.keys(cmpPdfImages).map(function (k) { return bytesFingerprint(cmpPdfImages[k]); })).size === 3 &&
+       Object.keys(cmpPdfImages).every(function (k) { return !!cmpPdfImages[k]; }),
+       Object.keys(cmpPdfImages).map(function (k) { return bytesFingerprint(cmpPdfImages[k]).slice(0, 12); }).join(" | "));
+    await setTheme(cmpOriginalTheme);
 
     location.hash="#/pv"; await wait(150);
     ok("PV: wybór jednostki powierzchni",
@@ -515,10 +669,34 @@
        (document.querySelector("#view").textContent || "").indexOf("6,5 kW") >= 0,
        (document.querySelector("#view").textContent || "").slice(0, 160));
 
+    const themeSelect = document.querySelector("#f-pdf-theme");
+    const themePanel = themeSelect && themeSelect.closest(".panel");
+    ok("PV: wybór stylu w panelu Podgląd i PDF",
+       !!themeSelect && themeSelect.querySelectorAll("option").length === 3 &&
+       !!themePanel && (themePanel.textContent || "").indexOf("Podgląd i PDF") >= 0);
+    const pvOriginalTheme = themeSelect.value;
+    const pvPixels = {}, pvPdfThemes = {};
+    for (const t of themes) {
+      await setTheme(t.id);
+      pvPixels[t.id] = headerPixel();
+      pvPdfThemes[t.id] = await captureRenderTheme('[data-act="pdf"]');
+    }
+    ok("PV: 3 motywy dają różny podgląd",
+       new Set(Object.keys(pvPixels).map(function (k) { return pvPixels[k]; })).size === 3,
+       JSON.stringify(pvPixels));
+    ok("PV: PDF używa wybranego motywu",
+       themes.every(function (t) { return pvPdfThemes[t.id] === t.id; }),
+       JSON.stringify(pvPdfThemes));
+    await setTheme(pvOriginalTheme);
+    ok("PV: zmiana motywu zachowuje dane formularza",
+       (document.querySelector("#view").textContent || "").indexOf("6,5 kW") >= 0);
+
     location.hash="#/biomasa"; await wait(80);
       ok("UI: strona biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear")); ok("nawigacja ma PV", !!document.querySelector('#steps a[href="#/pv"]'),
        (document.querySelector("#steps")||{}).innerHTML ? document.querySelector("#steps").innerHTML.slice(0,120) : "no-steps");
 
+     await wait(200);
+     ok("brak błędów w konsoli", consoleErrors.length === 0, consoleErrors.join(" | "));
   }
 
   run().catch(function (err) {

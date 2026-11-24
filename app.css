@@ -417,6 +417,13 @@ input:focus, select:focus {
   .step { min-width: 104px; padding: 9px 10px; }
 }
 
+@media (max-width: 600px) {
+  .start-tab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; }
+  .start-tab-card { padding:12px; }
+  .start-tab-icon { width:46px; height:46px; }
+  .start-tab-icon svg { width:30px; height:30px; }
+}
+
 @media (max-width: 520px) {
   body { font-size: 14px; }
   main { padding: 16px 12px 32px; }
@@ -459,14 +466,22 @@ input:focus, select:focus {
 .data-table th { color:var(--muted); font-weight:600; width:55%; }
 .data-table td { font-weight:600; color:var(--green-deep); }
 
-/* Start page tab cards */
-.start-tab-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.start-tab-card { display:flex; flex-direction:column; gap:10px; }
-.start-tab-card p { flex:1; }
-.start-tab-icon {
-  width:48px; height:48px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center;
-  background: linear-gradient(145deg, var(--green-deep), var(--green)); color:#fff; font-weight:800; font-size:14px; letter-spacing:.03em;
+/* Start page tab cards — ikony są przyciskami */
+.start-tab-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }
+.start-tab-card {
+  appearance:none; display:flex; flex-direction:column; align-items:flex-start; gap:10px;
+  width:100%; margin:0; padding:18px; border:1px solid var(--border); border-radius:var(--radius);
+  background:#fff; box-shadow:var(--shadow); color:inherit; font:inherit; text-align:left; cursor:pointer;
+  transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
+.start-tab-card:hover, .start-tab-card:focus-visible { border-color:var(--green-mid); transform:translateY(-2px); box-shadow:0 8px 20px rgba(12,59,44,.12); outline:none; }
+.start-tab-card h3 { margin:0; font-size:1rem; color:var(--green-deep); }
+.start-tab-card p { margin:0; flex:1; color:var(--muted); font-size:.86rem; line-height:1.4; }
+.start-tab-icon {
+  width:56px; height:56px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center;
+  background:linear-gradient(145deg, var(--green-deep), var(--green)); color:#fff;
+}
+.start-tab-icon svg { width:38px; height:38px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
 .hero-card .plain-list { margin:10px 0 0; padding-left:18px; color:#dceade; }
 .hero-card .plain-list li { margin:4px 0; }
 .compare-table td,.compare-table th { vertical-align: top; }

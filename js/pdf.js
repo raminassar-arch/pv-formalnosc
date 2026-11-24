@@ -20,7 +20,8 @@
   // Znika automatycznie po ustawieniu TEST_MODE = false w js/payment.js.
   const TEST_BUILD = !!(root.PVPayment && root.PVPayment.isTestMode &&
                         root.PVPayment.isTestMode());
-  const WATERMARK = "wersja testowa, BIM architects & consultants, Rami Nassar 2026";
+  const WATERMARK_LINES = ["BIM ARCHITECTS & CONSULTANTS", "WERSJA TESTOWA"];
+  const WATERMARK = WATERMARK_LINES.join("\n");
 
   /** Trzy wyglądy tego samego raportu. Identyczna treść i układ A4. */
   const THEMES = [
@@ -32,6 +33,7 @@
   const PALETTES = {
     simple: {
       id: "simple",
+      PAGE_BG: "#FFFFFF", BEST_BG: "#F2F5F7", BEST_INK: "#13263A",
       PRIMARY: "#FFFFFF", ON_PRIMARY: "#13263A", HEADER_SUB: "#5A6B7B",
       INK: "#13263A", BODY_INK: "#33485B", MUTED: "#5A6B7B", CELL: "#13263A",
       NEED: "#9A4A1A", FREE: "#146547",
@@ -42,6 +44,7 @@
     },
     cards: {
       id: "cards",
+      PAGE_BG: "#F7FAF7", BEST_BG: "#E8F5EC", BEST_INK: "#0F7A4B",
       PRIMARY: "#14563F", ON_PRIMARY: "#FFFFFF", HEADER_SUB: "#D8E8D9",
       INK: "#16241C", BODY_INK: "#33485B", MUTED: "#5F7268", CELL: "#14563F",
       NEED: "#A34B18", FREE: "#0F7A4B",
@@ -52,6 +55,7 @@
     },
     premium: {
       id: "premium",
+      PAGE_BG: "#F5F8FC", BEST_BG: "#E7F5EE", BEST_INK: "#0F2742",
       PRIMARY: "#0F2742", ON_PRIMARY: "#FFFFFF", HEADER_SUB: "#B9CFDC",
       INK: "#13263A", BODY_INK: "#33485B", MUTED: "#5A6B7B", CELL: "#0F2742",
       NEED: "#B4531A", FREE: "#0F7A4B",
@@ -69,18 +73,21 @@
     return `${fontPx(pt)}px "${bold ? "DejaVu-Bold" : "DejaVu"}", sans-serif`;
   }
 
-  /** Przezroczysty, przekątny znak wodny pod treścią raportu. */
-  function drawWatermark(ctx) {
-    if (!WATERMARK) return;
+  /** Przezroczysty, przekątny znak wodny pod treścią raportu — dwie linie. */
+  function drawWatermark(ctx, color) {
+    if (!WATERMARK_LINES.length) return;
+    const size = 56;
     ctx.save();
     ctx.globalAlpha = 0.10;
-    ctx.fillStyle = "#0F2742";
-    ctx.font = fontDef(54, true);
+    ctx.fillStyle = color || "#0F2742";
+    ctx.font = `bold ${size}px "DejaVu", Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.translate(W / 2, H / 2);
     ctx.rotate(-Math.PI / 6);
-    ctx.fillText(WATERMARK, 0, 0);
+    WATERMARK_LINES.forEach(function (line, i) {
+      ctx.fillText(line, 0, (i - (WATERMARK_LINES.length - 1) / 2) * (size + 14));
+    });
     ctx.restore();
   }
 
@@ -548,7 +555,10 @@
     ensureFonts: ensureFonts,
     dataUrlBytes: dataUrlBytes,
     themes: THEMES,
+    themePalette: palette,
+    drawWatermark: drawWatermark,
     watermark: WATERMARK,
+    watermarkLines: WATERMARK_LINES,
     defaultTheme: "premium",
     constants: { W: W, H: H, S: S, PXW: PXW, PXH: PXH, PAGE_W: PAGE_W, PAGE_H: PAGE_H },
   };

@@ -47,6 +47,7 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     os.chdir(ROOT)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), QuietHandler)
     port = server.server_address[1]
@@ -59,12 +60,13 @@ def main() -> int:
         "--headless=new", "--disable-gpu", "--no-first-run", "--no-sandbox",
         "--disable-background-networking", "--no-default-browser-check",
         f"--user-data-dir={profile}",
-        "--virtual-time-budget=15000",
+        "--virtual-time-budget=60000",
         "--dump-dom",
         f"http://127.0.0.1:{port}/tools/selftest.html",
     ]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90,
+                              encoding="utf-8", errors="replace")
     finally:
         server.shutdown()
 

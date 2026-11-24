@@ -12,7 +12,10 @@ też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z m
 i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
 (ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
-raportu PDF** (Biały, Karty, Premium) wybierane na dole zakładki z wynikiem.
+raportu PDF** (Biały, Karty, Premium) wybierane w panelu „Podgląd i PDF”
+każdej zakładki. Na zakładce **Start** znajduje się siatka 3 kolumn
+ikon-kafli (panel ze słońcem, turbina, woda, geotermia, biomasa, porównanie)
+— sama ikona jest przyciskiem otwierającym zakładkę.
 W formularzu **Dane** edytowalne są wyłącznie moc i powierzchnia — powierzchnię
 można wpisać w hektarach (ha) albo metrach kwadratowych (m²) (1 ha = 10 000 m²),
 a moc w kilowatach (kW) albo watach (W) (1 kW = 1000 W).
@@ -50,8 +53,8 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
 | Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
 | Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **3 wybierane style** |
-| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór w widoku Wynik/Podgląd |
-| Znak wodny | „WERSJA TESTOWA" na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
+| Styl raportu | Biały (czyste tło, cienkie linie), Karty (sekcje w ramkach z zielonym akcentem), Premium (ciemnogranatowy nagłówek, kolorowe pola decyzji — dotychczasowy wygląd); wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
+| Znak wodny | Dwie linie — „BIM ARCHITECTS & CONSULTANTS" i „WERSJA TESTOWA" — na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
 Dane formularza i stan sesji są zapisywane w `localStorage`. Obliczenia
 i PDF powstają lokalnie. W wersji testowej nie ma żadnego zewnętrznego kroku;
@@ -164,11 +167,17 @@ Każde źródło OZE ma osobną zakładkę (**Fotowoltaika**, **Wiatr**, **Woda*
 
 Wyniki kalkulatorów OZE są orientacyjne i nie stanowią porady prawnej/projektowej.
 
+Zakładka **Porównaj warianty OZE** zestawia energię, CAPEX, OPEX, przychód,
+bilans roczny i prosty okres zwrotu. Zwrot jest zawsze prezentowany z dokładnością
+do dwóch miejsc po przecinku (np. `3,14 lat`) — w tabeli, w podsumowaniu
+i w generowanym PDF.
+
 ---
 
 ## Trzy style raportu PDF
 
-W widoku **Wynik** lub **Podgląd** znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
+W panelu **„Podgląd i PDF"** każdej zakładki (Fotowoltaika, Wiatr, Woda,
+Geotermia, Biomasa, Porównaj) znajduje się pole **„Styl raportu"** (zapis w `localStorage`).
 Wygląd dotyczy zarówno podglądu A4, jak i pobranego pliku PDF — treść, kolejność
 sekcji i wymiary strony są identyczne:
 
