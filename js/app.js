@@ -191,24 +191,46 @@
   // --- widoki --------------------------------------------------------------
 
   function viewStart() {
+    const tabs = [
+      {id:"pv", icon:"PV", name:"Fotowoltaika", desc:"Kalkulator mocy/powierzchni, dobór modułów, wycena, optymalizator, ścieżka formalna, podgląd A4 i PDF."},
+      {id:"wiatr", icon:"WI", name:"Energetyka wiatrowa", desc:"Kalkulator orientacyjny (moc, wiatr, Cp), energia roczna, CAPEX/OPEX i checklista formalna."},
+      {id:"woda", icon:"H2O", name:"Energetyka wodna", desc:"Kalkulator orientacyjny (przepływ, spadek, sprawność), energia roczna i checklista formalna."},
+      {id:"geotermia", icon:"GEO", name:"Geotermia / pompy ciepła", desc:"Kalkulator orientacyjny (zapotrzebowanie, COP), koszt energii, CAPEX/OPEX i checklista formalna."},
+      {id:"biomasa", icon:"BIO", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność), energia i checklista formalna."}
+    ];
+    const tabCards = tabs.map(function(t){
+      return '<article class="card start-tab-card">' +
+        '<div class="start-tab-icon">' + esc(t.icon) + '</div>' +
+        '<h3>' + esc(t.name) + '</h3><p>' + esc(t.desc) + '</p>' +
+        '<div class="row-actions"><button class="btn" data-act="go" data-path="' + esc(t.id) + '">Otwórz zakładkę</button></div>' +
+        '</article>';
+    }).join("");
     return '<section class="hero">' +
       '<div class="hero-text">' +
-      "<h1>Formalność OZE</h1>" +
-      '<p class="lead">Wybierz źródło energii odnawialnej: fotowoltaika, wiatr, woda, geotermia lub biomasa/biogaz. Każda zakładka ma kalkulator, ścieżkę formalną, podgląd i eksport PDF.</p>' +
+      '<h1>Formalność OZE</h1>' +
+      '<p class="lead">Aplikacja do wstępnej oceny formalności i parametrów dla odnawialnych źródeł energii. Każda technologia ma osobną zakładkę z kalkulatorem, checklistą formalną, podglądem i eksportem PDF.</p>' +
       '<div class="hero-actions">' +
       '<button class="btn gold" data-act="go" data-path="pv">Fotowoltaika</button>' +
       '<button class="btn" data-act="go" data-path="wiatr">Wiatr</button>' +
       '<button class="btn ghost" data-act="go" data-path="woda">Woda</button>' +
       '<button class="btn ghost" data-act="go" data-path="geotermia">Geotermia</button>' +
       '<button class="btn ghost" data-act="go" data-path="biomasa">Biomasa</button></div></div>' +
-      '<div class="hero-card"><span class="logo">OZE</span><strong>Formalność OZE</strong>' +
-      '<p>PV · Wiatr · Woda · Geotermia · Biomasa/Biogaz</p></div></section>' +
-      '<div class="card-grid">' +
-      card("Fotowoltaika", "Pełny kalkulator PV: powierzchnia/moc, wycena, optymalizator, ścieżka formalna, podgląd A4 i PDF.") +
-      card("Wiatr / Woda / Geotermia / Biomasa", "Osobne zakładki z kalkulatorem orientacyjnym, checklistą formalną i eksportem PDF.") +
-      card("Wynik w zakładce", "Wynik, podgląd i pobieranie PDF są dostępne na dole każdej zakładki.") +
-      card("Źródła i disclaimery", "Dane orientacyjne. Formalności wymagają potwierdzenia w aktualnych źródłach urzędowych.") +
-      '</div>';
+      '<div class="hero-card"><span class="logo">OZE</span><strong>Co zawiera program</strong>' +
+      '<ul class="plain-list small">' +
+      '<li>5 osobnych zakładek technologii OZE</li>' +
+      '<li>Kalkulatory orientacyjne</li>' +
+      '<li>Checklisty ścieżek formalnych</li>' +
+      '<li>Podgląd A4 i eksport PDF</li>' +
+      '<li>Watermark: wersja testowa</li>' +
+      '</ul></div></section>' +
+      '<section class="panel"><h2>Zakładki w programie</h2><p class="muted">Wybierz technologię — wynik, podgląd i PDF znajdują się na dole każdej zakładki.</p>' +
+      '<div class="card-grid start-tab-grid">' + tabCards + '</div></section>' +
+      '<section class="panel"><h2>Jak korzystać</h2><ol class="plain-ol">' +
+      '<li><strong>Wybierz zakładkę</strong> technologii OZE.</li>' +
+      '<li><strong>Uzupełnij dane</strong> w kalkulatorze orientacyjnym.</li>' +
+      '<li><strong>Sprawdź wynik</strong> i checklistę formalną na dole zakładki.</li>' +
+      '<li><strong>Pobierz PDF</strong> z podglądem A4 i watermarkiem wersji testowej.</li>' +
+      '</ol><div class="note warn"><strong>Uwaga:</strong> Wyniki mają charakter orientacyjny. Wymagania formalne zależą od lokalizacji, skali i aktualnych przepisów — potwierdź je w źródłach urzędowych.</div></section>';
   }
 
   function ozeInput(sourceId) {
