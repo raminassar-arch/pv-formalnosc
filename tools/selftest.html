@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=10"></script>
-<script src="../js/payment.js?v=2.0.0i&n=10"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=10"></script>
-<script src="../js/app.js?v=2.0.0i&n=10"></script>
+<script src="../js/model.js?v=2.0.0i&n=11"></script>
+<script src="../js/payment.js?v=2.0.0i&n=11"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=11"></script>
+<script src="../js/app.js?v=2.0.0i&n=11"></script>
 <script>
 (function () {
   "use strict";
@@ -62,6 +62,58 @@
     if (!c) return "";
     const d = c.getContext("2d").getImageData(20, 20, 1, 1).data;
     return [d[0], d[1], d[2]].join(",");
+  }
+
+  // Przechwyć napisy rysowane na stronie PDF i wskaż kolizje oraz wyjścia poza marginesy.
+  async function pdfTextOverlaps(btnSel) {
+    const orig = CanvasRenderingContext2D.prototype.fillText;
+    const log = [];
+    let page = 0;
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y) {
+      if (this.canvas.width === 2480 && this.globalAlpha >= 0.5 &&
+          this.textBaseline === "top") {
+        if (!this.canvas.__testPage) this.canvas.__testPage = ++page;
+        const s = String(text);
+        const w = this.measureText(s).width;
+        const px = parseFloat((/([\d.]+)px/.exec(this.font) || [0, 16])[1]);
+        log.push({ page: this.canvas.__testPage, text: s, x: Number(x), y: Number(y),
+                   w: w, h: px * 1.12, align: this.textAlign });
+      }
+      return orig.apply(this, arguments);
+    };
+    try {
+      const btn = document.querySelector(btnSel);
+      if (!btn) return ["brak przycisku: " + btnSel];
+      btn.click();
+      await wait(700);
+    } finally {
+      CanvasRenderingContext2D.prototype.fillText = orig;
+    }
+    const box = function (o) {
+      let x = o.x;
+      if (o.align === "center") x -= o.w / 2;
+      else if (o.align === "right") x -= o.w;
+      return { x0: x, y0: o.y, x1: x + o.w, y1: o.y + o.h };
+    };
+    const hits = [];
+    for (let i = 0; i < log.length; i++) for (let j = i + 1; j < log.length; j++) {
+      const a = log[i], b = log[j];
+      if (a.page !== b.page) continue;
+      const A = box(a), B = box(b);
+      const ix = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
+      const iy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
+      if (ix <= 2 || iy <= 2) continue;
+      const smaller = Math.min((A.x1-A.x0)*(A.y1-A.y0), (B.x1-B.x0)*(B.y1-B.y0));
+      if (ix * iy / smaller < 0.12) continue;
+      hits.push(a.text.slice(0, 32) + " <> " + b.text.slice(0, 32));
+    }
+    log.forEach(function (o) {
+      const B = box(o);
+      if (B.x0 < 85 || B.x1 > 1155 || B.y1 > 1740) {
+        hits.push("poza marginesem: " + o.text.slice(0, 32));
+      }
+    });
+    return hits;
   }
 
   // Przechwyć obraz JPEG, który trafia do PDF — bez faktycznego pobierania pliku.
@@ -841,6 +893,27 @@
     await setTheme(pvOriginalTheme);
     ok("PV: zmiana motywu zachowuje dane formularza",
        (document.querySelector("#view").textContent || "").indexOf("6,5 kW") >= 0);
+    const layoutRoutes = [
+      { hash: "#/pv",        btn: '[data-act="pv-preview"]' },
+      { hash: "#/wiatr",     btn: '[data-act="oze-preview"]' },
+      { hash: "#/woda",      btn: '[data-act="oze-preview"]' },
+      { hash: "#/geotermia", btn: '[data-act="oze-preview"]' },
+      { hash: "#/biomasa",   btn: '[data-act="oze-preview"]' },
+      { hash: "#/porownaj",  btn: '[data-act="cmp-preview"]' },
+    ];
+    const layoutIssues = [];
+    for (const route of layoutRoutes) {
+      location.hash = route.hash; await wait(180);
+      for (const t of themes) {
+        await setTheme(t.id);
+        const issues = await pdfTextOverlaps(route.btn);
+        if (issues.length) layoutIssues.push(route.hash + "/" + t.id + ": " + issues.join("; "));
+      }
+    }
+    ok("PDF: brak nakładania tekstu i wyjść poza marginesy we wszystkich zakładkach i motywach",
+       layoutIssues.length === 0, JSON.stringify(layoutIssues));
+    await setTheme(pvOriginalTheme);
+    location.hash = "#/pv"; await wait(150);
 
     ok("UI: logo BIM OZE",
        ((document.querySelector(".brand .logo") || {}).textContent || "") === "BIM OZE",

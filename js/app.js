@@ -713,7 +713,7 @@
     const C = window.PVPdf.constants;
     return canvases.map(function (canvas) {
       return {
-        bytes: window.PVPdf.dataUrlBytes(canvas.toDataURL("image/jpeg", 0.9)),
+        bytes: window.PVPdf.dataUrlBytes(canvas.toDataURL("image/jpeg", 0.96)),
         w: C.PXW, h: C.PXH,
       };
     });
@@ -744,9 +744,12 @@
     doc.sectionTitle("Wynik kalkulatora (orientacyjny)", L.h2);
     ozeReportRows(src).rows.forEach(function (row) {
       doc.ensure(34);
-      doc.text(row[0], f.body, c.MUTED, MG, doc.y);
-      doc.text(fitText(doc, row[1], W - 2 * MG - 520, f.body),
-               f.body, c.INK, MG + 520, doc.y);
+      const value = fitText(doc, row[1], 520, f.body);
+      doc.ctx.font = f.body;
+      const valueX = W - MG - doc.ctx.measureText(value).width;
+      const label = fitText(doc, row[0], Math.max(120, valueX - MG - 40), f.body);
+      doc.text(label, f.body, c.MUTED, MG, doc.y);
+      doc.text(value, f.body, c.INK, valueX, doc.y);
       doc.y += doc.row + 6;
     });
     doc.y += 12;

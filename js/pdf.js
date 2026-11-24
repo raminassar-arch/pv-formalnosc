@@ -430,7 +430,7 @@
   };
 
   Doc.prototype.estimateSection = function (e) {
-    const f = this.f, c = this.c;
+    const f = this.f, c = this.c, ctx = this.ctx;
     const source = e.presetName + " · " + M.COST_SOURCE_LINE;
     const srcLines = this.countLines(source, f.small, W - 2 * MARGIN);
     const noteLines = this.countLines(e.powerNote, f.small, W - 2 * MARGIN);
@@ -443,10 +443,27 @@
     this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 8;
 
+    const fit = (value, font, maxWidth) => {
+      ctx.font = font;
+      let s = String(value);
+      if (ctx.measureText(s).width <= maxWidth) return s;
+      while (s.length > 1 && ctx.measureText(s + "…").width > maxWidth) {
+        s = s.slice(0, -1);
+      }
+      return s + "…";
+    };
+    // Wartości są wyrównane do prawej — dzięki temu żadna etykieta nie zachodzi
+    // na kwotę, także w motywie mono z wąskim, ale szerokim krojem Courier.
     const row = (label, value, strong) => {
-      this.text(label, f.body, c.MUTED, MARGIN, this.y);
-      this.text(value, strong ? f.h3 : f.body, strong ? c.CELL : c.INK,
-                MARGIN + 330, this.y);
+      const valueFont = strong ? f.h3 : f.body;
+      const valueText = fit(value, valueFont, 520);
+      ctx.font = valueFont;
+      const valueWidth = ctx.measureText(valueText).width;
+      const valueX = W - MARGIN - valueWidth;
+      const gap = 40;
+      const labelText = fit(label, f.body, Math.max(120, valueX - gap - MARGIN));
+      this.text(labelText, f.body, c.MUTED, MARGIN, this.y);
+      this.text(valueText, valueFont, strong ? c.CELL : c.INK, valueX, this.y);
       this.y += this.row;
     };
     row("Liczba paneli (moc i powierzchnia)", e.panels + " szt.");
@@ -717,7 +734,7 @@
     const doc = new Doc(theme);
     doc.render(r, e, o);
     const images = doc.pages.map((page) => ({
-      bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", 0.9)),
+      bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", 0.96)),
       w: PXW, h: PXH,
     }));
     return buildPdf(images);

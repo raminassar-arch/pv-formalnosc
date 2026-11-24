@@ -271,7 +271,7 @@ sprawdzają m.in.:
 - wymiary podglądu A4 oraz formularz z miejscem montażu, lokalizacją, mocą i powierzchnią,
 - wybór stylu raportu w widoku Wynik/Podgląd.
 
-Wynik: `TOTAL 225 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 226 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
