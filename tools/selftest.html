@@ -280,6 +280,20 @@
       ok("OZE " + id + ": linki KPK gov.pl",
          srcs.some(function(x){ return /gov\.pl\/web\/kontaktoze\//.test(x.url); }));
     });
+    ok("OZE PV: nazwy kroków KPK (kolektory, magazyn)",
+       (function(){
+         const n = window.PVModel.ozeById("pv").formalPath.steps.map(function(st){ return st.name; });
+         return n.indexOf("Proces inwestycyjny kolektorów słonecznych") >= 0 &&
+                n.indexOf("Zgłoszenie magazynu/uzyskanie warunków") >= 0;
+       })());
+    ok("OZE Wiatr: krok MFW z KPK",
+       window.PVModel.ozeById("wiatr").formalPath.steps.some(function(st){
+         return st.name === "Uzyskanie decyzji o środowiskowych uwarunkowaniach dla całej inwestycji";
+       }));
+    ok("OZE Geotermia: krok pompy ciepła z KPK",
+       window.PVModel.ozeById("geotermia").formalPath.steps.some(function(st){
+         return st.name === "Powietrzna pompa ciepła";
+       }));
     ok("OZE PV: kolektory i magazyn energii w źródłach",
        (function(){
          const u = window.PVModel.ozeById("pv").formalPath.sources.map(function(x){ return x.url; }).join(" ");

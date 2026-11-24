@@ -469,8 +469,8 @@
         summary: "Pełna ścieżka PV pozostaje w głównym module. Poniżej zestawienie źródeł KPK oraz tematów pokrewnych, których nie duplikujemy w kalkulatorze.",
         steps: [
           ozeStep("Kroki PV w głównym module", "Główny moduł zawiera ścieżkę PV z wydruków KPK: warunki przyłączenia, zgłoszenie mikroinstalacji lub pozwolenie na budowę, zawiadomienie o zakończeniu budowy oraz wpis do rejestru albo koncesja.", "ready", "KPK gov.pl — instalacje fotowoltaiczne"),
-          ozeStep("Kolektory słoneczne — odrębny, uproszczony proces", "KPK wskazuje, że przy standardowym procesie inwestycyjnym nie są wymagane procedury; wyjątki potwierdź w źródle.", "verify", "KPK gov.pl — proces inwestycyjny kolektorów słonecznych"),
-          ozeStep("Magazyn energii elektrycznej — zakres do potwierdzenia", "KPK opisuje odrębny proces inwestycyjny dla magazynów energii. Potwierdź jego zakres dla konkretnego projektu.", "verify", "KPK gov.pl — instalacja magazynu energii")
+          ozeStep("Proces inwestycyjny kolektorów słonecznych", "KPK wskazuje, że przy standardowym procesie inwestycyjnym nie są wymagane procedury; wyjątki potwierdź w źródle.", "verify", "KPK gov.pl — proces inwestycyjny kolektorów słonecznych"),
+          ozeStep("Zgłoszenie magazynu/uzyskanie warunków", "KPK opisuje odrębny proces inwestycyjny dla magazynów energii. Potwierdź jego zakres dla konkretnego projektu.", "verify", "KPK gov.pl — instalacja magazynu energii")
         ],
         sources: [
           OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
@@ -525,7 +525,7 @@
           ozeStep("Uzyskanie pozwolenia na budowę", "W ścieżkach opisanych przez KPK pozwolenie na budowę jest podstawą rozpoczęcia prac budowlanych.", "verify", "KPK gov.pl — mała i wielkoskalowa instalacja wiatrowa"),
           ozeStep("Uzyskanie pozwolenia na użytkowanie", "Część ścieżek KPK kończy się uzyskaniem pozwolenia na użytkowanie.", "verify", "KPK gov.pl — instalacje wiatrowe na lądzie"),
           ozeStep("Wpis do rejestru wytwórców energii w małej instalacji OZE lub koncesja", "KPK rozróżnia wpis do rejestru i koncesję na wytwarzanie energii. Wybór zależy od skali i modelu działalności.", "verify", "KPK gov.pl — rejestr i koncesje"),
-          ozeStep("Morskie farmy wiatrowe — odrębna ścieżka", "KPK opisuje morskie farmy wiatrowe jako osobny proces z dodatkowymi decyzjami, zgodami i ekspertyzami. Potwierdź zakres w źródle.", "verify", "KPK gov.pl — proces inwestycyjny morskich farm wiatrowych")
+          ozeStep("Uzyskanie decyzji o środowiskowych uwarunkowaniach dla całej inwestycji", "Krok z odrębnego procesu dla morskich farm wiatrowych; pozostałe decyzje, zgody i ekspertyzy potwierdź w źródle.", "verify", "KPK gov.pl — proces inwestycyjny morskich farm wiatrowych")
         ],
         sources: [
           OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
@@ -609,7 +609,7 @@
         title: "Ścieżka formalna — geotermia / pompy ciepła (KPK, do potwierdzenia)",
         summary: "Kroki zestawione z wydruków KPK dla pomp ciepła, robót geologicznych, wód termalnych i realizacji inwestycji. Wymagania zależą od technologii i lokalizacji.",
         steps: [
-          ozeStep("Sprawdzenie trybu pompy ciepła", "KPK wskazuje, że przy standardowym procesie inwestycyjnym część pomp ciepła nie wymaga procedur; wyjątki potwierdź w źródle.", "verify", "KPK gov.pl — powietrzne i gruntowe pompy ciepła"),
+          ozeStep("Powietrzna pompa ciepła", "KPK opisuje powietrzną pompę ciepła jako niemal maksymalnie odformalizowaną; dla gruntowej do 30 m wskazuje brak procedur przy standardowym procesie. Ewentualne obowiązki (np. CRO) potwierdź w źródle.", "verify", "KPK gov.pl — powietrzna i gruntowa pompa ciepła do 30 m"),
           ozeStep("Rozpoznanie warunków geologicznych i hydrogeologicznych", "KPK opisuje odrębny krok rozpoznania warunków w miejscu inwestycji przed dalszymi robotami.", "verify", "KPK gov.pl — rozpoznanie warunków geologicznych i hydrogeologicznych"),
           ozeStep("Zatwierdzenie projektu robót geologicznych i zgłoszenie rozpoczęcia robót", "Dla prac geologicznych KPK podaje zatwierdzenie projektu oraz zgłoszenie rozpoczęcia robót. W wybranych wariantach występuje też plan ruchu zakładu górniczego.", "verify", "KPK gov.pl — odwierty i roboty geologiczne"),
           ozeStep("Zgłoszenie wodnoprawne lub pozwolenie wodnoprawne", "Krok KPK przy korzystaniu z wód lub oddziaływaniu na stosunki wodne. Zakres potwierdź z organem wodnym.", "verify", "KPK gov.pl — wody termalne i odwierty"),
