@@ -183,11 +183,13 @@ sekcji i wymiary strony są identyczne:
 
 | Styl | Opis |
 | --- | --- |
-| **Biały — prosty i czytelny** | Białe tło bez kolorowego paska, cienkie linie pod tytułami sekcji, pola decyzji i kroki tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
-| **Karty — sekcje w ramkach** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zielonym akcentem (motyw zielono-złoty webu). |
-| **Premium — ciemnogranatowo-złoty** | Dotychczasowy wygląd: ciemnogranatowy pasek, wypełnione pola TAK/NIE, niebieskie numerki kroków. Domyślny styl. |
+| **Biały — prosty i czytelny** | Białe tło bez kolorowego paska, ostre prostokąty (promień 0), cienkie linie pod tytułami sekcji, kwadratowe numerki kroków i pola decyzji tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
+| **Karty — sekcje w ramkach** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zaokrąglonymi narożnikami (promień 16) i okrągłymi numerkami. |
+| **Premium — ciemnogranatowo-złoty** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl. |
 
-Style są zdefiniowane jako palety w `js/pdf.js` (`PVPdf.themes`, `PALETTES`).
+Style mają różny „charakter” kształtów: kwadraty i prostokąty z ostrymi kątami,
+karty z zaokrągleniami oraz premium z większym promieniem. Zdefiniowano je jako
+palety i kształty w `js/pdf.js` (`PVPdf.themes`, `PALETTES`, `SHAPES`).
 Wszystkie strony mają jawnie wypełnione białe tło, więc styl „Biały" nie zależy
 od ustawień przeglądarki ani programu do PDF.
 

@@ -236,13 +236,7 @@
       '<div class="hero-text">' +
       '<h1>Formalność OZE</h1>' +
       '<p class="lead">Aplikacja do wstępnej oceny formalności i parametrów dla odnawialnych źródeł energii. Każda technologia ma osobną zakładkę z kalkulatorem, checklistą formalną, podglądem i eksportem PDF.</p>' +
-      '<div class="hero-actions">' +
-      '<button class="btn gold" data-act="go" data-path="pv">Fotowoltaika</button>' +
-      '<button class="btn" data-act="go" data-path="wiatr">Wiatr</button>' +
-      '<button class="btn ghost" data-act="go" data-path="woda">Woda</button>' +
-      '<button class="btn ghost" data-act="go" data-path="geotermia">Geotermia</button>' +
-      '<button class="btn ghost" data-act="go" data-path="biomasa">Biomasa</button>' +
-      '<button class="btn ghost" data-act="go" data-path="porownaj">Porównaj</button></div></div>' +
+      '</div>' +
       '<div class="hero-card"><span class="logo">OZE</span><strong>Co zawiera program</strong>' +
       '<ul class="plain-list small">' +
       '<li>5 osobnych zakładek technologii OZE</li>' +

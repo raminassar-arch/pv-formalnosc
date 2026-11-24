@@ -61,16 +61,37 @@
       NEED: "#B4531A", FREE: "#0F7A4B",
       NEED_BG: "#FCEEE4", FREE_BG: "#E7F5EE",
       WARN_BG: "#FFF6DA", WARN_LINE: "#D9B45A",
-      TABLE_HEAD_BG: "#EDF2F7", RULE: "#CBD6DE", ACCENT: "#2E7FB8",
+      TABLE_HEAD_BG: "#EDF2F7", RULE: "#CBD6DE", ACCENT: "#2E7FB8", GOLD: "#C8A45C",
       CARD_BG: "#FFFFFF", CARD_LINE: "#CBD6DE", CARD_ACCENT: "#0F2742",
     },
   };
 
+  /** Kształty nadają motywom różny charakter: ostre kąty, karty, zaokrąglenia. */
+  const SHAPES = {
+    simple:  { radius: 0,  badge: "square",  cardFill: false, lineWidth: 1 },
+    cards:   { radius: 16, badge: "circle",  cardFill: true,  lineWidth: 1 },
+    premium: { radius: 26, badge: "rounded", cardFill: true,  lineWidth: 2 },
+  };
+
   function palette(id) { return PALETTES[id] || PALETTES.premium; }
+  function shape(id) { return SHAPES[id] || SHAPES.premium; }
 
   function fontPx(pt) { return Math.max(8, Math.round(pt * 150 / 72)); }
   function fontDef(pt, bold) {
     return `${fontPx(pt)}px "${bold ? "DejaVu-Bold" : "DejaVu"}", sans-serif`;
+  }
+
+  /** Ścieżka prostokąta z promieniem narożnika (0 = ostre kąty). */
+  function roundedRectPath(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    if (r === 0) { ctx.rect(x, y, w, h); return; }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
 
   /** Przezroczysty, przekątny znak wodny pod treścią raportu — dwie linie. */
@@ -112,6 +133,7 @@
 
   function Doc(theme) {
     this.c = palette(theme);
+    this.shape = shape(theme);
     this.pages = [];
     this.newPage();
     this.f = {
@@ -202,40 +224,67 @@
     ctx.stroke();
   };
 
-  /** Tło sekcji w stylu „Karty"; w pozostałych motywach nie rysuje nic. */
+  /** Ramka/wypełnienie z narożnikami charakterystycznymi dla motywu. */
+  Doc.prototype.box = function (x, y, w, h, fill, stroke, radius) {
+    const ctx = this.ctx;
+    const r = radius === undefined ? this.shape.radius : radius;
+    if (fill) {
+      ctx.fillStyle = fill;
+      roundedRectPath(ctx, x, y, w, h, r);
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = this.shape.lineWidth;
+      roundedRectPath(ctx, x, y, w, h, r);
+      ctx.stroke();
+    }
+  };
+
+  /** Tło sekcji: ostre prostokąty / zaokrąglone karty wg motywu. */
   Doc.prototype.cardRect = function (startY, height) {
-    if (this.c.id !== "cards") return;
     const ctx = this.ctx, x = MARGIN - 20, w = W - 2 * MARGIN + 40;
-    ctx.fillStyle = this.c.CARD_BG;
-    ctx.fillRect(x, startY, w, height);
-    ctx.strokeStyle = this.c.CARD_LINE;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, startY, w, height);
+    const sh = this.shape;
+    this.box(x, startY, w, height,
+             sh.cardFill ? this.c.CARD_BG : null, this.c.CARD_LINE, sh.radius);
     ctx.fillStyle = this.c.CARD_ACCENT;
-    ctx.fillRect(x, startY, 5, height);
+    if (sh.radius === 0) {
+      ctx.fillRect(x, startY, 5, height);
+    } else {
+      roundedRectPath(ctx, x, startY, 10, height, Math.min(5, sh.radius));
+      ctx.fill();
+    }
   };
 
   Doc.prototype.sectionTitle = function (text, advance) {
-    if (this.c.id === "cards") {
-      this.ctx.fillStyle = this.c.CARD_ACCENT;
-      this.ctx.fillRect(MARGIN - 20, this.y, 5, 24);
+    const ctx = this.ctx, sh = this.shape;
+    if (sh.radius === 0) {
+      this.rule(this.y + 26);
+    } else if (this.c.id === "premium") {
+      ctx.fillStyle = this.c.GOLD || this.c.CARD_ACCENT;
+      roundedRectPath(ctx, MARGIN - 20, this.y + 3, 9, 20, 4);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = this.c.CARD_ACCENT;
+      roundedRectPath(ctx, MARGIN - 20, this.y, 5, 24, 2);
+      ctx.fill();
     }
     this.text(text, this.f.h2, this.c.CELL, MARGIN, this.y);
-    if (this.c.id === "simple") this.rule(this.y + 26);
     this.y += advance;
   };
 
   Doc.prototype.verdictBox = function (x, y, w, need, title, desc) {
-    const c = this.c;
-    if (c.id !== "simple") {
-      this.ctx.fillStyle = need ? c.NEED_BG : c.FREE_BG;
-      this.ctx.fillRect(x, y, w, 140);
+    const c = this.c, sh = this.shape, ctx = this.ctx;
+    this.box(x, y, w, 140,
+             sh.cardFill ? (need ? c.NEED_BG : c.FREE_BG) : null,
+             need ? c.NEED : c.FREE, sh.radius);
+    ctx.fillStyle = need ? c.NEED : c.FREE;
+    if (sh.radius === 0) {
+      ctx.fillRect(x, y, 8, 140);
+    } else {
+      roundedRectPath(ctx, x, y, 12, 140, Math.min(6, sh.radius));
+      ctx.fill();
     }
-    this.ctx.strokeStyle = need ? c.NEED : c.FREE;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, w, 140);
-    this.ctx.fillStyle = need ? c.NEED : c.FREE;
-    this.ctx.fillRect(x, y, 8, 140);
     this.text(title, this.f.h3, c.INK, x + 22, y + 12);
     this.text(need ? "TAK" : "NIE", this.f.big, need ? c.NEED : c.FREE, x + 22, y + 38);
     const saved = this.y;
@@ -311,8 +360,8 @@
     const areaHead = o.mode === "both" ? "Pow. · z mocy/pow."
       : o.mode === "power" ? "Pow. wymagana" : "Pow. zajęta";
     const heads = ["Moduł", "Panele", "Moc", areaHead, "Razem"];
-    ctx.fillStyle = c.TABLE_HEAD_BG;
-    ctx.fillRect(MARGIN, this.y - 4, W - 2 * MARGIN, 24);
+    this.box(MARGIN, this.y - 4, W - 2 * MARGIN, 24,
+             c.TABLE_HEAD_BG, null, Math.min(8, this.shape.radius));
     ctx.font = f.small;
     heads.forEach((h, i) => this.text(fit(h, i === 0 ? 415 : 100), f.small,
                                       c.CELL, cols[i], this.y));
@@ -350,8 +399,17 @@
     }
     this.text("Formalność OZE — raport", f.title,
               c.ON_PRIMARY, MARGIN, 26);
-    this.text(`Wynik analizy · wersja ${M.VERSION} · ${M.todayPl()}`,
-              f.sub, c.HEADER_SUB, MARGIN, 80);
+    const sub = `Wynik analizy · wersja ${M.VERSION} · ${M.todayPl()}`;
+    if (c.id === "premium") {
+      this.ctx.font = f.sub;
+      const pillW = this.ctx.measureText(sub).width + 24;
+      this.ctx.fillStyle = c.GOLD;
+      roundedRectPath(this.ctx, MARGIN - 12, 72, pillW, 26, 13);
+      this.ctx.fill();
+      this.text(sub, f.sub, c.PRIMARY, MARGIN, 77);
+    } else {
+      this.text(sub, f.sub, c.HEADER_SUB, MARGIN, 80);
+    }
     if (c.id === "simple") this.rule(118);
 
     this.y = 165;
@@ -399,13 +457,8 @@
     if (r.warning) {
       const saved = this.y;
       this.y += 12;
-      if (c.id !== "simple") {
-        this.ctx.fillStyle = c.WARN_BG;
-        this.ctx.fillRect(MARGIN, saved, W - 2 * MARGIN, 58);
-      }
-      this.ctx.strokeStyle = c.WARN_LINE;
-      this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(MARGIN, saved, W - 2 * MARGIN, 58);
+      this.box(MARGIN, saved, W - 2 * MARGIN, 58,
+               c.id === "simple" ? null : c.WARN_BG, c.WARN_LINE, this.shape.radius);
       this.wrapped(r.warning, f.small, c.INK, MARGIN + 20, W - 2 * MARGIN - 40, 18);
       this.y = saved + 68;
     }
@@ -419,22 +472,31 @@
       const descHeight = 60 + 18 * lines;
       this.ensure(descHeight + 20);
       this.cardRect(this.y, descHeight + 12);
-      const cx = MARGIN + 15, cy = this.y + 15;
-      this.ctx.beginPath();
-      this.ctx.arc(cx, cy, 15, 0, 2 * Math.PI);
-      if (c.id === "simple") {
-        this.ctx.strokeStyle = c.ACCENT;
-        this.ctx.lineWidth = 1;
-        this.ctx.stroke();
+      const cx = MARGIN + 15, cy = this.y + 15, sh = this.shape;
+      const num = String(i + 1);
+      this.ctx.font = f.num;
+      if (sh.badge === "square") {
+        if (sh.cardFill) {
+          this.ctx.fillStyle = c.ACCENT;
+          this.ctx.fillRect(cx - 15, cy - 15, 30, 30);
+        } else {
+          this.ctx.strokeStyle = c.ACCENT;
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeRect(cx - 15, cy - 15, 30, 30);
+        }
+      } else if (sh.badge === "rounded") {
+        this.ctx.fillStyle = c.GOLD || c.CARD_ACCENT;
+        roundedRectPath(this.ctx, cx - 15, cy - 15, 30, 30, 8);
+        this.ctx.fill();
       } else {
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, 15, 0, 2 * Math.PI);
         this.ctx.fillStyle = c.ACCENT;
         this.ctx.fill();
       }
-      const num = String(i + 1);
-      this.ctx.font = f.num;
       const nw = this.ctx.measureText(num).width;
-      this.text(num, f.num, c.id === "simple" ? c.ACCENT : c.ON_PRIMARY,
-                MARGIN + (30 - nw) / 2, this.y + 2);
+      const ink = sh.badge === "square" && !sh.cardFill ? c.ACCENT : c.ON_PRIMARY;
+      this.text(num, f.num, ink, MARGIN + (30 - nw) / 2, this.y + 2);
       this.text(step.name, f.h3, c.INK, MARGIN + 44, this.y);
       this.y += 34;
       this.wrapped(step.desc, f.small, c.BODY_INK,
@@ -556,6 +618,8 @@
     dataUrlBytes: dataUrlBytes,
     themes: THEMES,
     themePalette: palette,
+    themeShape: shape,
+    roundedRectPath: roundedRectPath,
     drawWatermark: drawWatermark,
     watermark: WATERMARK,
     watermarkLines: WATERMARK_LINES,

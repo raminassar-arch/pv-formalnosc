@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=6"></script>
-<script src="../js/payment.js?v=2.0.0i&n=6"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=6"></script>
-<script src="../js/app.js?v=2.0.0i&n=6"></script>
+<script src="../js/model.js?v=2.0.0i&n=8"></script>
+<script src="../js/payment.js?v=2.0.0i&n=8"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=8"></script>
+<script src="../js/app.js?v=2.0.0i&n=8"></script>
 <script>
 (function () {
   "use strict";
@@ -473,6 +473,24 @@
        themes.map(function (t) { return t.id; }).join(",") === "simple,cards,premium" &&
        window.PVPdf.defaultTheme === "premium",
        JSON.stringify(themes));
+    const shSimple = window.PVPdf.themeShape("simple"),
+          shCards = window.PVPdf.themeShape("cards"),
+          shPremium = window.PVPdf.themeShape("premium");
+    const cornerCalls = function (radius) {
+      const calls = [];
+      window.PVPdf.roundedRectPath({
+        beginPath: function () {}, rect: function () { calls.push("rect"); },
+        moveTo: function () {}, arcTo: function () { calls.push("arcTo"); },
+        closePath: function () {}
+      }, 0, 0, 100, 50, radius);
+      return calls.join(",");
+    };
+    ok("motywy: ostre kąty, zaokrąglone karty, większy promień premium",
+       shSimple.radius === 0 && shSimple.badge === "square" &&
+       shCards.radius > 0 && shCards.badge === "circle" &&
+       shPremium.radius > shCards.radius && shPremium.badge === "rounded" &&
+       cornerCalls(0) === "rect" && cornerCalls(12).indexOf("arcTo") >= 0,
+       [shSimple.radius, shCards.radius, shPremium.radius].join(","));
     const themed = {};
     for (const t of themes) {
       const bytes = await window.PVPdf.renderPdf(r, est, optPower, t.id);
@@ -506,6 +524,11 @@
     ok("Start: 6 ikon-kafli jako przyciski",
        iconCards.length === 6 && iconCards.every(function (b) { return !!b.querySelector("svg"); }),
        String(iconCards.length));
+    const goButtons = [...document.querySelectorAll('#view button[data-act="go"]')];
+    ok("Start: brak powielonych tekstowych przycisków zakładek",
+       !document.querySelector("#view .hero-actions") &&
+       goButtons.length === 6 && goButtons.every(function (b) { return !!b.closest(".start-tab-grid"); }),
+       String(goButtons.length));
     ok("Start: brak przycisku Otwórz zakładkę", startText.indexOf("Otwórz zakładkę") < 0);
     ok("Start: brak (do potwierdzenia)", startText.indexOf("do potwierdzenia") < 0);
     const iconGrid = document.querySelector("#view .start-tab-grid");
