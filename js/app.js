@@ -194,6 +194,10 @@
     }).join("");
   }
 
+  function card(title, body) {
+    return '<article class="card"><h3>' + esc(title) + '</h3><p>' + esc(body) + '</p></article>';
+  }
+
   // --- widoki --------------------------------------------------------------
 
   function viewStart() {
