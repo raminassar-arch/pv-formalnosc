@@ -224,7 +224,7 @@
     ok("PDF: JPEG /DCTDecode", text.indexOf("/DCTDecode") >= 0);
     ok("PDF: A4 2480x3508", text.indexOf("/Width 2480 /Height 3508") >= 0);
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
-    ok("znak wodny wersji testowej", window.PVPdf.watermark === "WERSJA TESTOWA",
+    ok("znak wodny wersji testowej", window.PVPdf.watermark === "wersja testowa, BIM architects & consultants, Rami Nassar 2026",
        String(window.PVPdf.watermark));
     const xrefPos = Number(/startxref\n(\d+)/.exec(text)[1]);
     ok("PDF: xref wskazuje poprawny offset", dec.decode(pdf.slice(xrefPos, xrefPos + 4)) === "xref");
@@ -258,20 +258,17 @@
       ok("OZE ścieżka " + id, s && s.formalPath && s.formalPath.steps.length >= 4);
       ok("OZE źródła " + id, s && s.formalPath && s.formalPath.sources.length >= 1);
     });
-    location.hash = "#/oze";
-    await wait(120);
-    ok("UI: zakładka OZE", document.body.textContent.indexOf("Inne odnawialne źródła energii") >= 0);
-    ok("UI: karty OZE", !!document.querySelector("[data-act='oze-source']"));
-    ok("UI: kalkulator OZE", !!document.getElementById("oze-powerKw") || !!document.getElementById("oze-flowLps") || !!document.getElementById("oze-heatDemandKw") || !!document.getElementById("oze-fuelTonsYear"));
-    document.querySelector("[data-act='oze-source'][data-source='woda']").click();
-    await wait(120);
-    ok("UI: przełączanie OZE woda", !!document.getElementById("oze-flowLps"));
-    document.querySelector("[data-act='oze-source'][data-source='geotermia']").click();
-    await wait(120);
-    ok("UI: przełączanie OZE geotermia", !!document.getElementById("oze-heatDemandKw"));
-    document.querySelector("[data-act='oze-source'][data-source='biomasa']").click();
-    await wait(120);
-    ok("UI: przełączanie OZE biomasa", !!document.getElementById("oze-fuelTonsYear"));
+    location.hash = "#/wiatr"; await wait(120);
+    ok("UI: zakładka wiatr", !!document.querySelector('#steps a[href="#/wiatr"]'));
+    ok("UI: zakładka woda", !!document.querySelector('#steps a[href="#/woda"]'));
+    ok("UI: zakładka geotermia", !!document.querySelector('#steps a[href="#/geotermia"]'));
+    ok("UI: strona wiatr", !!document.getElementById("oze-wiatr-powerKw"));
+    location.hash = "#/woda"; await wait(120);
+    ok("UI: przełączanie OZE woda", !!document.getElementById("oze-woda-flowLps"));
+    location.hash = "#/geotermia"; await wait(120);
+    ok("UI: przełączanie OZE geotermia", !!document.getElementById("oze-geotermia-heatDemandKw"));
+    location.hash = "#/biomasa"; await wait(120);
+    ok("UI: przełączanie OZE biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear"));
 
     const mc = document.createElement("canvas").getContext("2d");
     mc.font = Math.round(10 * 150 / 72) + 'px "DejaVu", sans-serif';
@@ -324,25 +321,21 @@
     ok("wersja testowa włączona", P.isTestMode() === true);
     ok("brak konfiguracji na start", P.configured() === false);
 
-    location.hash = "#/dane";
+    location.hash = "#/pv";
     await nextTick();
     ok("formularz ma tylko moc i powierzchnię",
        !!document.querySelector("#f-ha") && !!document.querySelector("#f-kw") &&
        !document.querySelector("#f-place") && !document.querySelector("#f-protected") &&
        !document.querySelector("#f-preset") && !document.querySelector("#f-panelarea") &&
        !document.querySelector("#f-coverage") && !document.querySelector("#f-labor") &&
-       !document.querySelector("#f-opt-mode") && !document.querySelector("#f-pdf-theme") &&
-       document.querySelectorAll("#view input").length === 2);
-    ok("zakładki wynik i podgląd są odblokowane w wersji testowej",
-       document.querySelectorAll("#steps .step.locked").length === 0 &&
-       !!document.querySelector('#steps a[href="#/wynik"]') &&
-       !!document.querySelector('#steps a[href="#/podglad"]'));
-
-    location.hash = "#/wynik";
-    await nextTick();
-    ok("wynik dostępny bez opłaty w wersji testowej",
-       location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
-       location.hash);
+       !document.querySelector("#f-opt-mode"));
+    ok("zakładki ukryte: płatność/wynik/podgląd/o programie",
+       !document.querySelector('#steps a[href="#/platnosc"]') &&
+       !document.querySelector('#steps a[href="#/wynik"]') &&
+       !document.querySelector('#steps a[href="#/podglad"]') &&
+       !document.querySelector('#steps a[href="#/o-programie"]'));
+    ok("wynik PV w zakładce",
+       !!document.querySelector("#pv-wynik") && !!document.querySelector("#view .verdict-grid"));
     const wynikText = document.querySelector("#view").textContent || "";
     ok("wynik pokazuje wycenę i czas",
        !!document.querySelector("#view .est-panel") &&
@@ -353,39 +346,17 @@
        wynikText.indexOf("Najtańszy wariant") >= 0 &&
        document.querySelectorAll("#view .opt-table tbody tr").length === 9,
        wynikText.slice(0, 160));
-
-    location.hash = "#/podglad";
+    ok("podgląd dostępny w zakładce PV",
+       !!document.querySelector("#preview-canvas"), "brak canvasa");
+    location.hash = "#/pv";
     await nextTick();
-    ok("podgląd dostępny bez opłaty w wersji testowej",
-       location.hash === "#/podglad" && !!document.querySelector("#preview-canvas"),
-       location.hash);
+    ok("brak płatności w UI", !document.querySelector('[data-act="pay-open"]') && !document.querySelector('[data-act="pay-confirm"]'));
+    location.hash="#/wiatr"; await nextTick();
+    ok("OZE ma przycisk PDF", !!document.querySelector('[data-act="oze-pdf"][data-source="wiatr"]'));
+    ok("OZE ma podgląd", !!document.querySelector("#preview-canvas"));
 
-    location.hash = "#/platnosc";
-    await nextTick();
-    const payText = document.querySelector("#view").textContent || "";
-    ok("brak sekcji Konfiguracja bramki i Jak to działa na Płatności",
-       !document.querySelector("#p-create") && !document.querySelector("#p-verify") &&
-       payText.indexOf("Konfiguracja bramki") < 0 &&
-       payText.indexOf("Jak to działa") < 0, payText.slice(0, 160));
-    ok("brak otwierania bramki w wersji testowej",
-       !document.querySelector('[data-act="pay-open"]') &&
-       !!document.querySelector('[data-act="pay-confirm"]'));
-    const confirmBtn = document.querySelector('[data-act="pay-confirm"]');
-    if (confirmBtn) confirmBtn.click();
-    await nextTick();
-    ok("przycisk na Płatności otwiera wynik",
-       location.hash === "#/wynik" && !!document.querySelector("#view .verdict-grid"),
-       location.hash);
-
-    const testSession = P.currentSession();
-    P.consume(testSession);
-    location.hash = "#/podglad";
-    await nextTick();
-    ok("wersja testowa odnawia dostęp po pobraniu PDF",
-       location.hash === "#/podglad" && !!document.querySelector("#preview-canvas") &&
-       !!P.currentSession() && P.isPaid(P.currentSession()), location.hash);
-
-    ok("nawigacja ma OZE", !!document.querySelector('#steps a[href="#/oze"]'),
+    location.hash="#/biomasa"; await wait(80);
+      ok("UI: strona biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear")); ok("nawigacja ma PV", !!document.querySelector('#steps a[href="#/pv"]'),
        (document.querySelector("#steps")||{}).innerHTML ? document.querySelector("#steps").innerHTML.slice(0,120) : "no-steps");
 
   }

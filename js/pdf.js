@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PV Formalność — wersja web
+   Formalność OZE — wersja web
    pdf.js — eksport PDF 1.4 w 300 DPI, bez drukarki i bez serwera.
 
    Strona A4 jest rasteryzowana do 2480 x 3508 px (300 DPI), zapisywana jako
@@ -20,7 +20,7 @@
   // Znika automatycznie po ustawieniu TEST_MODE = false w js/payment.js.
   const TEST_BUILD = !!(root.PVPayment && root.PVPayment.isTestMode &&
                         root.PVPayment.isTestMode());
-  const WATERMARK = TEST_BUILD ? "WERSJA TESTOWA" : "";
+  const WATERMARK = "wersja testowa, BIM architects & consultants, Rami Nassar 2026";
 
   /** Trzy wyglądy tego samego raportu. Identyczna treść i układ A4. */
   const THEMES = [
@@ -341,7 +341,7 @@
       this.ctx.fillStyle = c.PRIMARY;
       this.ctx.fillRect(0, 0, W, 130);
     }
-    this.text("Formalności dla instalacji fotowoltaicznej", f.title,
+    this.text("Formalność OZE — raport", f.title,
               c.ON_PRIMARY, MARGIN, 26);
     this.text(`Wynik analizy · wersja ${M.VERSION} · ${M.todayPl()}`,
               f.sub, c.HEADER_SUB, MARGIN, 80);
@@ -545,9 +545,11 @@
     renderPdf: renderPdf,
     renderPreview: renderPreview,
     buildPdf: buildPdf,          // eksportowany też do testów Node
+    ensureFonts: ensureFonts,
+    dataUrlBytes: dataUrlBytes,
     themes: THEMES,
     watermark: WATERMARK,
     defaultTheme: "premium",
-    constants: { W: W, H: H, S: S, PXW: PXW, PXH: PXH },
+    constants: { W: W, H: H, S: S, PXW: PXW, PXH: PXH, PAGE_W: PAGE_W, PAGE_H: PAGE_H },
   };
 })(typeof window !== "undefined" ? window : globalThis);
