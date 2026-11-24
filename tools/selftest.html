@@ -251,6 +251,56 @@
        ["pv","wiatr","woda","geotermia","biomasa"].every(function(id){ return !!window.PVModel.ozeById(id); }));
     ok("OZE: źródło gov.pl", /edukacja-ekologiczna/.test(window.PVModel.OZE_GOV_SOURCE.url));
     ok("OZE: disclaimer", /orientacyjny/i.test(window.PVModel.OZE_DISCLAIMER));
+    ok("OZE: disclaimer KPK z datą źródeł",
+       /KPK/.test(window.PVModel.OZE_DISCLAIMER) &&
+       window.PVModel.OZE_DISCLAIMER.indexOf("24.11.2026") >= 0);
+    ok("OZE: źródło KPK gov.pl",
+       !!window.PVModel.OZE_KPK_SOURCE &&
+       /kontaktoze/.test(window.PVModel.OZE_KPK_SOURCE.url));
+    ok("OZE PV: link do modułu głównego",
+       window.PVModel.ozeById("pv").calculator.href === "#/pv");
+    const kpkExpected = {
+      pv: "Kroki PV w głównym module",
+      wiatr: "Planistyka",
+      woda: "Uzyskanie pozwolenia wodnoprawnego",
+      geotermia: "Rozpoznanie warunków geologicznych i hydrogeologicznych",
+      biomasa: "Uzyskanie pozwoleń środowiskowych"
+    };
+    ["pv","wiatr","woda","geotermia","biomasa"].forEach(function(id){
+      const s = window.PVModel.ozeById(id);
+      const steps = (s && s.formalPath && s.formalPath.steps) || [];
+      const srcs = (s && s.formalPath && s.formalPath.sources) || [];
+      ok("OZE " + id + ": krok KPK " + kpkExpected[id],
+         steps.some(function(st){ return st.name === kpkExpected[id]; }));
+      ok("OZE " + id + ": checklista do PDF (3-8 kroków)",
+         steps.length >= 3 && steps.length <= 8,
+         String(steps.length));
+      ok("OZE " + id + ": kroki mają weryfikację",
+         steps.every(function(st){ return !!st.sourceHint && (st.status === "verify" || st.status === "ready"); }));
+      ok("OZE " + id + ": linki KPK gov.pl",
+         srcs.some(function(x){ return /gov\.pl\/web\/kontaktoze\//.test(x.url); }));
+    });
+    ok("OZE PV: kolektory i magazyn energii w źródłach",
+       (function(){
+         const u = window.PVModel.ozeById("pv").formalPath.sources.map(function(x){ return x.url; }).join(" ");
+         return u.indexOf("proces-inwestycyjny-kolektorow-slonecznych2") >= 0 &&
+                u.indexOf("instalacja-magazynu-energii-elektrycznej-o-mocy-do-50-kw") >= 0;
+       })());
+    ok("OZE Wiatr: morskie farmy w źródłach",
+       window.PVModel.ozeById("wiatr").formalPath.sources.some(function(x){
+         return x.url.indexOf("proces-inwestycyjny-morskich-farm-wiatrowych") >= 0;
+       }));
+    ok("OZE Geotermia: pompy ciepła w źródłach",
+       window.PVModel.ozeById("geotermia").formalPath.sources.some(function(x){
+         return x.url.indexOf("powietrzna-pompa-ciepla") >= 0;
+       }));
+    ok("OZE Biomasa: biogaz/biometan/biopłyny w źródłach",
+       (function(){
+         const u = window.PVModel.ozeById("biomasa").formalPath.sources.map(function(x){ return x.url; }).join(" ");
+         return u.indexOf("mikroinstalacja2") >= 0 &&
+                u.indexOf("mikroinstalacja10") >= 0 &&
+                u.indexOf("mala-instalacja5") >= 0;
+       })());
     const wind = window.PVModel.ozeCalculate("wiatr", {powerKw:10,diameterM:5.5,windMs:6,cp:0.35,efficiency:0.9,hoursYear:2600,capexPlnKw:9000,opexPct:2.5});
     ok("OZE wiatr: energia > 0", wind && wind.energyMwhYear > 0);
     ok("OZE wiatr: moc > 0", wind && wind.powerFromWindKw > 0);
@@ -272,6 +322,13 @@
     ok("UI: zakładka woda", !!document.querySelector('#steps a[href="#/woda"]'));
     ok("UI: zakładka geotermia", !!document.querySelector('#steps a[href="#/geotermia"]'));
     ok("UI: strona wiatr", !!document.getElementById("oze-wiatr-powerKw"));
+    ok("UI: KPK i statusy do potwierdzenia w widoku OZE",
+       (document.querySelector("#view").textContent || "").indexOf("KPK gov.pl") >= 0 &&
+       document.querySelectorAll("#view .badge.warn").length >= 8);
+    ok("UI: linki źródeł KPK w widoku OZE",
+       Array.prototype.some.call(document.querySelectorAll("#view a[href]"), function(a){
+         return /gov\.pl\/web\/kontaktoze\//.test(a.getAttribute("href") || "");
+       }));
     location.hash = "#/woda"; await wait(120);
     ok("UI: przełączanie OZE woda", !!document.getElementById("oze-woda-flowLps"));
     location.hash = "#/geotermia"; await wait(120);

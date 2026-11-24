@@ -404,14 +404,18 @@
   // --------------------------------------------------------------------------
   // Zakres kart opisowych zgodny z: gov.pl/web/edukacja-ekologiczna/
   // odnawialne-zrodla-energii-czym-sa-i-co-nalezy-o-nich-wiedziec (26.07.2022).
+  // Nazwy kroków i linki do procedur pochodzą z wydruków Krajowego Punktu
+  // Kontaktowego ds. OZE (gov.pl/web/kontaktoze), stan na 24.11.2026.
   // Kalkulatory i ścieżki formalne są ORIENTACYJNE. Nie kodujemy niezweryfikowanych
   // progów prawnych — elementy wymagające potwierdzenia są jawnie oznaczone.
 
   const OZE_DISCLAIMER =
     "Informacje mają charakter orientacyjny i edukacyjny. Nie stanowią porady prawnej, " +
-    "projektowej ani decyzji administracyjnej. Przed realizacją potwierdź wymagania w " +
-    "właściwych źródłach (gov.pl, biznes.gov.pl, URE, GDOŚ/Wody Polskie, gmina/starostwo) " +
-    "oraz aktualnych przepisach.";
+    "projektowej ani decyzji administracyjnej. Checklisty odzwierciedlają nazwy kroków " +
+    "z wydruków Krajowego Punktu Kontaktowego ds. OZE (KPK gov.pl, stan na 24.11.2026); " +
+    "nie przesądzają o wymaganiach dla konkretnej inwestycji. Przed realizacją potwierdź " +
+    "wymagania we właściwych źródłach (gov.pl, biznes.gov.pl, URE, GDOŚ/Wody Polskie, " +
+    "gmina/starostwo) oraz aktualnych przepisach.";
 
   const OZE_GOV_SOURCE = {
     label: "gov.pl — Edukacja ekologiczna: Odnawialne źródła energii. Czym są i co należy o nich wiedzieć?",
@@ -427,6 +431,22 @@
     note: "Materiał pomocniczy dla analizy wykonalności; nie zastępuje przepisów ani indywidualnej decyzji organu."
   };
 
+  const OZE_KPK_SOURCE = {
+    label: "Krajowy Punkt Kontaktowy ds. OZE (gov.pl) — wydruki procesów inwestycyjnych",
+    url: "https://www.gov.pl/web/kontaktoze/",
+    date: "24.11.2026",
+    note: "Listy kroków są uproszczonym odwzorowaniem wydruków KPK. Status „do potwierdzenia” oznacza, że zakres procedury zależy od konkretnego projektu."
+  };
+
+  function kpkSource(label, url, note) {
+    return {
+      label: label + " — KPK gov.pl",
+      url: url,
+      date: "24.11.2026",
+      note: note || "Wydruk procesu inwestycyjnego — do potwierdzenia."
+    };
+  }
+
   function ozeStep(name, desc, status, sourceHint) {
     return { name: name, desc: desc, status: status || "verify", sourceHint: sourceHint || "" };
   }
@@ -440,16 +460,33 @@
       description: "Energia promieniowania słonecznego zamieniana na energię elektryczną lub ciepło. W tej aplikacji pełny moduł dotyczy instalacji fotowoltaicznej.",
       govPoints: [
         "Energia słoneczna jest wykorzystywana m.in. przez kolektory słoneczne i panele fotowoltaiczne.",
-        "Jest dostępna powszechnie, ale zależy od nasłonecznienia, pory dnia i roku."
+        "Jest dostępna powszechnie, ale zależy od nasłonecznienia, pory dnia i roku.",
+        "KPK opisuje odrębne procesy dla instalacji fotowoltaicznych, kolektorów słonecznych i magazynów energii elektrycznej."
       ],
-      calculator: { kind: "link", label: "Otwórz kalkulator PV", href: "#/dane" },
+      calculator: { kind: "link", label: "Otwórz kalkulator PV", href: "#/pv" },
       formalPath: {
-        title: "Ścieżka formalna PV — moduł główny",
-        summary: "Pełna ścieżka formalna PV jest już dostępna w zakładkach Dane/Wynik/Podgląd.",
+        title: "Ścieżka formalna PV — moduł główny i źródła pokrewne",
+        summary: "Pełna ścieżka PV pozostaje w głównym module. Poniżej zestawienie źródeł KPK oraz tematów pokrewnych, których nie duplikujemy w kalkulatorze.",
         steps: [
-          ozeStep("Użyj głównego modułu PV", "Przejdź do Dane, wpisz moc i powierzchnię, a następnie wygeneruj wynik i raport PDF.", "ready", "Moduł PV Formalność w tej aplikacji")
+          ozeStep("Kroki PV w głównym module", "Główny moduł zawiera ścieżkę PV z wydruków KPK: warunki przyłączenia, zgłoszenie mikroinstalacji lub pozwolenie na budowę, zawiadomienie o zakończeniu budowy oraz wpis do rejestru albo koncesja.", "ready", "KPK gov.pl — instalacje fotowoltaiczne"),
+          ozeStep("Kolektory słoneczne — odrębny, uproszczony proces", "KPK wskazuje, że przy standardowym procesie inwestycyjnym nie są wymagane procedury; wyjątki potwierdź w źródle.", "verify", "KPK gov.pl — proces inwestycyjny kolektorów słonecznych"),
+          ozeStep("Magazyn energii elektrycznej — zakres do potwierdzenia", "KPK opisuje odrębny proces inwestycyjny dla magazynów energii. Potwierdź jego zakres dla konkretnego projektu.", "verify", "KPK gov.pl — instalacja magazynu energii")
         ],
-        sources: [OZE_GOV_SOURCE]
+        sources: [
+          OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
+          kpkSource("PV — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-fotowoltaiczna-do-65-kw"),
+          kpkSource("PV — mikroinstalacja (wyższa moc)", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-fotowoltaiczna-powyzej-65-kw"),
+          kpkSource("PV — mała instalacja nadachowa", "https://www.gov.pl/web/kontaktoze/instalacja-nadachowa"),
+          kpkSource("PV — mała instalacja nadachowa (wyższa moc)", "https://www.gov.pl/web/kontaktoze/instalacja-nadachowa2"),
+          kpkSource("PV — mała instalacja naziemna", "https://www.gov.pl/web/kontaktoze/instalacja-naziemna"),
+          kpkSource("PV — mała instalacja naziemna, wariant A", "https://www.gov.pl/web/kontaktoze/powierzchnia-do-2ha-lub-do-05-ha-na-terenach-chronionych4"),
+          kpkSource("PV — mała instalacja naziemna, wariant B", "https://www.gov.pl/web/kontaktoze/powierzchnia-powyzej-2ha-lub-powyzej-05-ha-na-terenach-chronionych3"),
+          kpkSource("PV — wielkoskalowa instalacja nadachowa", "https://www.gov.pl/web/kontaktoze/instalacje-nadachowe2"),
+          kpkSource("PV — wielkoskalowa instalacja naziemna, wariant A", "https://www.gov.pl/web/kontaktoze/powierzchnia-do-2ha-lub-do-05-ha-na-terenach-chronionych2"),
+          kpkSource("PV — wielkoskalowa instalacja naziemna, wariant B", "https://www.gov.pl/web/kontaktoze/powierzchnia-powyzej-2ha-lub-powyzej-05-ha-na-terenach-chronionych2"),
+          kpkSource("Kolektory słoneczne — proces inwestycyjny", "https://www.gov.pl/web/kontaktoze/proces-inwestycyjny-kolektorow-slonecznych2"),
+          kpkSource("Magazyn energii elektrycznej", "https://www.gov.pl/web/kontaktoze/instalacja-magazynu-energii-elektrycznej-o-mocy-do-50-kw")
+        ]
       }
     },
     {
@@ -460,7 +497,8 @@
       description: "Energia kinetyczna wiatru przetwarzana na energię elektryczną przez turbiny wiatrowe. Skala projektów może obejmować mikroinstalacje, instalacje przydomowe lub farmy wiatrowe.",
       govPoints: [
         "Energetyka wiatrowa wykorzystuje siłę wiatru do napędu turbin.",
-        "Lokalizacja zależy od warunków wiatrowych i uwarunkowań środowiskowych/przestrzennych."
+        "Lokalizacja zależy od warunków wiatrowych i uwarunkowań środowiskowych/przestrzennych.",
+        "KPK rozróżnia mikroinstalacje nadachowe i naziemne, małe instalacje, wielkoskalowe farmy lądowe oraz morskie farmy wiatrowe."
       ],
       calculator: {
         kind: "wind",
@@ -477,17 +515,27 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — energetyka wiatrowa (szkielet do potwierdzenia)",
-        summary: "Lista kontrolna obejmuje typowe obszary formalne. Konkretne progi, wymagane decyzje i wyjątki należy potwierdzić dla lokalizacji i mocy.",
+        title: "Ścieżka formalna — energetyka wiatrowa (KPK, do potwierdzenia)",
+        summary: "Kroki uporządkowane według wydruków KPK.gov.pl. Konkretne progi, decyzje i wyjątki należy potwierdzić dla lokalizacji i skali projektu.",
         steps: [
-          ozeStep("Wstępna ocena lokalizacji i zasobów wiatru", "Sprawdź warunki wiatrowe, ograniczenia terenowe, sąsiedztwo zabudowy, infrastrukturę i dostęp do sieci.", "verify", "Analiza lokalizacji; prawo miejscowe/środowiskowe — do potwierdzenia"),
-          ozeStep("Ustalenie statusu planistycznego", "Sprawdź MPZP/warunki zabudowy lub inne decyzje planistyczne. Dla energetyki wiatrowej często występują szczególne ograniczenia lokalizacyjne — wymagają potwierdzenia w aktualnych przepisach.", "verify", "Planowanie przestrzenne; przepisy szczególne — do potwierdzenia"),
-          ozeStep("Przyłączenie do sieci / rozliczenie energii", "Ustal tryb przyłączenia, moc przyłączeniową, warunki techniczne lub procedurę dla mikro/małej instalacji.", "verify", "Operator sieci, Prawo energetyczne, ustawa OZE — do potwierdzenia"),
-          ozeStep("Pozwolenia/zgłoszenia budowlane i środowiskowe", "Zweryfikuj, czy wymagane jest pozwolenie na budowę, zgłoszenie, ocena oddziaływania na środowisko lub inne decyzje. Zależy od skali i lokalizacji.", "verify", "Prawo budowlane, procedura OOŚ — do potwierdzenia"),
-          ozeStep("Koncesja/rejestr/wytwórca", "Potwierdź, czy działalność wymaga koncesji, wpisu do rejestru, czy korzysta ze zwolnienia — zależnie od mocy i modelu.", "verify", "Prawo energetyczne / URE / ustawa OZE — do potwierdzenia"),
-          ozeStep("Odbiory, eksploatacja i BHP", "Zapewnij odbiory techniczne, wymagania serwisowe, bezpieczeństwo i dokumentację powykonawczą.", "verify", "Przepisy techniczne, BHP, wymagania producenta/OSD")
+          ozeStep("Uzyskanie decyzji o środowiskowych uwarunkowaniach", "KPK wskazuje decyzję środowiskową jako pierwszy etap w typowej ścieżce lądowych instalacji wiatrowych. Potwierdź zakres dla projektu.", "verify", "KPK gov.pl — instalacje wiatrowe na lądzie"),
+          ozeStep("Planistyka", "Krok „Planistyka” w procedurach KPK: sprawdź plan miejscowy albo warunki zabudowy oraz uwarunkowania lokalizacyjne.", "verify", "KPK gov.pl — mała i wielkoskalowa instalacja wiatrowa"),
+          ozeStep("Zgłoszenie wykonywania robót budowlanych lub zgłoszenie mikroinstalacji", "Dla części mikroinstalacji KPK przewiduje zgłoszenie robót, dla pozostałych zgłoszenie mikroinstalacji. Właściwy tryb potwierdź w źródle.", "verify", "KPK gov.pl — mikroinstalacje wiatrowe"),
+          ozeStep("Uzyskanie warunków przyłączenia do sieci", "KPK podaje jako odrębny krok uzyskanie warunków przyłączenia lub zgłoszenie mikroinstalacji w zależności od wariantu.", "verify", "KPK gov.pl — proces przyłączeniowy"),
+          ozeStep("Uzyskanie pozwolenia na budowę", "W ścieżkach opisanych przez KPK pozwolenie na budowę jest podstawą rozpoczęcia prac budowlanych.", "verify", "KPK gov.pl — mała i wielkoskalowa instalacja wiatrowa"),
+          ozeStep("Uzyskanie pozwolenia na użytkowanie", "Część ścieżek KPK kończy się uzyskaniem pozwolenia na użytkowanie.", "verify", "KPK gov.pl — instalacje wiatrowe na lądzie"),
+          ozeStep("Wpis do rejestru wytwórców energii w małej instalacji OZE lub koncesja", "KPK rozróżnia wpis do rejestru i koncesję na wytwarzanie energii. Wybór zależy od skali i modelu działalności.", "verify", "KPK gov.pl — rejestr i koncesje"),
+          ozeStep("Morskie farmy wiatrowe — odrębna ścieżka", "KPK opisuje morskie farmy wiatrowe jako osobny proces z dodatkowymi decyzjami, zgodami i ekspertyzami. Potwierdź zakres w źródle.", "verify", "KPK gov.pl — proces inwestycyjny morskich farm wiatrowych")
         ],
-        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+        sources: [
+          OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
+          kpkSource("Wiatr — mikroinstalacja nadachowa, wariant A", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-o-wys-do-3-m"),
+          kpkSource("Wiatr — mikroinstalacja nadachowa, wariant B", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-o-wys-pow-3-m2"),
+          kpkSource("Wiatr — mikroinstalacja naziemna", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-wiatrowa-naziemna"),
+          kpkSource("Wiatr — mała instalacja", "https://www.gov.pl/web/kontaktoze/mala-instalacja-50-kw---1-mw"),
+          kpkSource("Wiatr — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja-pow-1-mw"),
+          kpkSource("Morskie farmy wiatrowe — proces inwestycyjny", "https://www.gov.pl/web/kontaktoze/proces-inwestycyjny-morskich-farm-wiatrowych")
+        ]
       }
     },
     {
@@ -498,7 +546,8 @@
       description: "Energia przepływu lub spadku wody wykorzystywana w elektrowniach wodnych. Wymaga szczególnej oceny hydrologicznej i wodnoprawnej.",
       govPoints: [
         "Energetyka wodna wykorzystuje energię płynącej wody do produkcji energii elektrycznej.",
-        "Małe elektrownie wodne mogą być lokalnym źródłem energii, ale wymagają oceny wpływu na środowisko wodne."
+        "Małe elektrownie wodne mogą być lokalnym źródłem energii, ale wymagają oceny wpływu na środowisko wodne.",
+        "KPK opisuje mikro-, małe i wielkoskalowe instalacje wodne jako odrębne procesy."
       ],
       calculator: {
         kind: "hydro",
@@ -513,17 +562,24 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — energetyka wodna (szkielet do potwierdzenia)",
-        summary: "Projekty wodne zwykle wymagają analizy wodnoprawnej i środowiskowej. Poniżej szkielet kontrolny — bez twardych progów.",
+        title: "Ścieżka formalna — energetyka wodna (KPK, do potwierdzenia)",
+        summary: "Kroki uporządkowane według wydruków KPK.gov.pl. Zakres wymagań wodnoprawnych i środowiskowych potwierdź dla konkretnego cieku i inwestycji.",
         steps: [
-          ozeStep("Ocena hydrologiczna i lokalizacyjna", "Sprawdź przepływ, spadek, zmienność sezonową, dostęp do cieku, ograniczenia środowiskowe i możliwość przyłączenia.", "verify", "Dane hydrologiczne, analiza lokalna — do potwierdzenia"),
-          ozeStep("Kwestie wodnoprawne", "Zweryfikuj, czy wymagane jest pozwolenie wodnoprawne, zgłoszenie wodnoprawne lub inne decyzje. Zakres zależy od rodzaju robót i oddziaływania.", "verify", "Prawo wodne / Wody Polskie — do potwierdzenia"),
-          ozeStep("Środowisko i tereny chronione", "Sprawdź konieczność OOŚ, inwentaryzacji przyrodniczej, decyzji dot. terenów chronionych i przepływu nienaruszalnego.", "verify", "OOŚ, RDOŚ/GDOŚ, Wody Polskie — do potwierdzenia"),
-          ozeStep("Planowanie przestrzenne i prawo budowlane", "Ustal MPZP/WZ lub inne warunki oraz wymagany tryb budowlany dla urządzeń, budowli i infrastruktury.", "verify", "Planowanie przestrzenne / Prawo budowlane — do potwierdzenia"),
-          ozeStep("Przyłączenie, koncesja/rejestr", "Potwierdź warunki przyłączenia do sieci i status wytwórcy (koncesja, rejestr, zwolnienie) w zależności od mocy i modelu sprzedaży.", "verify", "Prawo energetyczne / URE / OSD — do potwierdzenia"),
-          ozeStep("Eksploatacja i monitoring", "Ustal obowiązki eksploatacyjne, monitoring hydrologiczny/środowiskowy i serwis.", "verify", "Decyzje administracyjne, wymagania techniczne — do potwierdzenia")
+          ozeStep("Uzyskanie decyzji o środowiskowych uwarunkowaniach", "KPK wskazuje decyzję środowiskową jako pierwszy etap procesu inwestycyjno-budowlanego elektrowni wodnej.", "verify", "KPK gov.pl — mikro, mała i wielkoskalowa instalacja wodna"),
+          ozeStep("Procedury planistyczne", "Krok KPK dotyczący ustaleń planistycznych i warunków zagospodarowania terenu.", "verify", "KPK gov.pl — instalacje wodne"),
+          ozeStep("Uzyskanie pozwolenia wodnoprawnego", "Osobny krok KPK dla robót i urządzeń wodnych. Zakres potwierdź z właściwym organem wodnym.", "verify", "KPK gov.pl — pozwolenie wodnoprawne"),
+          ozeStep("Zawarcie umowy użytkowania gruntu pod wodami", "KPK uwzględnia umowę użytkowania gruntu pod wodami jako element ścieżki.", "verify", "KPK gov.pl — instalacje wodne"),
+          ozeStep("Uzyskanie warunków przyłączenia do sieci lub zgłoszenie mikroinstalacji", "KPK rozróżnia tryb mikroinstalacji oraz uzyskanie warunków przyłączenia w zależności od wariantu.", "verify", "KPK gov.pl — przyłączenie do sieci"),
+          ozeStep("Uzyskanie pozwolenia na budowę", "Podstawa rozpoczęcia prac budowlanych w procesach opisanych przez KPK.", "verify", "KPK gov.pl — instalacje wodne"),
+          ozeStep("Uzyskanie pozwolenia na użytkowanie", "KPK kończy część ścieżek uzyskaniem pozwolenia na użytkowanie.", "verify", "KPK gov.pl — instalacje wodne"),
+          ozeStep("Wpis do rejestru, koncesja lub rozpoczęcie działalności przedkoncesyjnej", "KPK rozróżnia wpis do rejestru wytwórców energii w małej instalacji OZE, koncesję oraz opcjonalne rozpoczęcie działalności przedkoncesyjnej.", "verify", "KPK gov.pl — wielkoskalowa instalacja wodna")
         ],
-        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+        sources: [
+          OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
+          kpkSource("Woda — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja5"),
+          kpkSource("Woda — mała instalacja", "https://www.gov.pl/web/kontaktoze/mala-instalacja6"),
+          kpkSource("Woda — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja5")
+        ]
       }
     },
     {
@@ -531,10 +587,11 @@
       name: "Energetyka geotermalna / pompy ciepła",
       short: "Geo",
       color: "#7a4f2a",
-      description: "Wykorzystanie ciepła Ziemi: od płytkich instalacji z pompami ciepła po głęboką geotermię. Formalności zależą od skali, głębokości i sposobu korzystania z wód/zasobów.",
+      description: "Wykorzystanie ciepła Ziemi: od płytkich instalacji z pompami ciepła po głęboką geotermię. Formalności zależą od technologii, sposobu korzystania z wód i zakresu robót geologicznych.",
       govPoints: [
         "Geotermia wykorzystuje ciepło wnętrza Ziemi, m.in. wody geotermalne i gruntowe.",
-        "Może służyć do ogrzewania, ciepłej wody użytkowej lub produkcji energii elektrycznej w odpowiednich warunkach."
+        "Może służyć do ogrzewania, ciepłej wody użytkowej lub produkcji energii elektrycznej w odpowiednich warunkach.",
+        "KPK rozróżnia pompy ciepła, rozpoznanie warunków geologicznych, poszukiwanie wód termalnych i realizację inwestycji."
       ],
       calculator: {
         kind: "geo",
@@ -549,16 +606,29 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — geotermia / pompy ciepła (szkielet do potwierdzenia)",
-        summary: "Wymagania mocno zależą od technologii (gruntowa/powietrzna/wodna/głęboka geotermia). Potwierdź wymagania dla konkretnego przypadku.",
+        title: "Ścieżka formalna — geotermia / pompy ciepła (KPK, do potwierdzenia)",
+        summary: "Kroki zestawione z wydruków KPK dla pomp ciepła, robót geologicznych, wód termalnych i realizacji inwestycji. Wymagania zależą od technologii i lokalizacji.",
         steps: [
-          ozeStep("Dobór technologii i analiza gruntu/zasobu", "Ustal, czy to pompa ciepła, odwierty, wymiennik gruntowy czy głęboka geotermia. Zweryfikuj warunki geologiczne i przestrzeń montażu.", "verify", "Projekt techniczny, warunki geologiczne — do potwierdzenia"),
-          ozeStep("Wymagania wodnoprawne/geologiczne", "Dla odwiertów, ujęć wód lub głębokiej geotermii mogą być wymagane decyzje wodnoprawne/geologiczne. Zakres potwierdź przed realizacją.", "verify", "Prawo geologiczne i górnicze / Prawo wodne — do potwierdzenia"),
-          ozeStep("Planowanie, budowa i odbiory", "Sprawdź, czy wymagane jest zgłoszenie/pozwolenie budowlane, odbiory instalacji i wymagania producenta.", "verify", "Prawo budowlane, normy, dokumentacja techniczna — do potwierdzenia"),
-          ozeStep("Zasilanie elektryczne i sieć", "Potwierdź parametry zasilania, ewentualną zmianę mocy przyłączeniowej i wpływ na instalację elektryczną budynku.", "verify", "Warunki techniczne, OSD, projekt elektryczny — do potwierdzenia"),
-          ozeStep("Dotacje/rozliczenia i dokumenty", "Jeśli planowane wsparcie, zweryfikuj wymagania programu (audyt, standard urządzenia, wykonawca, faktury).", "verify", "Program wsparcia / operator programu — do potwierdzenia")
+          ozeStep("Sprawdzenie trybu pompy ciepła", "KPK wskazuje, że przy standardowym procesie inwestycyjnym część pomp ciepła nie wymaga procedur; wyjątki potwierdź w źródle.", "verify", "KPK gov.pl — powietrzne i gruntowe pompy ciepła"),
+          ozeStep("Rozpoznanie warunków geologicznych i hydrogeologicznych", "KPK opisuje odrębny krok rozpoznania warunków w miejscu inwestycji przed dalszymi robotami.", "verify", "KPK gov.pl — rozpoznanie warunków geologicznych i hydrogeologicznych"),
+          ozeStep("Zatwierdzenie projektu robót geologicznych i zgłoszenie rozpoczęcia robót", "Dla prac geologicznych KPK podaje zatwierdzenie projektu oraz zgłoszenie rozpoczęcia robót. W wybranych wariantach występuje też plan ruchu zakładu górniczego.", "verify", "KPK gov.pl — odwierty i roboty geologiczne"),
+          ozeStep("Zgłoszenie wodnoprawne lub pozwolenie wodnoprawne", "Krok KPK przy korzystaniu z wód lub oddziaływaniu na stosunki wodne. Zakres potwierdź z organem wodnym.", "verify", "KPK gov.pl — wody termalne i odwierty"),
+          ozeStep("Decyzja o środowiskowych uwarunkowaniach i procedury planistyczne", "Decyzja środowiskowa i ustalenia planistyczne występują jako etapy procesu inwestycyjnego w wydrukach KPK.", "verify", "KPK gov.pl — realizacja inwestycji"),
+          ozeStep("Warunki przyłączenia do sieci ciepłowniczej i do sieci", "KPK rozróżnia przyłączenie ciepłownicze oraz przyłączenie elektryczne; potwierdź, które dotyczy projektu.", "verify", "KPK gov.pl — realizacja inwestycji"),
+          ozeStep("Uzyskanie pozwolenia na budowę i pozwolenia na użytkowanie", "Podstawa realizacji i zakończenia inwestycji w ścieżce opisanej przez KPK.", "verify", "KPK gov.pl — realizacja inwestycji"),
+          ozeStep("Dokumentacja hydrogeologiczna i koncesje (gdy dotyczy)", "KPK przewiduje zatwierdzenie dokumentacji hydrogeologicznej, koncesję na eksploatację wód termalnych oraz opcjonalną koncesję na wytwarzanie ciepła lub energii.", "verify", "KPK gov.pl — wody termalne i realizacja inwestycji")
         ],
-        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+        sources: [
+          OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
+          kpkSource("Geotermia — instalacje geotermalne", "https://www.gov.pl/web/kontaktoze/instalacje-geotermalne"),
+          kpkSource("Geotermia — poszukiwanie i rozpoznawanie wód termalnych", "https://www.gov.pl/web/kontaktoze/poszukiwanie-i-rozpoznawanie-wod-termalnych4"),
+          kpkSource("Geotermia — realizacja inwestycji", "https://www.gov.pl/web/kontaktoze/realizacja-inwestycji4"),
+          kpkSource("Pompa ciepła — powietrzna", "https://www.gov.pl/web/kontaktoze/powietrzna-pompa-ciepla"),
+          kpkSource("Pompa ciepła — gruntowa, wariant A", "https://www.gov.pl/web/kontaktoze/odwiert-do-30-m"),
+          kpkSource("Pompa ciepła — gruntowa, wariant B", "https://www.gov.pl/web/kontaktoze/odwiert-od-30-do-100-m"),
+          kpkSource("Pompa ciepła — gruntowa, wariant C", "https://www.gov.pl/web/kontaktoze/odwiert-powyzej-100-m"),
+          kpkSource("Rozpoznanie warunków geologicznych i hydrogeologicznych", "https://www.gov.pl/web/kontaktoze/rozpoznawanie-warunkow-geologicznych-i-hydrogeologicznych")
+        ]
       }
     },
     {
@@ -569,7 +639,8 @@
       description: "Energia z materii organicznej: biomasa stała, biogaz/biometan i biopłyny. Wymagania zależą od paliwa, technologii, emisji i sposobu wykorzystania energii.",
       govPoints: [
         "Biomasa to materia organiczna wykorzystywana do produkcji ciepła, energii elektrycznej lub paliw.",
-        "Biogaz powstaje m.in. w procesie fermentacji; biopłyny to paliwa ciekłe pochodzenia biologicznego."
+        "Biogaz powstaje m.in. w procesie fermentacji; biopłyny to paliwa ciekłe pochodzenia biologicznego.",
+        "KPK obejmuje instalacje biomasowe, biogazowe, biometanowe oraz wykorzystujące biopłyny."
       ],
       calculator: {
         kind: "biomass",
@@ -585,16 +656,33 @@
         ]
       },
       formalPath: {
-        title: "Ścieżka formalna — biomasa / biogaz / biopłyny (szkielet do potwierdzenia)",
-        summary: "Formalności zależą od rodzaju paliwa, mocy, emisji i lokalizacji. Poniżej lista kontrolna do weryfikacji.",
+        title: "Ścieżka formalna — biomasa / biogaz / biopłyny (KPK, do potwierdzenia)",
+        summary: "Kroki wspólne dla wydruków KPK dotyczących biomasy, biogazu, biometanu i biopłynów. Szczegóły zależą od paliwa, technologii i lokalizacji.",
         steps: [
-          ozeStep("Identyfikacja technologii i paliwa", "Określ, czy projekt dotyczy kotła na biomasę, biogazowni, biometanu czy biopłynów. Potwierdź parametry paliwa i dostaw.", "verify", "Ustawa OZE, specyfikacja techniczna — do potwierdzenia"),
-          ozeStep("Lokalizacja, planowanie i budowa", "Sprawdź MPZP/WZ, wymagania budowlane, przeciwpożarowe i technologiczne dla instalacji.", "verify", "Planowanie przestrzenne / Prawo budowlane / przepisy ppoż. — do potwierdzenia"),
-          ozeStep("Emisje i wymagania środowiskowe", "Zweryfikuj wymagania emisyjne, pozwolenia/zgłoszenia środowiskowe, gospodarkę odpadami/popiołem oraz zapach/hałas dla biogazu.", "verify", "Prawo ochrony środowiska, decyzje środowiskowe — do potwierdzenia"),
-          ozeStep("Przyłączenie, koncesja/rejestr", "Potwierdź warunki przyłączenia i status: koncesja, rejestr, zwolnienie lub inne obowiązki zależne od mocy i rodzaju działalności.", "verify", "Prawo energetyczne / URE / KOWR / ustawa OZE — do potwierdzenia"),
-          ozeStep("Paliwo, jakość i rozliczenia", "Zabezpiecz łańcuch dostaw paliwa, dokumentację jakości, rozliczenia energii/ciepła i obowiązki sprawozdawcze.", "verify", "Umowy, certyfikaty, wymagania programu/rozliczeń — do potwierdzenia")
+          ozeStep("Decyzja o środowiskowych uwarunkowaniach i procedury planistyczne", "KPK wskazuje decyzję środowiskową oraz procedury planistyczne jako etapy typowej ścieżki inwestycyjnej instalacji biomasowych, biogazowych i biopłynowych.", "verify", "KPK gov.pl — instalacje biomasowe, biogazowe, biometanowe i biopłynowe"),
+          ozeStep("Uzyskanie pozwoleń środowiskowych", "KPK podaje jako odrębny krok pozwolenia środowiskowe dla instalacji przetwarzających biomasę lub paliwa biologiczne.", "verify", "KPK gov.pl — pozwolenia środowiskowe"),
+          ozeStep("Zgłoszenie wykonywania robót budowlanych lub uzyskanie pozwolenia na budowę", "KPK rozróżnia zgłoszenie robót i pozwolenie na budowę w zależności od wariantu instalacji.", "verify", "KPK gov.pl — mikro, mała i wielkoskalowa instalacja"),
+          ozeStep("Warunki przyłączenia do sieci, sieci ciepłowniczej lub gazowej oraz zgłoszenie mikroinstalacji", "KPK rozróżnia przyłączenie energetyczne, ciepłownicze i gazowe; zakres zależy od technologii i sposobu wykorzystania energii.", "verify", "KPK gov.pl — przyłączenia i mikroinstalacje"),
+          ozeStep("Uzyskanie pozwolenia na użytkowanie", "Element ścieżki KPK kończący proces budowlany dla części instalacji.", "verify", "KPK gov.pl — instalacje biomasowe i biogazowe"),
+          ozeStep("Zawiadomienie Państwowej Straży Pożarnej (PSP)", "KPK uwzględnia zawiadomienie PSP w ścieżkach biogazowych i biometanowych. Potwierdź zakres dla projektu.", "verify", "KPK gov.pl — mikroinstalacje biogazowe i biometanowe"),
+          ozeStep("Wpis do rejestru wytwórców biogazu rolniczego/biopłynów lub koncesja", "KPK rozróżnia wpis do rejestru, koncesję na wytwarzanie ciepła i koncesję na energię elektryczną; wybór zależy od działalności.", "verify", "KPK gov.pl — rejestr i koncesje"),
+          ozeStep("Rozpoczęcie działalności przedkoncesyjnej (opcjonalnie)", "KPK oznacza ten krok jako opcjonalny w wybranych wariantach wielkoskalowych.", "verify", "KPK gov.pl — wielkoskalowe instalacje biogazowe i biopłynowe")
         ],
-        sources: [OZE_GOV_SOURCE, OZE_BGK_SOURCE]
+        sources: [
+          OZE_GOV_SOURCE, OZE_BGK_SOURCE, OZE_KPK_SOURCE,
+          kpkSource("Biomasa — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja-biomasowa"),
+          kpkSource("Biomasa — mała instalacja", "https://www.gov.pl/web/kontaktoze/mala-instalacja-biomasowa"),
+          kpkSource("Biomasa — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja-biomasowa"),
+          kpkSource("Biogaz — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja2"),
+          kpkSource("Biogaz — mała instalacja", "https://www.gov.pl/web/kontaktoze/mala-instalacja4"),
+          kpkSource("Biogaz — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja2"),
+          kpkSource("Biometan — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja10"),
+          kpkSource("Biometan — mała instalacja", "https://www.gov.pl/web/kontaktoze/instalacja-do-500-kw6"),
+          kpkSource("Biometan — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja11"),
+          kpkSource("Biopłyny — mikroinstalacja", "https://www.gov.pl/web/kontaktoze/mikroinstalacja4"),
+          kpkSource("Biopłyny — mała instalacja", "https://www.gov.pl/web/kontaktoze/mala-instalacja5"),
+          kpkSource("Biopłyny — wielkoskalowa instalacja", "https://www.gov.pl/web/kontaktoze/wielkoskalowa-instalacja4")
+        ]
       }
     }
   ];
@@ -739,7 +827,7 @@
     SOURCE_LINE: SOURCE_LINE, DISCLAIMER: DISCLAIMER, AUTHOR_LINE: AUTHOR_LINE, THRESHOLDS_LINE: THRESHOLDS_LINE,
     COST_SOURCE_LINE: COST_SOURCE_LINE, MODULE_PRESETS: MODULE_PRESETS, ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
     STEPS: STEPS, PATHS: PATHS, fmt: fmt, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
-    OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE,
+    OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE, OZE_KPK_SOURCE: OZE_KPK_SOURCE,
     ozeById: ozeById, ozeDefaultInput: ozeDefaultInput, ozeCalculate: ozeCalculate,
     COMPARE_DEFAULT: COMPARE_DEFAULT, compareMetrics: compareMetrics,
   };

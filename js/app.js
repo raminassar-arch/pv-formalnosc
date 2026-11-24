@@ -195,10 +195,10 @@
   function viewStart() {
     const tabs = [
       {id:"pv", icon:"PV", name:"Fotowoltaika", desc:"Kalkulator mocy/powierzchni, dobór modułów, wycena, optymalizator, ścieżka formalna, podgląd A4 i PDF."},
-      {id:"wiatr", icon:"WI", name:"Energetyka wiatrowa", desc:"Kalkulator orientacyjny (moc, wiatr, Cp), energia roczna, CAPEX/OPEX i checklista formalna."},
-      {id:"woda", icon:"H2O", name:"Energetyka wodna", desc:"Kalkulator orientacyjny (przepływ, spadek, sprawność), energia roczna i checklista formalna."},
-      {id:"geotermia", icon:"GEO", name:"Geotermia / pompy ciepła", desc:"Kalkulator orientacyjny (zapotrzebowanie, COP), koszt energii, CAPEX/OPEX i checklista formalna."},
-      {id:"biomasa", icon:"BIO", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność), energia i checklista formalna."},
+      {id:"wiatr", icon:"WI", name:"Energetyka wiatrowa", desc:"Kalkulator orientacyjny (moc, wiatr, Cp), energia roczna, CAPEX/OPEX i checklista KPK gov.pl (do potwierdzenia)."},
+      {id:"woda", icon:"H2O", name:"Energetyka wodna", desc:"Kalkulator orientacyjny (przepływ, spadek, sprawność), energia roczna i checklista KPK gov.pl (do potwierdzenia)."},
+      {id:"geotermia", icon:"GEO", name:"Geotermia / pompy ciepła", desc:"Kalkulator orientacyjny (zapotrzebowanie, COP), koszt energii, CAPEX/OPEX i checklista KPK gov.pl (do potwierdzenia)."},
+      {id:"biomasa", icon:"BIO", name:"Biomasa / biogaz / biopłyny", desc:"Kalkulator orientacyjny (paliwo, wartość opałowa, sprawność), energia i checklista KPK gov.pl (do potwierdzenia)."},
       {id:"porownaj", icon:"≡", name:"Porównaj warianty", desc:"Porównanie orientacyjnej opłacalności wariantów OZE na podstawie danych z zakładek: energia, CAPEX/OPEX, przychód, prosty okres zwrotu."}
     ];
     const tabCards = tabs.map(function(t){
@@ -224,7 +224,7 @@
       '<li>5 osobnych zakładek technologii OZE</li>' +
       '<li>Zakładka Porównaj: opłacalność wariantów</li>' +
       '<li>Kalkulatory orientacyjne</li>' +
-      '<li>Checklisty ścieżek formalnych</li>' +
+      '<li>Checklisty KPK gov.pl (do potwierdzenia)</li>' +
       '<li>Podgląd A4 i eksport PDF</li>' +
       '<li>Watermark: wersja testowa</li>' +
       '</ul></div></section>' +

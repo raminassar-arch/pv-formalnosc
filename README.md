@@ -1,18 +1,18 @@
-# PV Formalność — wersja web (v2.0.0 + Inne OZE)
+# Formalność OZE — wersja web (v2.0.0)
 
-Statyczna wersja aplikacji **PV Formalność 2.0.0** — te same teksty, progi i
+Statyczna wersja aplikacji **Formalność OZE 2.0.0** — te same teksty, progi i
 kolejność kroków co w wersji desktopowej (Python/customtkinter), uruchamiana
 w całości w przeglądarce. Nie wymaga serwera, Pythona ani instalacji.
 
 **Co zmieniło się w 2.0.0:** usunięto system licencji i kluczy, usunięto eksport
 XLSX, dodano szkielet bramki płatności **30 zł przez Przelewy24** do włączenia
 w wersji produkcyjnej. **Obecna publiczna wersja testowa jest odblokowana**:
-wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano zakładkę **Inne OZE** z sekcjami, kalkulatorami orientacyjnymi i szablonami ścieżek formalnych dla wiatru, wody, geotermii oraz biomasy/biogazu (PV pozostaje osobnym modułem głównym). Dodano
+wynik, podgląd A4 oraz jeden raport PDF 300 DPI są dostępne bez opłaty. Dodano osobne zakładki **Fotowoltaika**, **Wiatr**, **Woda**, **Geotermia** i **Biomasa** z kalkulatorami orientacyjnymi oraz checklistami KPK gov.pl; PV pozostaje osobnym modułem głównym. Dodano
 też **webowy kalkulator inwestycji**: liczbę paneli dobraną automatycznie z mocy
 i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF),
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
 (ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
-raportu PDF** (Biały, Karty, Premium) wybierane w widoku Wynik lub Podgląd.
+raportu PDF** (Biały, Karty, Premium) wybierane na dole zakładki z wynikiem.
 W formularzu **Dane** edytowalne są wyłącznie moc i powierzchnia; pozostałe
 parametry są stałe i widoczne w raporcie. Po ustawieniu `TEST_MODE = false`
 zakładki Wynik i Podgląd są blokowane kłódką do czasu potwierdzenia płatności.
@@ -147,16 +147,18 @@ od razu, bez opłaty).
 
 ---
 
-## Inne OZE (nowa zakładka)
+## Inne OZE — osobne zakładki
 
-Zakładka **Inne OZE** dodaje sekcje zgodne z zakresem gov.pl (edukacja ekologiczna):
-energetyka wiatrowa, solarna/PV, wodna, geotermalna, biomasa/biogaz/biopłyny.
+Każde źródło OZE ma osobną zakładkę (**Fotowoltaika**, **Wiatr**, **Woda**,
+**Geotermia**, **Biomasa**) z kalkulatorem, checklistą, podglądem i PDF.
 
-- **PV** — link do istniejącego, pełnego modułu PV (bez duplikowania).
+- **PV** — pełny moduł pozostaje w zakładce **Fotowoltaika** (bez duplikowania).
 - **Wiatr/Woda/Geotermia/Biomasa** — kalkulatory orientacyjne z edytowalnymi założeniami.
-- **Ścieżki formalne** — szablony checklist do potwierdzenia; statusy „do potwierdzenia”
-  oznaczają, że konkretne progi/decyzje zależą od lokalizacji, mocy i aktualnych przepisów.
-- **Źródła**: gov.pl (opis OZE, 26.07.2022) + BGK Przewodnik analizy wykonalności OZE (09.2024).
+- **Ścieżki formalne** — nazwy kroków z wydruków Krajowego Punktu Kontaktowego ds. OZE
+  (gov.pl/web/kontaktoze, stan na 24.11.2026); statusy „do potwierdzenia" oznaczają,
+  że zakres procedury zależy od konkretnego projektu i aktualnych przepisów.
+- **Źródła**: gov.pl (opis OZE, 26.07.2022), KPK gov.pl (wydruki procesów inwestycyjnych)
+  oraz BGK Przewodnik analizy wykonalności OZE (09.2024).
 
 Wyniki kalkulatorów OZE są orientacyjne i nie stanowią porady prawnej/projektowej.
 
