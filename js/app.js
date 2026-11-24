@@ -87,11 +87,12 @@
 
   function emptyProject() {
     return {
-      roof: false, protectedArea: false, ha: 1, kw: 6,
+      roof: false, protectedArea: false, ha: 1, areaUnit: "ha", kw: 6,
       est: M.estimateOptions(),
       optMode: "both",
       pdfTheme: window.PVPdf.defaultTheme,
       oze: { source: "wiatr", inputs: {} },
+      compare: defaultCompare(),
     };
   }
 
@@ -105,13 +106,14 @@
         roof: !!data.roof,
         protectedArea: !!data.protectedArea,
         ha: numberOr(data.ha, base.ha),
+        areaUnit: data.areaUnit === "m2" ? "m2" : "ha",
         kw: numberOr(data.kw, base.kw),
         est: M.estimateOptions(data.est),
         optMode: "both", // dobór z mocy i powierzchni — brak pola do edycji
         pdfTheme: window.PVPdf.themes.some(function (t) { return t.id === data.pdfTheme; })
           ? data.pdfTheme : window.PVPdf.defaultTheme,
         oze: (function(){ var o=Object.assign({source:"wiatr",inputs:{}}, data.oze||{}); if(!M.ozeById(o.source)) o.source="wiatr"; o.inputs=o.inputs||{}; return o; })(),
-        compare: Object.assign({ pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 }, data.compare || {}),
+        compare: Object.assign(defaultCompare(), data.compare || {}),
       };
     } catch (err) { return base; }
   }
@@ -119,6 +121,10 @@
   function numberOr(value, fallback) {
     const n = Number(value);
     return isFinite(n) && n >= 0 ? n : fallback;
+  }
+
+  function defaultCompare() {
+    return { pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 };
   }
 
   function saveProject() {
@@ -320,9 +326,9 @@
   }
 
   function numField(id, label, value, step, hint) {
-    return '<div class="field"><label class="field-label">' + esc(label) + "</label>" +
+    return '<div class="field"><label class="field-label" for="' + esc(id) + '">' + esc(label) + "</label>" +
       '<input type="number" id="' + id + '" min="0" step="' + step + '" value="' +
-      esc(M.fmt(value)) + '">' +
+      esc(String(Number(value || 0))) + '">' +
       (hint ? '<span class="hint">' + esc(hint) + "</span>" : "") + "</div>";
   }
 
@@ -422,7 +428,8 @@
       '<section class="panel"><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span><span>' + esc(r.place_text) + "</span></div>" +
       '<div class="field"><span class="field-label">Lokalizacja</span><span>' + esc(r.location_text) + "</span></div>" +
-      '<div class="field"><span class="field-label">Powierzchnia</span><span>' + esc(M.fmt(r.ha)) + " ha</span></div>" +
+      '<div class="field"><span class="field-label">Powierzchnia</span><span>' +
+      esc(M.fmt(Math.round(r.ha * 10000 * 100) / 100)) + " m² (" + esc(M.fmt(r.ha)) + " ha)</span></div>" +
       '<div class="field"><span class="field-label">Moc</span><span>' + esc(M.fmt(r.kw)) + " kW</span></div>" +
       "</div></section>" +
       '<section class="panel"><div class="verdict-grid">' +
@@ -450,6 +457,13 @@
 
   function viewDaneBody() {
     const p = project;
+    const inM2 = p.areaUnit === "m2";
+    const unitField = '<div class="field"><label class="field-label" for="f-area-unit">Jednostka powierzchni</label>' +
+      '<select id="f-area-unit">' +
+      '<option value="ha"' + (inM2 ? "" : " selected") + ">hektary (ha)</option>" +
+      '<option value="m2"' + (inM2 ? " selected" : "") + ">metry kwadratowe (m²)</option>" +
+      '</select><span class="hint">1 ha = 10 000 m².</span></div>';
+    const areaValue = inM2 ? Math.round(p.ha * 10000 * 100) / 100 : p.ha;
     return '<section class="panel"><h2>Dane instalacji</h2><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span>' +
       '<span class="readonly-value">' + esc(p.roof ? M.PLACE_ROOF : M.PLACE_GROUND) + "</span>" +
@@ -457,7 +471,9 @@
       '<div class="field"><span class="field-label">Lokalizacja</span>' +
       '<span class="readonly-value">' + esc(p.protectedArea ? M.LOC_PROTECTED : M.LOC_NORMAL) + "</span>" +
       '<span class="hint">Wartość stała (nieedytowalna).</span></div>' +
-      numField("f-ha", "Powierzchnia (ha)", p.ha, "0.01", "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
+      unitField +
+      numField(inM2 ? "f-m2" : "f-ha", inM2 ? "Powierzchnia (m²)" : "Powierzchnia (ha)",
+        areaValue, inM2 ? "100" : "0.01", "Po obrysie zewnętrznych modułów — podstawa doboru paneli.") +
       numField("f-kw", "Moc deklarowana (kW)", p.kw, "0.1", "Liczba paneli jest dobierana z mocy i powierzchni.") +
       "</div>" +
       '<div class="row-actions"><button class="btn primary" data-act="pv-scroll-result">Pokaż wynik</button>' +
@@ -528,7 +544,7 @@
     const price = document.getElementById("cmp-price");
     const pvYield = document.getElementById("cmp-pv-yield");
     const pvOpex = document.getElementById("cmp-pv-opex");
-    if (!project.compare) project.compare = { pricePlnMwh: 800, pvYieldKwhKwYear: 1050, pvOpexPctYear: 1.5 };
+    if (!project.compare) project.compare = defaultCompare();
     if (price) project.compare.pricePlnMwh = Math.max(0, numberOr(price.value, project.compare.pricePlnMwh));
     if (pvYield) project.compare.pvYieldKwhKwYear = Math.max(0, numberOr(pvYield.value, project.compare.pvYieldKwhKwYear));
     if (pvOpex) project.compare.pvOpexPctYear = Math.max(0, numberOr(pvOpex.value, project.compare.pvOpexPctYear));
@@ -595,27 +611,23 @@
     renderSteps(head);
     document.title = (TITLES[head] || "Start") + " – Formalność OZE " + M.VERSION;
 
-    if (head === "pv") initPvPreview();
-    if (head === "porownaj") initComparePreview();
-    if (OZE_TAB_IDS.indexOf(head) >= 0) initOzePreview(head);
+    if (head === "pv") initPvPreview().catch(function (err) { console.warn(err); });
+    if (head === "porownaj") initComparePreview().catch(function (err) { console.warn(err); });
+    if (OZE_TAB_IDS.indexOf(head) >= 0) initOzePreview(head).catch(function (err) { console.warn(err); });
   }
 
   async function initPvPreview() {
     const canvas = $("#preview-canvas");
     if (!canvas) return;
-    try {
-      previewPages = await window.PVPdf.renderPreview(
-        currentResult(), canvas, currentEstimate(), currentOptimizer(), currentPdfTheme());
-    } catch (err) { console.warn(err); }
+    previewPages = await window.PVPdf.renderPreview(
+      currentResult(), canvas, currentEstimate(), currentOptimizer(), currentPdfTheme());
   }
 
   async function initOzePreview(sourceId) {
     const canvas = $("#preview-canvas");
     if (!canvas) return;
-    try {
-      const src = M.ozeById(sourceId);
-      await renderOzePdfPreview(src, canvas);
-    } catch (err) { console.warn(err); }
+    const src = M.ozeById(sourceId);
+    await renderOzePdfPreview(src, canvas);
   }
 
   async function doPdf() {
@@ -656,27 +668,27 @@
 
   function buildOzePdfCanvas(src) {
     const PXW = window.PVPdf.constants.PXW, PXH = window.PVPdf.constants.PXH;
-    const W=1240,H=1754,M=90;
+    const W=1240,H=1754,MG=90;
     const c=document.createElement('canvas'); c.width=PXW; c.height=PXH;
     const ctx=c.getContext('2d'); ctx.scale(2,2); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#0F2742'; ctx.fillRect(0,0,W,130);
-    ctx.fillStyle='#fff'; ctx.font='bold 34px DejaVu, Arial, sans-serif'; ctx.fillText('Formalność OZE — ' + src.name, M, 52);
-    ctx.font='20px DejaVu, Arial, sans-serif'; ctx.fillStyle='#B9CFDC'; ctx.fillText('Wynik orientacyjny · ' + M.todayPl() + ' · wersja ' + M.VERSION, M, 92);
+    ctx.fillStyle='#fff'; ctx.font='bold 34px DejaVu, Arial, sans-serif'; ctx.fillText('Formalność OZE — ' + src.name, MG, 52);
+    ctx.font='20px DejaVu, Arial, sans-serif'; ctx.fillStyle='#B9CFDC'; ctx.fillText('Wynik orientacyjny · ' + M.todayPl() + ' · wersja ' + M.VERSION, MG, 92);
     let y=170;
-    ctx.fillStyle='#13263A'; ctx.font='bold 28px DejaVu, Arial, sans-serif'; ctx.fillText('Opis źródła', M, y); y+=36;
+    ctx.fillStyle='#13263A'; ctx.font='bold 28px DejaVu, Arial, sans-serif'; ctx.fillText('Opis źródła', MG, y); y+=36;
     ctx.font='20px DejaVu, Arial, sans-serif'; ctx.fillStyle='#33485B';
     const wrap=(text,x,yy,maxW,lh)=>{ const words=String(text||'').split(/\s+/); let line=''; for(const w of words){ const t=line?line+' '+w:w; if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); yy+=lh; line=w; } else line=t; } if(line){ctx.fillText(line,x,yy); yy+=lh;} return yy; };
-    y=wrap(src.description,M,y,W-2*M,28)+8;
-    ctx.fillStyle='#13263A'; ctx.font='bold 28px DejaVu, Arial, sans-serif'; ctx.fillText('Wynik kalkulatora (orientacyjny)', M, y); y+=34;
+    y=wrap(src.description,MG,y,W-2*MG,28)+8;
+    ctx.fillStyle='#13263A'; ctx.font='bold 28px DejaVu, Arial, sans-serif'; ctx.fillText('Wynik kalkulatora (orientacyjny)', MG, y); y+=34;
     const rep=ozeReportRows(src);
     ctx.font='20px DejaVu, Arial, sans-serif';
-    rep.rows.forEach(function(rw){ ctx.fillStyle='#5A6B7B'; ctx.fillText(rw[0],M,y); ctx.fillStyle='#13263A'; ctx.fillText(String(rw[1]),M+520,y); y+=30; });
-    y+=10; ctx.fillStyle='#13263A'; ctx.font='bold 26px DejaVu, Arial, sans-serif'; ctx.fillText('Ścieżka formalna — checklista', M, y); y+=34;
+    rep.rows.forEach(function(rw){ ctx.fillStyle='#5A6B7B'; ctx.fillText(rw[0],MG,y); ctx.fillStyle='#13263A'; ctx.fillText(String(rw[1]),MG+520,y); y+=30; });
+    y+=10; ctx.fillStyle='#13263A'; ctx.font='bold 26px DejaVu, Arial, sans-serif'; ctx.fillText('Ścieżka formalna — checklista', MG, y); y+=34;
     ctx.font='19px DejaVu, Arial, sans-serif';
-    (src.formalPath.steps||[]).slice(0,8).forEach(function(st,i){ ctx.fillStyle='#13263A'; const badge=st.status==='ready'?'[gotowe]':'[do potwierdzenia]'; y=wrap((i+1)+'. '+st.name+' '+badge,M,y,W-2*M,26); ctx.fillStyle='#33485B'; y=wrap(st.desc,M+24,y,W-2*M-24,24)+6; });
-    y+=8; ctx.fillStyle='#9A4A1A'; ctx.font='bold 20px DejaVu, Arial, sans-serif'; y=wrap('Ważne: '+M.OZE_DISCLAIMER,M,Math.min(y,H-170),W-2*M,24);
+    (src.formalPath.steps||[]).slice(0,8).forEach(function(st,i){ ctx.fillStyle='#13263A'; const badge=st.status==='ready'?'[gotowe]':'[do potwierdzenia]'; y=wrap((i+1)+'. '+st.name+' '+badge,MG,y,W-2*MG,26); ctx.fillStyle='#33485B'; y=wrap(st.desc,MG+24,y,W-2*MG-24,24)+6; });
+    y+=8; ctx.fillStyle='#9A4A1A'; ctx.font='bold 20px DejaVu, Arial, sans-serif'; y=wrap('Ważne: '+M.OZE_DISCLAIMER,MG,Math.min(y,H-170),W-2*MG,24);
     ctx.fillStyle='#5A6B7B'; ctx.font='18px DejaVu, Arial, sans-serif';
-    ctx.fillText(M.AUTHOR_LINE, M, H-50);
+    ctx.fillText(M.AUTHOR_LINE, MG, H-50);
     if (window.PVPdf.watermark) { ctx.save(); ctx.globalAlpha=0.1; ctx.fillStyle='#0F2742'; ctx.font='bold 90px DejaVu, Arial, sans-serif'; ctx.translate(W/2,H/2); ctx.rotate(-Math.PI/6); ctx.textAlign='center'; ctx.fillText(window.PVPdf.watermark,0,0); ctx.restore(); }
     return c;
   }
@@ -698,37 +710,37 @@
 
   function buildComparePdfCanvas(rows) {
     const PXW = window.PVPdf.constants.PXW, PXH = window.PVPdf.constants.PXH;
-    const W=1240,H=1754,M=90;
+    const W=1240,H=1754,MG=90;
     const c=document.createElement("canvas"); c.width=PXW; c.height=PXH;
     const ctx=c.getContext("2d"); ctx.scale(2,2); ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H);
     ctx.fillStyle="#0F2742"; ctx.fillRect(0,0,W,130);
-    ctx.fillStyle="#fff"; ctx.font="bold 34px DejaVu, Arial, sans-serif"; ctx.fillText("Formalność OZE - Porównanie wariantów", M, 52);
-    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle="#B9CFDC"; ctx.fillText("Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION, M, 92);
+    ctx.fillStyle="#fff"; ctx.font="bold 34px DejaVu, Arial, sans-serif"; ctx.fillText("Formalność OZE - Porównanie wariantów", MG, 52);
+    ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle="#B9CFDC"; ctx.fillText("Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION, MG, 92);
     const wrap=(text,x,yy,maxW,lh)=>{ const words=String(text||"").split(/\s+/); let line=""; for(const w of words){ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); yy+=lh; line=w; } else line=t; } if(line){ctx.fillText(line,x,yy); yy+=lh;} return yy; };
     let y=170;
     const best = rows.find(function(r){return r.recommended;});
-    ctx.fillStyle="#13263A"; ctx.font="bold 26px DejaVu, Arial, sans-serif"; ctx.fillText("Wniosek orientacyjny", M, y); y+=34;
+    ctx.fillStyle="#13263A"; ctx.font="bold 26px DejaVu, Arial, sans-serif"; ctx.fillText("Wniosek orientacyjny", MG, y); y+=34;
     ctx.font="20px DejaVu, Arial, sans-serif"; ctx.fillStyle="#33485B";
-    y = wrap(best ? ("Najkorzystniejszy wariant: " + best.name + ", prosty zwrot " + M.fmt(best.paybackYears) + " lat, bilans roczny " + M.money(best.netPlnYear) + ".") : "Brak jednoznacznie opłacalnego wariantu przy bieżących założeniach.", M, y, W-2*M, 28) + 10;
-    ctx.fillStyle="#13263A"; ctx.font="bold 24px DejaVu, Arial, sans-serif"; ctx.fillText("Porównanie", M, y); y+=30;
+    y = wrap(best ? ("Najkorzystniejszy wariant: " + best.name + ", prosty zwrot " + M.fmt(best.paybackYears) + " lat, bilans roczny " + M.money(best.netPlnYear) + ".") : "Brak jednoznacznie opłacalnego wariantu przy bieżących założeniach.", MG, y, W-2*MG, 28) + 10;
+    ctx.fillStyle="#13263A"; ctx.font="bold 24px DejaVu, Arial, sans-serif"; ctx.fillText("Porównanie", MG, y); y+=30;
     ctx.font="18px DejaVu, Arial, sans-serif";
-    ctx.fillStyle="#5A6B7B"; ctx.fillText("Wariant", M, y); ctx.fillText("Energia", M+360, y); ctx.fillText("CAPEX", M+500, y); ctx.fillText("Bilans/rok", M+680, y); ctx.fillText("Zwrot", M+900, y); y+=10;
-    ctx.strokeStyle="#D9E0E6"; ctx.beginPath(); ctx.moveTo(M,y); ctx.lineTo(W-M,y); ctx.stroke(); y+=24;
+    ctx.fillStyle="#5A6B7B"; ctx.fillText("Wariant", MG, y); ctx.fillText("Energia", MG+360, y); ctx.fillText("CAPEX", MG+500, y); ctx.fillText("Bilans/rok", MG+680, y); ctx.fillText("Zwrot", MG+900, y); y+=10;
+    ctx.strokeStyle="#D9E0E6"; ctx.beginPath(); ctx.moveTo(MG,y); ctx.lineTo(W-MG,y); ctx.stroke(); y+=24;
     rows.forEach(function(r){
       const payback = r.paybackYears == null ? "brak" : M.fmt(r.paybackYears) + " lat";
-      if (r.recommended) { ctx.fillStyle="#F3F9F0"; ctx.fillRect(M-10,y-20,W-2*M+20,30); }
-      ctx.fillStyle="#13263A"; ctx.fillText(String(r.name).slice(0,34), M, y);
-      ctx.fillStyle="#33485B"; ctx.fillText(M.fmt(r.energyMwhYear)+" MWh", M+360, y);
-      ctx.fillText(M.money(r.capexPln), M+500, y);
-      ctx.fillText(M.money(r.netPlnYear), M+680, y);
+      if (r.recommended) { ctx.fillStyle="#F3F9F0"; ctx.fillRect(MG-10,y-20,W-2*MG+20,30); }
+      ctx.fillStyle="#13263A"; ctx.fillText(String(r.name).slice(0,34), MG, y);
+      ctx.fillStyle="#33485B"; ctx.fillText(M.fmt(r.energyMwhYear)+" MWh", MG+360, y);
+      ctx.fillText(M.money(r.capexPln), MG+500, y);
+      ctx.fillText(M.money(r.netPlnYear), MG+680, y);
       ctx.fillStyle = r.recommended ? "#2F6B2F" : "#33485B";
-      ctx.fillText(payback, M+900, y);
+      ctx.fillText(payback, MG+900, y);
       y += 32;
     });
     y += 12;
     ctx.fillStyle="#9A4A1A"; ctx.font="bold 19px DejaVu, Arial, sans-serif";
-    y = wrap("Uwaga: porównanie orientacyjne. Przychód/wartość = energia × cena energii. Bilans = przychód − OPEX (geo: + koszt energii el., biomasa: + koszt paliwa). Prosty zwrot = CAPEX / bilans roczny.", M, Math.min(y,H-150), W-2*M, 24);
-    ctx.fillStyle="#5A6B7B"; ctx.font="18px DejaVu, Arial, sans-serif"; ctx.fillText(M.AUTHOR_LINE, M, H-50);
+    y = wrap("Uwaga: porównanie orientacyjne. Przychód/wartość = energia × cena energii. Bilans = przychód − OPEX (geo: + koszt energii el., biomasa: + koszt paliwa). Prosty zwrot = CAPEX / bilans roczny.", MG, Math.min(y,H-150), W-2*MG, 24);
+    ctx.fillStyle="#5A6B7B"; ctx.font="18px DejaVu, Arial, sans-serif"; ctx.fillText(M.AUTHOR_LINE, MG, H-50);
     if (window.PVPdf.watermark) { ctx.save(); ctx.globalAlpha=0.1; ctx.fillStyle="#0F2742"; ctx.font="bold 90px DejaVu, Arial, sans-serif"; ctx.translate(W/2,H/2); ctx.rotate(-Math.PI/6); ctx.textAlign="center"; ctx.fillText(window.PVPdf.watermark,0,0); ctx.restore(); }
     return c;
   }
@@ -744,13 +756,11 @@
   async function initComparePreview() {
     const canvas = $("#preview-canvas");
     if (!canvas) return;
-    try {
-      if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
-      const c = buildComparePdfCanvas(collectCompareRows());
-      canvas.width=c.width; canvas.height=c.height;
-      canvas.getContext("2d").clearRect(0,0,c.width,c.height);
-      canvas.getContext("2d").drawImage(c,0,0);
-    } catch (err) { console.warn(err); }
+    if (window.PVPdf.ensureFonts) await window.PVPdf.ensureFonts();
+    const c = buildComparePdfCanvas(collectCompareRows());
+    canvas.width=c.width; canvas.height=c.height;
+    canvas.getContext("2d").clearRect(0,0,c.width,c.height);
+    canvas.getContext("2d").drawImage(c,0,0);
   }
 
   async function doComparePdf() {
@@ -774,9 +784,12 @@
 
   /** W formularzu czyta wyłącznie moc i powierzchnię — reszta jest stała. */
   function readForm() {
-    const ha = $("#f-ha"), kw = $("#f-kw");
-    if (!ha || !kw) return;
-    project.ha = numberOr(ha.value, 0);
+    const kw = $("#f-kw");
+    if (!kw) return;
+    const m2 = $("#f-m2"), ha = $("#f-ha");
+    project.ha = project.areaUnit === "m2" && m2
+      ? numberOr(m2.value, 0) / 10000
+      : ha ? numberOr(ha.value, 0) : project.ha;
     project.kw = numberOr(kw.value, 0);
     project.est = M.estimateOptions(project.est);
     saveProject();
@@ -802,23 +815,39 @@
       '<span>Formalność OZE · wersja web</span>' +
       "</footer>";
 
-    document.addEventListener("click", function (e) {
+    document.addEventListener("click", async function (e) {
       const btn = e.target.closest("[data-act]");
       if (!btn) return;
       const act = btn.getAttribute("data-act");
       const src = btn.getAttribute("data-source");
       if (act === "go") go(btn.getAttribute("data-path"));
       else if (act === "reset") resetForm();
-      else if (act === "pdf") doPdf();
+      else if (act === "pdf") await doPdf();
       else if (act === "pv-scroll-result") { readForm(); render(); setTimeout(function(){ var el=document.getElementById("pv-wynik"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }, 60); }
-      else if (act === "pv-preview") { readForm(); initPvPreview(); toast("Podgląd odświeżony.", "ok"); }
+      else if (act === "pv-preview") {
+        readForm();
+        try { await initPvPreview(); toast("Podgląd odświeżony.", "ok"); }
+        catch (err) { toast("Nie udało się odświeżyć podglądu: " + err.message, "err"); }
+      }
       else if (act === "oze-calc") { readOzeForm(src); render(); toast("Kalkulator przeliczony (wynik orientacyjny).", "ok"); }
       else if (act === "oze-reset") { project.oze.inputs[src] = M.ozeDefaultInput(src); saveProject(); render(); toast("Przywrócono domyślne wartości.", "ok"); }
-      else if (act === "oze-pdf") { readOzeForm(src); doOzePdf(src); }
-      else if (act === "oze-preview") { readOzeForm(src); initOzePreview(src); toast("Podgląd odświeżony.", "ok"); }
+      else if (act === "oze-pdf") { readOzeForm(src); await doOzePdf(src); }
+      else if (act === "oze-preview") {
+        readOzeForm(src);
+        try { await initOzePreview(src); toast("Podgląd odświeżony.", "ok"); }
+        catch (err) { toast("Nie udało się odświeżyć podglądu: " + err.message, "err"); }
+      }
+      else if (act === "cmp-calc") { readCompareForm(); render(); toast("Porównanie przeliczone (wynik orientacyjny).", "ok"); }
+      else if (act === "cmp-reset") { project.compare = defaultCompare(); saveProject(); render(); toast("Przywrócono domyślne założenia porównania.", "ok"); }
+      else if (act === "cmp-pdf") { readCompareForm(); await doComparePdf(); }
+      else if (act === "cmp-preview") {
+        readCompareForm();
+        try { await initComparePreview(); toast("Podgląd odświeżony.", "ok"); }
+        catch (err) { toast("Nie udało się odświeżyć podglądu: " + err.message, "err"); }
+      }
     });
 
-    const numericFields = ["f-ha", "f-kw"];
+    const numericFields = ["f-ha", "f-m2", "f-kw"];
     document.addEventListener("change", function (e) {
       if (!e.target) return;
       if (e.target.id === "f-pdf-theme") {
@@ -828,6 +857,13 @@
           saveProject();
         }
         return;
+      }
+      if (e.target.id === "f-area-unit") {
+        if (e.target.value !== "m2" && e.target.value !== "ha") return;
+        readForm();
+        project.areaUnit = e.target.value;
+        saveProject();
+        render();
       }
     });
     document.addEventListener("input", function (e) {

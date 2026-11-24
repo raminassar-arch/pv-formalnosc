@@ -40,6 +40,12 @@
   function wait(ms) {
     return new Promise(function (res) { setTimeout(res, ms || 60); });
   }
+  function previewPainted() {
+    const c = document.querySelector("#preview-canvas");
+    if (!c) return false;
+    const d = c.getContext("2d").getImageData(10, 10, 1, 1).data;
+    return d[3] === 255;
+  }
 
   function domReady() {
     if (document.readyState !== "loading") return Promise.resolve();
@@ -403,6 +409,9 @@
 
     location.hash = "#/pv";
     await nextTick();
+    const resetBtn = document.querySelector('[data-act="reset"]');
+    if (resetBtn) resetBtn.click();
+    await nextTick();
     ok("formularz ma tylko moc i powierzchnię",
        !!document.querySelector("#f-ha") && !!document.querySelector("#f-kw") &&
        !document.querySelector("#f-place") && !document.querySelector("#f-protected") &&
@@ -431,9 +440,53 @@
     location.hash = "#/pv";
     await nextTick();
     ok("brak płatności w UI", !document.querySelector('[data-act="pay-open"]') && !document.querySelector('[data-act="pay-confirm"]'));
-    location.hash="#/wiatr"; await nextTick();
+    location.hash="#/wiatr"; await wait(250);
     ok("OZE ma przycisk PDF", !!document.querySelector('[data-act="oze-pdf"][data-source="wiatr"]'));
     ok("OZE ma podgląd", !!document.querySelector("#preview-canvas"));
+    ok("OZE podgląd A4 narysowany", previewPainted() &&
+       document.querySelector("#preview-canvas").width === 2480 &&
+       document.querySelector("#preview-canvas").height === 3508);
+    document.querySelector('[data-act="oze-preview"]').click();
+    await wait(250);
+    ok("OZE odśwież podgląd bez błędu", previewPainted());
+    document.querySelector('[data-act="oze-pdf"]').click();
+    await wait(400);
+    ok("OZE pobierz PDF bez błędu",
+       (document.querySelector(".toast") || {}).textContent === "PDF 300 DPI pobrany.",
+       (document.querySelector(".toast") || {}).textContent);
+
+    location.hash="#/porownaj"; await wait(250);
+    ok("Porównaj ma przyciski PDF i podglądu",
+       !!document.querySelector('[data-act="cmp-pdf"]') &&
+       !!document.querySelector('[data-act="cmp-preview"]'));
+    ok("Porównaj podgląd A4 narysowany", previewPainted());
+    document.querySelector('[data-act="cmp-preview"]').click();
+    await wait(250);
+    ok("Porównaj odśwież podgląd bez błędu", previewPainted());
+    document.querySelector('[data-act="cmp-pdf"]').click();
+    await wait(400);
+    ok("Porównaj pobierz PDF bez błędu",
+       (document.querySelector(".toast") || {}).textContent === "PDF porównania pobrany.",
+       (document.querySelector(".toast") || {}).textContent);
+
+    location.hash="#/pv"; await wait(150);
+    ok("PV: wybór jednostki powierzchni",
+       !!document.getElementById("f-area-unit") && document.getElementById("f-area-unit").value === "ha");
+    const unit = document.getElementById("f-area-unit");
+    unit.value = "m2";
+    unit.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(150);
+    ok("PV: przełączenie powierzchni na m²",
+       !!document.getElementById("f-m2") &&
+       Number(document.getElementById("f-m2").value) === 10000,
+       (document.getElementById("f-m2") || {}).value);
+    document.getElementById("f-m2").value = "5000";
+    document.getElementById("f-m2").dispatchEvent(new Event("input", { bubbles: true }));
+    document.querySelector('[data-act="pv-scroll-result"]').click();
+    await wait(150);
+    ok("PV: wpisanie 5000 m² daje 0,5 ha",
+       (document.querySelector("#view").textContent || "").indexOf("5000 m² (0,5 ha)") >= 0,
+       (document.querySelector("#view").textContent || "").slice(0, 120));
 
     location.hash="#/biomasa"; await wait(80);
       ok("UI: strona biomasa", !!document.getElementById("oze-biomasa-fuelTonsYear")); ok("nawigacja ma PV", !!document.querySelector('#steps a[href="#/pv"]'),

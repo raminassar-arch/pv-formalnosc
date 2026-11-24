@@ -13,9 +13,10 @@ i powierzchni, koszty materiałów i robocizny oraz czas realizacji (wynik + PDF
 3 presety modułów **600 Wp** znanych marek, **dobór najtańszego wariantu**
 (ranking po koszcie całkowitym z uwzględnieniem oba wejścia) oraz **3 style
 raportu PDF** (Biały, Karty, Premium) wybierane na dole zakładki z wynikiem.
-W formularzu **Dane** edytowalne są wyłącznie moc i powierzchnia; pozostałe
-parametry są stałe i widoczne w raporcie. Po ustawieniu `TEST_MODE = false`
-zakładki Wynik i Podgląd są blokowane kłódką do czasu potwierdzenia płatności.
+W formularzu **Dane** edytowalne są wyłącznie moc (kW) i powierzchnia — powierzchnię
+można wpisać w hektarach (ha) albo metrach kwadratowych (m²); 1 ha = 10 000 m².
+Pozostałe parametry są stałe i widoczne w raporcie. Wynik, podgląd A4 i PDF znajdują
+się na dole każdej zakładki; zakładki Płatność, Wynik, Podgląd i O programie są ukryte.
 Wersja desktopowa i plik `PV_Formalność_v2.0.0.exe` pozostają niezmienione.
 
 > **BUDOWA TESTOWA — wersja publiczna odblokowana.** W `js/payment.js`
@@ -42,7 +43,7 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Kalkulator | Pełny port `pv_formalnosc/model.py` — 10 ścieżek, progi 2 ha / 0,5 ha / 150 kW / 1 MW, komunikaty i uwaga o braku opisu przypadku na gov.pl |
 | Wycena (tylko web) | Liczba paneli z obu wejść (moc i powierzchnia), koszt modułów, konstrukcji/falownika, robocizny i czas realizacji; stałe parametry i 9 gotowych presetów modułów (także 600 Wp) |
 | Dobór najtańszego wariantu (tylko web) | Ranking wszystkich modułów po koszcie całkowitym, liczba paneli = minimum zapotrzebowania na moc i maksimum z powierzchni; rekomendacja i uwaga, gdy powierzchnia ogranicza moc |
-| Formularz | Edytowalne tylko powierzchnia (ha) i moc (kW); miejsce montażu i lokalizacja widoczne jako wartości stałe; pozostałe parametry wyceny pokazywane w raporcie |
+| Formularz | Edytowalne tylko moc (kW) i powierzchnia w ha lub m² (wybór jednostki; 1 ha = 10 000 m²); miejsce montażu i lokalizacja widoczne jako wartości stałe; pozostałe parametry wyceny pokazywane w raporcie |
 | Wynik | Decyzje TAK/NIE, ścieżka gov.pl, lista kroków w kolejności (z opcjonalnym „Działalność przedkoncesyjna"), sekcja wyceny, ranking optymalizatora, wybór stylu PDF, źródła i disclaimer |
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
