@@ -276,11 +276,12 @@ sprawdzają m.in.:
 - wybór stylu raportu w widoku Wynik/Podgląd,
 - czytelna hierarchia pięciu ponumerowanych sekcji PV, jawne jednostki w nagłówkach,
   rozdzielenie kosztów od podsumowań, wyraźne odstępy między wierszami rankingu,
-  stały luz między zaokrąglonymi kartami oraz brak skracania nazw wielokropkiem,
+  stały luz między zaokrąglonymi kartami, wyrównanie wyników do lewej w tabelach
+  i PDF oraz brak skracania nazw wielokropkiem,
 - brak nakładania tekstu, wyjść poza marginesy i wielokropka we wszystkich
   30 kombinacjach (6 zakładek × 5 motywów) podglądu/PDF.
 
-Wynik: `TOTAL 239 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 241 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 

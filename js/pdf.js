@@ -438,7 +438,7 @@
   };
 
   Doc.prototype.estimateSection = function (e) {
-    const f = this.f, c = this.c, ctx = this.ctx;
+    const f = this.f, c = this.c;
     // Źródła cen są w stopce. Powtarzanie długich adresów wydłuża sekcję
     // i wypycha ranking na drugą stronę A4.
     const source = e.selectionScope || e.presetName;
@@ -446,21 +446,15 @@
     const sourceLines = this.countLines(source, f.small, W - 2 * MARGIN);
     const noteLines = this.countLines(noteText, f.small, W - 2 * MARGIN);
 
-    // Etykiety są po lewej, kwoty wyrównane do prawej. Długie nazwy i kwoty
-    // zawijają się do kolejnych wierszy — bez wielokropka i bez utraty treści.
-    const valueMax = 520, gap = 36, rows = [];
+    // Etykiety i wyniki są wyrównane do lewej w stałych kolumnach. Długie
+    // nazwy i kwoty zawijają się do kolejnych wierszy — bez wielokropka.
+    const labelWidth = 540, valueX = MARGIN + labelWidth;
+    const valueMax = W - MARGIN - valueX, rows = [];
     const rowPad = Math.max(3, Math.round(this.line.body * 0.16));
     const addRow = (label, value, strong, divider) => {
       const valueFont = strong ? f.h3 : f.body;
       const valueLines = this.splitLines(value, valueFont, valueMax);
-      ctx.font = valueFont;
-      const valueWidth = Math.max.apply(null, valueLines.map(function (line) {
-        return ctx.measureText(line).width;
-      }));
-      const valueX = W - MARGIN - valueWidth;
-      ctx.font = f.body;
-      const labelLines = this.splitLines(label, f.body,
-        Math.max(120, valueX - gap - MARGIN));
+      const labelLines = this.splitLines(label, f.body, labelWidth);
       const valueLine = strong ? this.line.h3 : this.line.body;
       rows.push({
         labelLines: labelLines, valueLines: valueLines, valueFont: valueFont,
@@ -495,10 +489,8 @@
       if (r.divider) { this.rule(this.y - 2); this.y += 8; }
       r.labelLines.forEach((line, i) => this.text(line, f.body, c.MUTED,
         MARGIN, this.y + i * this.line.body));
-      ctx.font = r.valueFont;
       r.valueLines.forEach((line, i) => this.text(line, r.valueFont,
-        r.strong ? c.CELL : c.INK, r.valueX - ctx.measureText(line).width,
-        this.y + i * r.valueLine));
+        r.strong ? c.CELL : c.INK, r.valueX, this.y + i * r.valueLine));
       this.y += r.height - (r.divider ? 8 : 0);
     });
     this.y += 6;
@@ -508,7 +500,7 @@
 
   Doc.prototype.optimizerSection = function (o) {
     if (!o || !o.list || !o.list.length) return;
-    const f = this.f, c = this.c, ctx = this.ctx;
+    const f = this.f, c = this.c;
     const rec = o.recommended;
     const noteLines = this.countLines(o.note, f.small, W - 2 * MARGIN);
     // Wiersze mają wyraźny odstęp; rekomendacja jest wyróżniona w tabeli,
@@ -560,9 +552,7 @@
              c.TABLE_HEAD_BG, null, Math.min(8, this.shape.radius));
     headLines.forEach((lines, i) => {
       lines.forEach((line, j) => {
-        ctx.font = f.small;
-        const x = i === 0 ? cols[i] : cols[i] + widths[i] - ctx.measureText(line).width;
-        this.text(line, f.small, c.CELL, x, this.y + j * this.line.small);
+        this.text(line, f.small, c.CELL, cols[i], this.y + j * this.line.small);
       });
     });
     this.y += headHeight;
@@ -573,10 +563,8 @@
       const best = rec && row.x.id === rec.id;
       row.lines.forEach((lines, i) => {
         lines.forEach((line, j) => {
-          ctx.font = f.small;
-          const x = i === 0 ? cols[i] : cols[i] + widths[i] - ctx.measureText(line).width;
           this.text(line, f.small, best && (i === 0 || i === 4) ? c.CELL : c.INK,
-                    x, this.y + j * this.line.small);
+                    cols[i], this.y + j * this.line.small);
         });
       });
       this.y += row.height;

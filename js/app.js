@@ -753,28 +753,21 @@
     return parts.length ? parts : [""];
   }
 
-  /** Wiersz raportu: etykieta po lewej, wartość wyrównana do prawej. */
+  /** Wiersz raportu: etykieta i wynik wyrównane do lewej w stałych kolumnach. */
   function pdfKeyValue(doc, label, value, font) {
     const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
-    const ctx = doc.ctx, c = doc.c;
-    const valueLines = splitPdfLines(doc, value, 520, font);
-    ctx.font = font;
-    const valueWidth = Math.max.apply(null, valueLines.map(function (line) {
-      return ctx.measureText(line).width;
-    }));
-    const valueX = W - MG - valueWidth;
-    const labelLines = splitPdfLines(doc, label,
-      Math.max(120, valueX - MG - 36), font);
+    const c = doc.c;
+    const labelWidth = 220, valueX = MG + labelWidth;
+    const valueLines = splitPdfLines(doc, value, W - MG - valueX, font);
+    const labelLines = splitPdfLines(doc, label, labelWidth, font);
     const height = Math.max(labelLines.length, valueLines.length) * doc.line.body + 12;
     doc.ensure(height + 10);
     const top = doc.y;
     labelLines.forEach(function (line, i) {
       doc.text(line, font, c.MUTED, MG, top + i * doc.line.body);
     });
-    ctx.font = font;
     valueLines.forEach(function (line, i) {
-      doc.text(line, font, c.INK, valueX - ctx.measureText(line).width,
-               top + i * doc.line.body);
+      doc.text(line, font, c.INK, valueX, top + i * doc.line.body);
     });
     doc.y += height;
   }
@@ -892,9 +885,7 @@
             c.TABLE_HEAD_BG, null, Math.min(8, doc.shape.radius));
     headParts.forEach(function (lines, i) {
       lines.forEach(function (line, j) {
-        doc.ctx.font = f.small;
-        const x = i === 0 ? cols[i] : cols[i] + widths[i] - doc.ctx.measureText(line).width;
-        doc.text(line, f.small, c.CELL, x, doc.y + j * L.small);
+        doc.text(line, f.small, c.CELL, cols[i], doc.y + j * L.small);
       });
     });
     doc.y += headHeight;
@@ -922,11 +913,9 @@
       const top = doc.y;
       parts.forEach(function (cellLines, i) {
         cellLines.forEach(function (line, j) {
-          doc.ctx.font = f.small;
-          const x = i === 0 ? cols[i] : cols[i] + widths[i] - doc.ctx.measureText(line).width;
           const fill = i === 0 ? c.INK
             : i === 4 && row.recommended ? c.BEST_INK : c.BODY_INK;
-          doc.text(line, f.small, fill, x, top + j * L.small);
+          doc.text(line, f.small, fill, cols[i], top + j * L.small);
         });
       });
       doc.y += height;

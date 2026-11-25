@@ -407,7 +407,7 @@ input:focus, select:focus {
   vertical-align: top; overflow-wrap:anywhere;
 }
 .opt-table th:first-child, .opt-table td:first-child { text-align:left; width:34%; }
-.opt-table th:not(:first-child), .opt-table td:not(:first-child) { text-align:right; }
+.opt-table th:not(:first-child), .opt-table td:not(:first-child) { text-align:left; }
 .opt-table th { color: var(--muted); font-weight: 600; background: var(--green-pale); }
 .opt-table tr.best td { background: var(--gold-pale); font-weight: 700; }
 
@@ -496,7 +496,7 @@ input:focus, select:focus {
 .data-table th,.data-table td { padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
 .data-table th { color:var(--muted); font-weight:600; width:55%; }
 .data-table td { font-weight:600; color:var(--green-deep); }
-.compare-table th:not(:first-child), .compare-table td:not(:first-child) { text-align:right; }
+.compare-table th:not(:first-child), .compare-table td:not(:first-child) { text-align:left; }
 .compare-table th:first-child { width:24%; }
 
 /* Start page tab cards — ikony są przyciskami */

@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=14"></script>
-<script src="../js/payment.js?v=2.0.0i&n=14"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=14"></script>
-<script src="../js/app.js?v=2.0.0i&n=14"></script>
+<script src="../js/model.js?v=2.0.0i&n=15"></script>
+<script src="../js/payment.js?v=2.0.0i&n=15"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=15"></script>
+<script src="../js/app.js?v=2.0.0i&n=15"></script>
 <script>
 (function () {
   "use strict";
@@ -67,6 +67,12 @@
   // Przechwyć napisy rysowane na stronie PDF i wskaż kolizje oraz wyjścia poza marginesy.
   async function pdfTextOverlaps(btnSel) {
     const orig = CanvasRenderingContext2D.prototype.fillText;
+    const docProto = Object.getPrototypeOf(window.PVPdf.createDoc("premium"));
+    const origCardRect = docProto.cardRect, cards = [];
+    docProto.cardRect = function (y, h) {
+      cards.push({ y: Number(y), h: Number(h) });
+      return origCardRect.apply(this, arguments);
+    };
     const log = [];
     let page = 0;
     CanvasRenderingContext2D.prototype.fillText = function (text, x, y) {
@@ -88,7 +94,16 @@
       await wait(700);
     } finally {
       CanvasRenderingContext2D.prototype.fillText = orig;
+      docProto.cardRect = origCardRect;
     }
+    const orderedCards = cards.slice().sort(function (a, b) { return a.y - b.y; });
+    const cardGaps = [];
+    for (let i = 1; i < orderedCards.length; i++) {
+      if (orderedCards[i].y > orderedCards[i - 1].y + 1) {
+        cardGaps.push(orderedCards[i].y - orderedCards[i - 1].y - orderedCards[i - 1].h);
+      }
+    }
+    window.__lastPdfCardGaps = cardGaps;
     const box = function (o) {
       let x = o.x;
       if (o.align === "center") x -= o.w / 2;
@@ -114,6 +129,9 @@
       }
       if (o.text.indexOf("…") >= 0 || o.text.indexOf("...") >= 0) {
         hits.push("skrócony napis: " + o.text.slice(0, 32));
+      }
+      if (o.align === "right") {
+        hits.push("wyrównanie do prawej: " + o.text.slice(0, 32));
       }
     });
     window.__lastPdfTexts = log.map(function (o) { return o.text; });
@@ -987,12 +1005,22 @@
       { hash: "#/porownaj",  btn: '[data-act="cmp-preview"]' },
     ];
     const layoutIssues = [];
+    const cardGapIssues = [];
+    let cardGapChecks = 0;
     let pvFullNameSeen = false;
     for (const route of layoutRoutes) {
       location.hash = route.hash; await wait(180);
       for (const t of themes) {
         await setTheme(t.id);
         const issues = await pdfTextOverlaps(route.btn);
+        const gaps = window.__lastPdfCardGaps || [];
+        if (gaps.length) {
+          cardGapChecks++;
+          const minGap = Math.min.apply(null, gaps);
+          if (minGap < 8) {
+            cardGapIssues.push(route.hash + "/" + t.id + ": " + minGap.toFixed(1));
+          }
+        }
         if (route.hash === "#/pv") {
           const joined = (window.__lastPdfTexts || []).join(" ");
           if (joined.indexOf("Selfa S450MH · Mono PERC (polska produkcja)") >= 0) {
@@ -1002,8 +1030,11 @@
         if (issues.length) layoutIssues.push(route.hash + "/" + t.id + ": " + issues.join("; "));
       }
     }
-    ok("PDF: brak nakładania, wyjść poza marginesy i skracania tekstu we wszystkich zakładkach i motywach",
+    ok("PDF: brak nakładania, wyjść poza marginesy, skracania i prawego wyrównania we wszystkich zakładkach i motywach",
        layoutIssues.length === 0, JSON.stringify(layoutIssues));
+    ok("PDF: karty zaokrąglone mają luz we wszystkich zakładkach i motywach",
+       cardGapChecks >= 25 && cardGapIssues.length === 0,
+       JSON.stringify(cardGapIssues) + " sprawdzeń=" + cardGapChecks);
     ok("PDF: pełna nazwa modułu 'polska produkcja' bez skrótu",
        pvFullNameSeen, String(pvFullNameSeen));
     await setTheme(pvOriginalTheme);
@@ -1022,6 +1053,24 @@
        pvUiText.indexOf("Pow. modułów [m²]") >= 0 &&
        pvUiText.indexOf("Razem [zł]") >= 0 &&
        pvUiText.indexOf("…") < 0 && pvUiText.indexOf("...") < 0);
+    const alignProbe = document.createElement("div");
+    alignProbe.style.cssText = "position:absolute;left:-9999px;top:0";
+    alignProbe.innerHTML = [
+      '<table class="opt-table"><thead><tr><th>a</th><th>b</th></tr></thead>',
+      '<tbody><tr><td>a</td><td>b</td></tr></tbody></table>',
+      '<table class="data-table compare-table"><thead><tr><th>a</th><th>b</th></tr></thead>',
+      '<tbody><tr><td>a</td><td>b</td></tr></tbody></table>',
+    ].join("");
+    document.body.appendChild(alignProbe);
+    const leftAligned = ["opt-table", "compare-table"].every(function (cls) {
+      const table = alignProbe.querySelector("table." + cls.replace(" ", "."));
+      return table && Array.prototype.every.call(
+        table.querySelectorAll("th:not(:first-child), td:not(:first-child)"),
+        function (cell) { return getComputedStyle(cell).textAlign === "left"; });
+    });
+    alignProbe.remove();
+    ok("UI: wyniki w tabelach wyrównane do lewej", leftAligned,
+       JSON.stringify(leftAligned));
 
     ok("UI: logo BIM OZE",
        ((document.querySelector(".brand .logo") || {}).textContent || "") === "BIM OZE",
