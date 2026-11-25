@@ -108,7 +108,7 @@
     simple:  { family: '"DejaVu", Arial, sans-serif', boldFamily: '"DejaVu-Bold", Arial, sans-serif', boldWeight: false, scale: 1.00, lineScale: 1.00 },
     cards:   { family: 'Georgia, "Times New Roman", serif', boldWeight: true, scale: 1.02, lineScale: 1.02 },
     premium: { family: 'Arial, Helvetica, sans-serif', boldWeight: true, scale: 1.03, lineScale: 1.03 },
-    mono:    { family: 'Consolas, "Lucida Console", monospace', boldWeight: true, scale: 0.97, lineScale: 0.98 },
+    mono:    { family: 'Consolas, "Lucida Console", monospace', boldWeight: true, scale: 0.90, lineScale: 0.94 },
     wide:    { family: 'Tahoma, Verdana, sans-serif', boldWeight: true, scale: 1.05, lineScale: 1.05 },
   };
 

@@ -54,7 +54,7 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
 | Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
 | Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **5 wybieranych stylów** |
-| Styl raportu | **Motyw 1** — biały, ostre kąty, DejaVu; **Motyw 2** — karty z zaokrągleniami, Georgia; **Motyw 3** — premium z złotymi akcentami, Arial; **Motyw 4** — czytelny mono, Consolas, większe litery; **Motyw 5** — Tahoma z większymi literami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
+| Styl raportu | **Motyw 1** — biały, ostre kąty, DejaVu; **Motyw 2** — karty z zaokrągleniami, Georgia; **Motyw 3** — premium z złotymi akcentami, Arial; **Motyw 4** — czytelny mono, Consolas; **Motyw 5** — Tahoma z większymi literami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
 | Znak wodny | Dwie linie — „BIM ARCHITECTS & CONSULTANTS" i „WERSJA TESTOWA" — na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
 Dane formularza i stan sesji są zapisywane w `localStorage`. Obliczenia
@@ -187,7 +187,7 @@ sekcji i wymiary strony są identyczne:
 | **Motyw 1** | Białe tło bez kolorowego paska, ostre prostokąty (promień 0), cienkie linie pod tytułami sekcji, kwadratowe numerki kroków i pola decyzji tylko w obrysie. Najlepszy do druku i do dalszej edycji. |
 | **Motyw 2** | Białe tło, zielony pasek nagłówka, dane wejściowe, decyzje, kroki, wycena i ranking w jasnych kartach z zaokrąglonymi narożnikami (promień 16) i okrągłymi numerkami. |
 | **Motyw 3** | Ciemnogranatowy pasek, złota zaokrąglona etykieta podtytułu, największy promień narożników (26), zaokrąglone numerki i wypełnione pola TAK/NIE. Domyślny styl, czcionka Arial. |
-| **Motyw 4** | Jasny, wąski układ bez wypełnień kart (promień 4), czytelna czcionka Consolas i większe litery. |
+| **Motyw 4** | Jasny, wąski układ bez wypełnień kart (promień 4), czytelna czcionka Consolas. |
 | **Motyw 5** | Zielony układ z zaokrąglonymi kartami (promień 20), czcionka Tahoma i największe litery. |
 
 Style mają różny „charakter” kształtów: kwadraty i prostokąty z ostrymi kątami,
