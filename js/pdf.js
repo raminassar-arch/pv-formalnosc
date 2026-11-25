@@ -15,6 +15,7 @@
   const W = 1240, H = 1754, MARGIN = 90;   // jednostki projektowe (150 DPI)
   const S = 2;                              // 150 -> 300 DPI
   const PXW = W * S, PXH = H * S;
+  const CARD_GAP = 10;                      // luz między kolejnymi kartami
 
   // Wersja testowa — znak wodny na każdej stronie (również w podglądzie A4).
   // Znika automatycznie po ustawieniu TEST_MODE = false w js/payment.js.
@@ -414,7 +415,9 @@
   Doc.prototype.verdictBox = function (x, y, w, need, title, desc) {
     const c = this.c, sh = this.shape, ctx = this.ctx;
     const descLines = this.countLines(desc, this.f.small, w - 40);
-    const height = 82 + descLines * this.line.small + 14;
+    // Treść kończy się na y + 82 + wiersze opisu. Zostawiamy 12 px wewnątrz
+    // karty, a kolejna sekcja dostaje osobny luz CARD_GAP.
+    const height = 82 + descLines * this.line.small + 12;
     this.box(x, y, w, height,
              sh.cardFill ? (need ? c.NEED_BG : c.FREE_BG) : null,
              need ? c.NEED : c.FREE, sh.radius);
@@ -480,9 +483,9 @@
 
     const rowsHeight = rows.reduce(function (sum, r) { return sum + r.height; }, 0);
     const height = 10 + this.line.h2 + sourceLines * this.line.small + 8 +
-      rowsHeight + 6 + noteLines * this.line.small + 8;
+      rowsHeight + 6 + noteLines * this.line.small + CARD_GAP + 4;
     this.ensure(height + 20);
-    this.cardRect(this.y, height + 6);
+    this.cardRect(this.y, height - CARD_GAP);
     this.y += 10;
     this.sectionTitle("Wycena i czas realizacji", this.line.h2);
     this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
@@ -500,7 +503,7 @@
     });
     this.y += 6;
     this.wrapped(noteText, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
-    this.y += 8;
+    this.y += CARD_GAP + 4;
   };
 
   Doc.prototype.optimizerSection = function (o) {
@@ -545,9 +548,9 @@
     });
     const rowsHeight = rowData.reduce(function (sum, r) { return sum + r.height; }, 0);
     const height = 10 + this.line.h2 + noteLines * this.line.small +
-      tableGap + headHeight + 6 + rowsHeight + 4;
+      tableGap + headHeight + 6 + rowsHeight + CARD_GAP + 4;
     this.ensure(height + 20);
-    this.cardRect(this.y, height + 6);
+    this.cardRect(this.y, height - CARD_GAP);
     this.y += 10;
     this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", this.line.h2);
     this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
@@ -578,7 +581,7 @@
       });
       this.y += row.height;
     });
-    this.y += 4;
+    this.y += CARD_GAP + 4;
   };
 
   Doc.prototype.render = function (r, e, o) {
@@ -600,10 +603,10 @@
       M.money(e.options.laborPerPanelZl) + "/panel · " +
       e.options.panelsPerDay + " paneli/dzień";
     const paramLines = this.countLines(params, f.small, W - 2 * MARGIN);
-    const inputHeight = 10 + this.line.h2 + 4 * this.row + 16 + 20 +
-                        paramLines * this.line.small + 12 + 8;
-    this.ensure(inputHeight + 20);
-    this.cardRect(this.y, inputHeight);
+    const inputUsed = this.line.h2 + 4 * this.row + 16 + 20 +
+                      paramLines * this.line.small + 12;
+    this.ensure(inputUsed + 20);
+    this.cardRect(this.y, inputUsed - CARD_GAP);
     this.sectionTitle("Dane wejściowe", this.line.h2);
 
     const pair = (label, value) => {
@@ -631,7 +634,7 @@
                                       "Decyzja środowiskowa", r.env_desc);
     const permHeight = this.verdictBox(MARGIN + boxW + 24, this.y, boxW, r.perm,
                                        "Pozwolenie na budowę", r.perm_desc);
-    this.y += Math.max(envHeight, permHeight);
+    this.y += Math.max(envHeight, permHeight) + CARD_GAP;
 
     this.ensure(this.line.h2 + this.line.sub + 20);
     this.sectionTitle(`Ścieżka ${r.path_no}: ${r.path_name}`, this.line.h2);
@@ -648,7 +651,7 @@
       this.y = saved + 12;
       this.wrapped(r.warning, f.small, c.INK, MARGIN + 20,
                    W - 2 * MARGIN - 40, this.line.small);
-      this.y = saved + boxHeight + 10;
+      this.y = saved + boxHeight + CARD_GAP;
     }
 
     this.ensure(this.line.h2 + 20);
@@ -656,9 +659,11 @@
 
     r.steps.forEach((step, i) => {
       const lines = this.countLines(step.desc, f.small, W - 2 * MARGIN - 70);
-      const descHeight = 50 + lines * this.line.small;
-      this.ensure(descHeight + 20);
-      this.cardRect(this.y, descHeight + 12);
+      // Karta kończy się przed faktycznym przesunięciem y, dzięki czemu
+      // kolejny prostokąt nie dotyka poprzedniego.
+      const stepUsed = this.line.h3 + 6 + lines * this.line.small + 16;
+      this.ensure(stepUsed + 20);
+      this.cardRect(this.y, stepUsed - CARD_GAP);
       const cx = MARGIN + 15, cy = this.y + 15, sh = this.shape;
       const num = String(i + 1);
       this.ctx.font = f.num;
@@ -813,6 +818,6 @@
     watermarkLines: WATERMARK_LINES,
     defaultTheme: "premium",
     constants: { W: W, H: H, MARGIN: MARGIN, S: S, PXW: PXW, PXH: PXH,
-                 PAGE_W: PAGE_W, PAGE_H: PAGE_H },
+                 PAGE_W: PAGE_W, PAGE_H: PAGE_H, CARD_GAP: CARD_GAP },
   };
 })(typeof window !== "undefined" ? window : globalThis);

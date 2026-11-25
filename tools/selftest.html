@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=13"></script>
-<script src="../js/payment.js?v=2.0.0i&n=13"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=13"></script>
-<script src="../js/app.js?v=2.0.0i&n=13"></script>
+<script src="../js/model.js?v=2.0.0i&n=14"></script>
+<script src="../js/payment.js?v=2.0.0i&n=14"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=14"></script>
+<script src="../js/app.js?v=2.0.0i&n=14"></script>
 <script>
 (function () {
   "use strict";
@@ -595,6 +595,33 @@
        uniqueRankYs.length >= 5 && uniqueRankYs.every(function (y, i) {
          return i === 0 || y - uniqueRankYs[i - 1] >= 30;
        }), JSON.stringify(uniqueRankYs));
+
+    const cardProto = Object.getPrototypeOf(window.PVPdf.createDoc("premium"));
+    const cards = [];
+    const origCardRect = cardProto.cardRect, origVerdictBox = cardProto.verdictBox;
+    cardProto.cardRect = function (y, h) {
+      cards.push({ y: y, end: y + h });
+      return origCardRect.apply(this, arguments);
+    };
+    cardProto.verdictBox = function (x, y, w, need, title, desc) {
+      const h = origVerdictBox.apply(this, arguments);
+      cards.push({ y: y, end: y + h });
+      return h;
+    };
+    const cardDoc = window.PVPdf.createDoc("premium");
+    cardDoc.render(r, est, optPower);
+    cardProto.cardRect = origCardRect;
+    cardProto.verdictBox = origVerdictBox;
+    const orderedCards = cards.slice().sort(function (a, b) { return a.y - b.y; });
+    const cardGaps = [];
+    for (let i = 1; i < orderedCards.length; i++) {
+      if (orderedCards[i].y > orderedCards[i - 1].y + 1) {
+        cardGaps.push(orderedCards[i].y - orderedCards[i - 1].end);
+      }
+    }
+    ok("PDF: karty zaokrąglone mają luz między sobą",
+       cardGaps.length >= 3 && cardGaps.every(function (g) { return g >= 8; }),
+       JSON.stringify(cardGaps));
 
     const canvas = document.createElement("canvas");
     const pages = await window.PVPdf.renderPreview(r, canvas, est, optPower);

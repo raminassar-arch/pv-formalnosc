@@ -801,6 +801,7 @@
 
   function buildOzePdfCanvases(src) {
     const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
+    const GAP = C.CARD_GAP || 10;
     const doc = newReportDoc(
       "Formalność OZE — " + src.name,
       "Wynik orientacyjny · " + M.todayPl() + " · wersja " + M.VERSION);
@@ -825,7 +826,7 @@
       const descLines = doc.countLines(step.desc, f.small, W - 2 * MG - 70);
       const height = 10 + titleLines * L.h3 + 6 + descLines * L.small + 12;
       doc.ensure(height + 20);
-      doc.cardRect(doc.y, height);
+      doc.cardRect(doc.y, height - GAP);
       doc.y += 10;
       doc.wrapped(title, f.h3, c.INK, MG + 44, W - 2 * MG - 70, L.h3);
       doc.y += 6;
