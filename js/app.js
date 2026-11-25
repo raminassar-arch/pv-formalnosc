@@ -146,12 +146,11 @@
 
   function currentEstimate() {
     const opt = currentOptimizer();
-    const panels = opt.recommended ? opt.recommended.panels : undefined;
-    return M.estimate(project.ha, project.kw, project.est, panels);
+    return M.estimateFromOptimizer(project.ha, project.kw, project.est, opt, placeText());
   }
 
   function currentOptimizer() {
-    return M.optimize(project.optMode, project.ha, project.kw, project.est);
+    return M.optimize(project.optMode, project.ha, project.kw, project.est, placeText());
   }
 
   function currentPdfTheme() { return project.pdfTheme; }
@@ -318,14 +317,18 @@
         '</div>';
     }).join("");
     return '<div class="page-head"><div><h1>' + esc(src.name) + '</h1><p>' + esc(src.description) + '</p></div></div>' +
-      '<section class="panel"><div class="note"><strong>Zakres wg gov.pl (opisowo):</strong><ul>' + govPoints + '</ul></div>' +
-      '<div class="note warn"><strong>Ważne:</strong> ' + esc(M.OZE_DISCLAIMER) + '</div></section>' +
-      '<section class="panel"><h3>Kalkulator orientacyjny</h3><div class="form-grid oze-grid">' + fields + '</div>' +
+      sectionBand("1", "Dane wejściowe", "Parametry kalkulatora i uwaga o charakterze wyniku") +
+      '<section class="panel"><div class="form-grid oze-grid">' + fields + '</div>' +
+      '<div class="note warn"><strong>Ważne:</strong> ' + esc(M.OZE_DISCLAIMER) + '</div>' +
       '<div class="row-actions"><button class="btn primary" data-act="oze-calc" data-source="' + esc(src.id) + '">Wynik</button>' +
       '<button class="btn ghost" data-act="oze-reset" data-source="' + esc(src.id) + '">Przywróć domyślne</button></div></section>' +
+      sectionBand("2", "Wynik orientacyjny", "Obliczenia na podstawie danych z sekcji 1") +
       '<section class="panel"><h2>Wynik — ' + esc(src.name) + '</h2>' + renderOzeResult(src) + '</section>' +
-      '<section class="panel"><h3>' + esc(src.formalPath.title) + '</h3><p>' + esc(src.formalPath.summary) + '</p>' +
+      sectionBand("3", "Formalności", "Zakres gov.pl i ścieżka krok po kroku") +
+      '<section class="panel"><div class="note"><strong>Zakres wg gov.pl (opisowo):</strong><ul>' + govPoints + '</ul></div>' +
+      '<h3>' + esc(src.formalPath.title) + '</h3><p>' + esc(src.formalPath.summary) + '</p>' +
       '<div class="step-list">' + ozeStepList(src) + '</div></section>' +
+      sectionBand("4", "Podgląd i PDF", "A4, 300 DPI, 5 stylów raportu") +
       '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 i eksport PDF dla tej zakładki — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="oze-pdf" data-source="' + esc(src.id) + '">Pobierz PDF</button>' +
@@ -359,30 +362,42 @@
       "</select></label>";
   }
 
+  /** Wyraźny podział bloków na stronie — nagłówek, dane, wynik, wycena, ranking. */
+  function sectionBand(no, title, hint) {
+    return '<div class="section-band"><span class="n">' + esc(no) + '</span>' +
+      "<strong>" + esc(title) + "</strong>" +
+      (hint ? '<span class="hint-line">' + esc(hint) + "</span>" : "") + "</div>";
+  }
+
   function stat(k, v) {
     return '<div class="stat"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>";
   }
 
   function estimatePanel(e) {
-    const row = (k, v, total) =>
-      '<div class="stat' + (total ? " total" : "") + '"><span class="k">' + esc(k) +
+    const row = (k, v, kind) =>
+      '<div class="stat' + (kind ? " " + kind : "") + '"><span class="k">' + esc(k) +
       '</span><span class="v">' + esc(v) + "</span></div>";
     return '<section class="panel est-panel"><h2>Wycena i czas realizacji</h2>' +
-      '<p class="small muted">' + esc(e.presetName) + " · " + esc(e.powerNote) + "</p>" +
+      '<p class="small muted">' + esc(e.selectionScope || e.presetName) + "</p>" +
       '<div class="est-grid">' +
-      row("Liczba paneli", e.panels + " szt.") +
-      row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²") +
-      row("Moc z liczby paneli", M.fmt(e.installedKw) + " kW") +
-      row("Koszt modułów", M.money(e.moduleZl)) +
-      row("Konstrukcja, falownik, osprzęt", M.money(e.bosZl)) +
-      row("Koszt materiałów", M.money(e.materialZl)) +
-      row("Koszt wykonania (robocizna)", M.money(e.laborZl)) +
-      row("RAZEM", M.money(e.totalZl), true) +
-      row("Czas realizacji", e.days + " dni roboczych") +
+      row("Liczba paneli [szt.]", e.panels + " szt.") +
+      row("Powierzchnia użyteczna [m²]", M.fmtArea(e.usableAreaM2) + " m²") +
+      row("Moc z paneli [kW]", M.fmt(e.installedKw) + " kW") +
+      '<div class="est-group">Składniki kosztu — brutto</div>' +
+      row("Moduły", M.money(e.moduleZl)) +
+      row("Konstrukcja / falownik / BOS", M.money(e.bosZl)) +
+      row("Materiały (moduły + BOS)", M.money(e.materialZl), "subtotal") +
+      '<div class="est-divider"></div>' +
+      row("Robocizna", M.money(e.laborZl)) +
+      row("RAZEM (moduły + BOS + robocizna)", M.money(e.totalZl), "total") +
+      '<div class="est-divider"></div>' +
+      row("Czas realizacji", M.daysPl(e.days)) +
       row("Koszt na panel", M.money(e.perPanelZl)) +
       "</div>" +
-      '<p class="small muted">Przyjęte tempo: ' + e.panelsPerDay +
-      " paneli/dzień. " + esc(M.COST_SOURCE_LINE) + "</p></section>";
+      '<p class="small muted">' + esc(e.powerNote) + "</p>" +
+      '<p class="small est-breakdown">' + esc(M.COST_BREAKDOWN_LINE) + "</p>" +
+      '<p class="small muted">Tempo: ' + e.panelsPerDay + " paneli/dzień. " +
+      esc(M.COST_SOURCE_LINE) + "</p></section>";
   }
 
   function optimizerPanel(o) {
@@ -391,14 +406,17 @@
     const rec = o.recommended;
     if (!rec) return head + "</section>";
     const diff = rec.totalZl - (o.cheapest ? o.cheapest.totalZl : 0);
+    const areaLabel = o.mode === "both" ? "Pow. modułów [m²]"
+      : o.mode === "power" ? "Wymagana pow. [m²]" : "Zajęta pow. [m²]";
     const rows = o.list.map(function (x) {
       const best = x.id === rec.id;
       const areaCell = o.mode === "both"
-        ? esc(M.fmt(x.neededHa)) + " ha" +
-          '<span class="cell-sub">moc ' + x.powerPanels + " · pow. " + x.areaPanels + "</span>"
+        ? esc(M.fmtArea(x.neededM2)) + " m²" +
+          '<span class="cell-sub">z mocy ' + x.powerPanels + " · z pow. " +
+          x.areaPanels + " szt.</span>"
         : o.mode === "power"
-          ? (x.fitsArea ? esc(M.fmt(x.neededHa)) + " ha" : "nie mieści się")
-          : esc(M.fmt(x.neededM2)) + " m²";
+          ? (x.fitsArea ? esc(M.fmtArea(x.neededM2)) + " m²" : "nie mieści się")
+          : esc(M.fmtArea(x.neededM2)) + " m²";
       return "<tr" + (best ? ' class="best"' : "") + "><td>" +
         (best ? "★ " : "") + esc(x.name) + " · " + esc(M.fmt(x.wp)) + " Wp</td>" +
         "<td>" + x.panels + " szt.</td>" +
@@ -409,19 +427,17 @@
     return head +
       '<div class="est-grid">' +
       stat("Rekomendacja", rec.name) +
-      stat("Wybrano", rec.panels + " szt.") +
-      stat("Z mocy", rec.powerPanels + " szt.") +
-      stat("Z powierzchni", rec.areaPanels + " szt.") +
-      stat("Moc z paneli", M.fmt(rec.installedKw) + " kW") +
-      stat("Koszt całkowity", M.money(rec.totalZl)) +
+      stat("Wybrano [szt.]", rec.panels + " szt.") +
+      stat("Z mocy [szt.]", rec.powerPanels + " szt.") +
+      stat("Z powierzchni [szt.]", rec.areaPanels + " szt.") +
+      stat("Moc z paneli [kW]", M.fmt(rec.installedKw) + " kW") +
+      stat("Koszt całkowity [zł]", M.money(rec.totalZl)) +
       stat("Dopłata vs najtańszy", diff > 0 ? M.money(diff) : "najtańszy wariant") +
-      stat("Czas realizacji", rec.days + " dni roboczych") +
+      stat("Czas realizacji", M.daysPl(rec.days)) +
       "</div>" +
       '<div class="opt-table-wrap"><table class="opt-table"><thead><tr>' +
-      "<th>Moduł</th><th>Panele</th><th>Moc</th><th>" +
-      (o.mode === "both" ? "Pow. (ha) · szt. z mocy/pow."
-        : o.mode === "power" ? "Wymagana powierzchnia" : "Zajęta powierzchnia") +
-      "</th><th>Razem</th></tr></thead><tbody>" + rows +
+      "<th>Moduł</th><th>Panele [szt.]</th><th>Moc [kW]</th><th>" + areaLabel +
+      "</th><th>Razem [zł]</th></tr></thead><tbody>" + rows +
       "</tbody></table></div></section>";
   }
 
@@ -430,6 +446,7 @@
     const e = currentEstimate();
     const o = currentOptimizer();
     return '<div class="page-head"><div><h1>Fotowoltaika</h1><p>Parametry, wynik formalny, wycena, optymalizator, podgląd A4 i PDF.</p></div></div>' +
+      sectionBand("1", "Dane wejściowe", "Miejsce, lokalizacja, powierzchnia i moc") +
       viewDaneBody() +
       '<section class="panel"><div class="grid">' +
       '<div class="field"><span class="field-label">Miejsce montażu</span><span>' + esc(r.place_text) + "</span></div>" +
@@ -439,6 +456,7 @@
       '<div class="field"><span class="field-label">Moc</span><span>' + esc(M.fmt(r.kw)) + " kW (" +
       esc(M.fmt(Math.round(r.kw * 1000))) + " W)</span></div>" +
       "</div></section>" +
+      sectionBand("2", "Wynik formalny", "Decyzje, ścieżka i kroki w kolejności") +
       '<section class="panel" id="pv-wynik"><div class="verdict-grid">' +
       verdictBox(r.env, "Decyzja środowiskowa", r.env_desc) +
       verdictBox(r.perm, "Pozwolenie na budowę", r.perm_desc) +
@@ -452,8 +470,11 @@
           "</strong><p>" + esc(s.desc) + "</p></li>";
       }).join("") +
       "</ol></section>" +
+      sectionBand("3", "Wycena i czas realizacji", "Koszt wariantu rekomendowanego w rankingu") +
       estimatePanel(e) +
+      sectionBand("4", "Ranking modułów", "Porównanie wariantów i podział liczby paneli") +
       optimizerPanel(o) +
+      sectionBand("5", "Podgląd i PDF", "A4, 300 DPI, 5 stylów raportu") +
       '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd dokumentu A4 (300 DPI) i eksport PDF — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="pdf">Pobierz PDF</button>' +
@@ -599,7 +620,8 @@
       : '<div class="note warn"><strong>Brak jednoznacznie opłacalnego wariantu</strong> przy bieżących założeniach. Sprawdź cenę energii, CAPEX/OPEX lub dane wejściowe w zakładkach.</div>';
 
     return '<div class="page-head"><div><h1>Porównaj warianty OZE</h1><p>Porównanie orientacyjne na podstawie aktualnych danych z zakładek: Fotowoltaika, Wiatr, Woda, Geotermia i BIO.</p></div></div>' +
-      '<section class="panel"><h3>Założenia porównania</h3><p class="small muted">To porównanie uproszczone. Nie zastępuje audytu energetycznego, analizy finansowej ani studium wykonalności.</p>' +
+      sectionBand("1", "Założenia porównania", "Cena energii, uzysk PV i OPEX") +
+      '<section class="panel"><p class="small muted">To porównanie uproszczone. Nie zastępuje audytu energetycznego, analizy finansowej ani studium wykonalności.</p>' +
       '<div class="form-grid oze-grid">' +
       '<div class="field"><label class="field-label" for="cmp-price">Cena energii / wartość energii [zł/MWh]</label><input id="cmp-price" type="number" min="0" step="10" value="' + esc(String(cmp.pricePlnMwh)) + '"></div>' +
       '<div class="field"><label class="field-label" for="cmp-pv-yield">PV: uzysk jednostkowy [kWh/kWp/rok]</label><input id="cmp-pv-yield" type="number" min="0" step="10" value="' + esc(String(cmp.pvYieldKwhKwYear)) + '"></div>' +
@@ -607,11 +629,13 @@
       '</div>' +
       '<div class="row-actions"><button class="btn primary" data-act="cmp-calc">Wynik</button>' +
       '<button class="btn ghost" data-act="cmp-reset">Przywróć domyślne</button></div></section>' +
-      '<section class="panel"><h2>Wynik porównania</h2>' + bestBox +
+      sectionBand("2", "Wynik porównania", "Tabela wariantów, bilans i prosty zwrot") +
+      '<section class="panel">' + bestBox +
       '<div class="table-wrap"><table class="data-table compare-table"><thead><tr>' +
       '<th>Wariant</th><th>Energia roczna</th><th>CAPEX</th><th>OPEX + paliwo/el.</th><th>Przychód/wartość</th><th>Bilans roczny</th><th>Prosty zwrot</th>' +
       '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
       '<div class="note warn"><strong>Metoda:</strong> Przychód/wartość = energia roczna × cena energii. Bilans roczny = przychód/wartość − OPEX (dla geotermii doliczono koszt energii elektrycznej, dla biomasy koszt paliwa). Prosty zwrot = CAPEX / bilans roczny; gdy bilans ≤ 0, zwrot nie występuje. PV korzysta z mocy z zakładki Fotowoltaika i podanego uzysku kWh/kWp/rok.</div></section>' +
+      sectionBand("3", "Podgląd i PDF", "A4, 300 DPI, 5 stylów raportu") +
       '<section class="panel"><h2>Podgląd i PDF</h2><p class="small muted">Podgląd A4 i eksport porównania do PDF — 5 stylów do wyboru.</p>' +
       '<div class="row-actions">' + themePicker() +
       '<button class="btn primary" data-act="cmp-pdf">Pobierz PDF porównania</button>' +
@@ -698,15 +722,61 @@
     return doc;
   }
 
-  function fitText(doc, value, maxWidth, font) {
+  /** Pełny tekst rozbity na wiersze — bez wielokropka i bez utraty nazw. */
+  function splitPdfLines(doc, value, maxWidth, font) {
     const ctx = doc.ctx;
     ctx.font = font;
-    let text = String(value === undefined || value === null ? "" : value);
-    if (ctx.measureText(text).width <= maxWidth) return text;
-    while (text.length > 1 && ctx.measureText(text + "…").width > maxWidth) {
-      text = text.slice(0, -1);
-    }
-    return text + "…";
+    const parts = [];
+    String(value === undefined || value === null ? "" : value).split("\n").forEach(function (para) {
+      const words = para.split(" ").filter(function (w) { return w.length > 0; });
+      if (!words.length) { parts.push(""); return; }
+      let line = "";
+      words.forEach(function (word) {
+        let rest = word;
+        while (ctx.measureText(rest).width > maxWidth) {
+          let cut = rest.length;
+          while (cut > 1 && ctx.measureText(rest.slice(0, cut)).width > maxWidth) cut--;
+          if (line) { parts.push(line); line = ""; }
+          parts.push(rest.slice(0, cut));
+          rest = rest.slice(cut);
+        }
+        if (!rest) return;
+        const test = line ? line + " " + rest : rest;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          parts.push(line); line = rest;
+        } else {
+          line = test;
+        }
+      });
+      if (line) parts.push(line);
+    });
+    return parts.length ? parts : [""];
+  }
+
+  /** Wiersz raportu: etykieta po lewej, wartość wyrównana do prawej. */
+  function pdfKeyValue(doc, label, value, font) {
+    const C = window.PVPdf.constants, W = C.W, MG = C.MARGIN;
+    const ctx = doc.ctx, c = doc.c;
+    const valueLines = splitPdfLines(doc, value, 520, font);
+    ctx.font = font;
+    const valueWidth = Math.max.apply(null, valueLines.map(function (line) {
+      return ctx.measureText(line).width;
+    }));
+    const valueX = W - MG - valueWidth;
+    const labelLines = splitPdfLines(doc, label,
+      Math.max(120, valueX - MG - 36), font);
+    const height = Math.max(labelLines.length, valueLines.length) * doc.line.body + 6;
+    doc.ensure(height + 10);
+    const top = doc.y;
+    labelLines.forEach(function (line, i) {
+      doc.text(line, font, c.MUTED, MG, top + i * doc.line.body);
+    });
+    ctx.font = font;
+    valueLines.forEach(function (line, i) {
+      doc.text(line, font, c.INK, valueX - ctx.measureText(line).width,
+               top + i * doc.line.body);
+    });
+    doc.y += height;
   }
 
   function pdfImagesFromCanvases(canvases) {
@@ -743,14 +813,7 @@
     doc.ensure(L.h2 + 40);
     doc.sectionTitle("Wynik kalkulatora (orientacyjny)", L.h2);
     ozeReportRows(src).rows.forEach(function (row) {
-      doc.ensure(34);
-      const value = fitText(doc, row[1], 520, f.body);
-      doc.ctx.font = f.body;
-      const valueX = W - MG - doc.ctx.measureText(value).width;
-      const label = fitText(doc, row[0], Math.max(120, valueX - MG - 40), f.body);
-      doc.text(label, f.body, c.MUTED, MG, doc.y);
-      doc.text(value, f.body, c.INK, valueX, doc.y);
-      doc.y += doc.row + 6;
+      pdfKeyValue(doc, row[0], row[1], f.body);
     });
     doc.y += 12;
 
@@ -815,32 +878,57 @@
     doc.ensure(L.h2 + 40);
     doc.sectionTitle("Porównanie", L.h2);
     const cols = [MG, MG + 360, MG + 500, MG + 680, MG + 900];
-    const heads = ["Wariant", "Energia", "CAPEX", "Bilans/rok", "Zwrot"];
-    doc.ensure(34);
-    doc.box(MG, doc.y - 4, W - 2 * MG, 24,
-            c.TABLE_HEAD_BG, null, Math.min(8, doc.shape.radius));
-    heads.forEach(function (head, i) {
-      doc.text(head, f.small, c.CELL, cols[i], doc.y);
+    const widths = [340, 130, 170, 210, 150];
+    const heads = ["Wariant", "Energia [MWh/rok]", "CAPEX [zł]",
+                   "Bilans [zł/rok]", "Zwrot [lat]"];
+    const headParts = heads.map(function (head, i) {
+      return splitPdfLines(doc, head, widths[i], f.small);
     });
-    doc.rule(doc.y + 24);
-    doc.y += 30;
+    const headLines = Math.max.apply(null, headParts.map(function (p) { return p.length; }));
+    const headHeight = headLines * L.small + 8;
+    doc.ensure(headHeight + 14);
+    doc.box(MG, doc.y - 4, W - 2 * MG, headHeight,
+            c.TABLE_HEAD_BG, null, Math.min(8, doc.shape.radius));
+    headParts.forEach(function (lines, i) {
+      lines.forEach(function (line, j) {
+        doc.ctx.font = f.small;
+        const x = i === 0 ? cols[i] : cols[i] + widths[i] - doc.ctx.measureText(line).width;
+        doc.text(line, f.small, c.CELL, x, doc.y + j * L.small);
+      });
+    });
+    doc.y += headHeight;
+    doc.rule(doc.y + 4);
+    doc.y += 10;
 
     rows.forEach(function (row) {
-      doc.ensure(36);
+      const values = [
+        row.name,
+        M.fmt(row.energyMwhYear) + " MWh",
+        M.money(row.capexPln),
+        M.money(row.netPlnYear),
+        M.fmtPayback(row.paybackYears),
+      ];
+      const parts = values.map(function (value, i) {
+        return splitPdfLines(doc, value, widths[i], f.small);
+      });
+      const lines = Math.max.apply(null, parts.map(function (p) { return p.length; }));
+      const height = lines * L.small + 10;
+      doc.ensure(height + 12);
       if (row.recommended) {
-        doc.box(MG - 10, doc.y - 16, W - 2 * MG + 20, 30,
+        doc.box(MG - 10, doc.y - 8, W - 2 * MG + 20, height,
                 c.BEST_BG, null, Math.min(8, doc.shape.radius));
       }
-      doc.text(fitText(doc, row.name, 340, f.small), f.small, c.INK, cols[0], doc.y);
-      doc.text(fitText(doc, M.fmt(row.energyMwhYear) + " MWh", 130, f.small),
-               f.small, c.BODY_INK, cols[1], doc.y);
-      doc.text(fitText(doc, M.money(row.capexPln), 170, f.small),
-               f.small, c.BODY_INK, cols[2], doc.y);
-      doc.text(fitText(doc, M.money(row.netPlnYear), 210, f.small),
-               f.small, c.BODY_INK, cols[3], doc.y);
-      doc.text(fitText(doc, M.fmtPayback(row.paybackYears), 150, f.small),
-               f.small, row.recommended ? c.BEST_INK : c.BODY_INK, cols[4], doc.y);
-      doc.y += doc.row + 8;
+      const top = doc.y;
+      parts.forEach(function (cellLines, i) {
+        cellLines.forEach(function (line, j) {
+          doc.ctx.font = f.small;
+          const x = i === 0 ? cols[i] : cols[i] + widths[i] - doc.ctx.measureText(line).width;
+          const fill = i === 0 ? c.INK
+            : i === 4 && row.recommended ? c.BEST_INK : c.BODY_INK;
+          doc.text(line, f.small, fill, x, top + j * L.small);
+        });
+      });
+      doc.y += height;
     });
     doc.y += 12;
 

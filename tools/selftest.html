@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=11"></script>
-<script src="../js/payment.js?v=2.0.0i&n=11"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=11"></script>
-<script src="../js/app.js?v=2.0.0i&n=11"></script>
+<script src="../js/model.js?v=2.0.0i&n=12"></script>
+<script src="../js/payment.js?v=2.0.0i&n=12"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=12"></script>
+<script src="../js/app.js?v=2.0.0i&n=12"></script>
 <script>
 (function () {
   "use strict";
@@ -112,7 +112,11 @@
       if (B.x0 < 85 || B.x1 > 1155 || B.y1 > 1740) {
         hits.push("poza marginesem: " + o.text.slice(0, 32));
       }
+      if (o.text.indexOf("…") >= 0 || o.text.indexOf("...") >= 0) {
+        hits.push("skrócony napis: " + o.text.slice(0, 32));
+      }
     });
+    window.__lastPdfTexts = log.map(function (o) { return o.text; });
     return hits;
   }
 
@@ -341,11 +345,51 @@
     ok("dobór z obu: powierzchnia ogranicza moc",
        bothTight.recommended && bothTight.recommended.panels > 0 &&
        !bothTight.recommended.meetsPower &&
-       bothTight.note.indexOf("Powierzchnia ogranicza moc") >= 0,
+       /Powierzchnia .* ogranicza moc/.test(bothTight.note),
        bothTight.note);
     ok("wycena przyjmuje liczbę paneli z doboru",
        M.estimate(1, 6, estOpts, 17).panels === 17 &&
        M.estimate(1, 6, estOpts, 17).panelsFromOverride === true);
+
+    // --- spójność wyceny z rankingu i poprawne językowo opisy ---------------
+    const defectData = { preset: "jinko440" };
+    const defectOpt = M.optimize("both", 1, 6, defectData, M.PLACE_GROUND);
+    const defectEst = M.estimateFromOptimizer(1, 6, defectData, defectOpt, M.PLACE_GROUND);
+    const jinkoRow = defectOpt.list.filter(function (x) { return x.id === "jinko440"; })[0];
+    ok("6 kW / 440 Wp: ranking ma 14 paneli", !!jinkoRow && jinkoRow.panels === 14,
+       JSON.stringify(jinkoRow));
+    ok("6 kW / 440 Wp: wycena używa modułu i liczby paneli z rankingu",
+       defectEst.panels === defectOpt.recommended.panels &&
+       defectEst.panelWp === defectOpt.recommended.wp &&
+       defectEst.recommendedId === defectOpt.recommended.id,
+       JSON.stringify([defectEst.panels, defectEst.panelWp, defectEst.recommendedId]));
+    ok("6 kW / 440 Wp: koszt 10 × 600 Wp, nie 10 × 440 Wp",
+       defectEst.panels === 10 && defectEst.moduleZl === 4550 &&
+       defectEst.totalZl === 10050,
+       JSON.stringify([defectEst.panels, defectEst.moduleZl, defectEst.totalZl]));
+    ok("wycena wskazuje wariant rekomendowany",
+       (defectEst.selectionScope || "").indexOf(defectOpt.recommended.name) >= 0 &&
+       (defectEst.selectionScope || "").indexOf("10 szt.") >= 0,
+       defectEst.selectionScope);
+    ok("format powierzchni bez nieczytelnych ułamków",
+       M.fmtArea(25.35) === "25,4" && M.fmtArea(0.0033) === "0" &&
+       String(M.fmtArea(0.0033)).indexOf("0,0033") < 0,
+       M.fmtArea(25.35) + " / " + M.fmtArea(0.0033));
+    ok("odmiana 'dzień roboczy'",
+       M.daysPl(1) === "1 dzień roboczy" && M.daysPl(2) === "2 dni robocze" &&
+       M.daysPl(5) === "5 dni roboczych" && M.daysPl(21) === "21 dzień roboczy",
+       [M.daysPl(1), M.daysPl(2), M.daysPl(5), M.daysPl(21)].join(" | "));
+    const groundNote = M.estimate(0.00325, 6, defectData, 10, M.PLACE_GROUND).powerNote;
+    const roofNote = M.estimate(0.00325, 6, defectData, 10, M.PLACE_ROOF).powerNote;
+    ok("uwaga o mocy zależy od miejsca montażu",
+       groundNote.indexOf("pokrycia dachu") < 0 &&
+       groundNote.indexOf("powierzchnię terenu") >= 0 &&
+       roofNote.indexOf("pokrycie dachu") >= 0,
+       groundNote + " | " + roofNote);
+    ok("rozkład kosztu opisany w modelu",
+       M.COST_BREAKDOWN_LINE.indexOf("moduły") >= 0 &&
+       M.COST_BREAKDOWN_LINE.indexOf("BOS") >= 0 &&
+       M.COST_BREAKDOWN_LINE.indexOf("robociznę") >= 0);
 
     // --- PDF ----------------------------------------------------------------
     const r = M.calculate(false, false, 1, 6, M.PLACE_GROUND, M.LOC_NORMAL);
@@ -902,18 +946,41 @@
       { hash: "#/porownaj",  btn: '[data-act="cmp-preview"]' },
     ];
     const layoutIssues = [];
+    let pvFullNameSeen = false;
     for (const route of layoutRoutes) {
       location.hash = route.hash; await wait(180);
       for (const t of themes) {
         await setTheme(t.id);
         const issues = await pdfTextOverlaps(route.btn);
+        if (route.hash === "#/pv") {
+          const joined = (window.__lastPdfTexts || []).join(" ");
+          if (joined.indexOf("Selfa S450MH · Mono PERC (polska produkcja)") >= 0) {
+            pvFullNameSeen = true;
+          }
+        }
         if (issues.length) layoutIssues.push(route.hash + "/" + t.id + ": " + issues.join("; "));
       }
     }
-    ok("PDF: brak nakładania tekstu i wyjść poza marginesy we wszystkich zakładkach i motywach",
+    ok("PDF: brak nakładania, wyjść poza marginesy i skracania tekstu we wszystkich zakładkach i motywach",
        layoutIssues.length === 0, JSON.stringify(layoutIssues));
+    ok("PDF: pełna nazwa modułu 'polska produkcja' bez skrótu",
+       pvFullNameSeen, String(pvFullNameSeen));
     await setTheme(pvOriginalTheme);
     location.hash = "#/pv"; await wait(150);
+    const pvUiText = document.querySelector("#view").textContent || "";
+    ok("UI: wyraźny podział na pięć ponumerowanych sekcji PV",
+       document.querySelectorAll("#view .section-band").length >= 5 &&
+       pvUiText.indexOf("Dane wejściowe") >= 0 &&
+       pvUiText.indexOf("Wynik formalny") >= 0 &&
+       pvUiText.indexOf("Wycena i czas realizacji") >= 0 &&
+       pvUiText.indexOf("Ranking modułów") >= 0,
+       String(document.querySelectorAll("#view .section-band").length));
+    ok("UI: nagłówki tabel z jednostkami i brak skrótów",
+       pvUiText.indexOf("Panele [szt.]") >= 0 &&
+       pvUiText.indexOf("Moc [kW]") >= 0 &&
+       pvUiText.indexOf("Pow. modułów [m²]") >= 0 &&
+       pvUiText.indexOf("Razem [zł]") >= 0 &&
+       pvUiText.indexOf("…") < 0 && pvUiText.indexOf("...") < 0);
 
     ok("UI: logo BIM OZE",
        ((document.querySelector(".brand .logo") || {}).textContent || "") === "BIM OZE",

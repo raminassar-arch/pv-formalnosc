@@ -258,8 +258,12 @@ sprawdzają m.in.:
 - wersję testową: brak panelu konfiguracji i sekcji „Jak to działa" na Płatności,
   odblokowane zakładki, wynik bez opłaty i znak wodny WERSJA TESTOWA,
 - 11 przypadków kalkulatora porównanych z wynikami desktopowego `model.py`,
-- matematykę wyceny (panele z mocy i powierzchni, materiały, robocizna, razem,
+- matematykę wyceny (panele z mocy i powierzchni, moduły, BOS, robocizna, razem,
   dni, zaokrąglenia, formatowanie zł, zgodność mocy) i obecność sekcji w widoku wyniku,
+- spójność wyceny z rankingiem: ten sam moduł i liczba paneli w obu sekcjach
+  (regresja 6 kW / 440 Wp: 14 szt. w rankingu i 10 × 600 Wp w wycenie),
+- poprawne odmiany „1 dzień roboczy / 2 dni robocze / 5 dni roboczych”, czytelny
+  format powierzchni w m² oraz uwaga o mocy zależna od miejsca montażu,
 - 3 presety 600 Wp (marka, moc, pole 2,70 m², cena orientacyjna, opis źródła),
 - optymalizator: rosnący ranking 9 modułów, dobór z obu wejść, minimum mocy
   i powierzchni, uwaga gdy powierzchnia ogranicza moc, rekomendacja omijająca
@@ -269,9 +273,13 @@ sprawdzają m.in.:
 - wszystkie 5 stylów PDF i podglądu A4 (poprawny plik, jedna strona, różne pliki
   wyjściowe, różne czcionki i wielkości liter — czyli style naprawdę się różnią),
 - wymiary podglądu A4 oraz formularz z miejscem montażu, lokalizacją, mocą i powierzchnią,
-- wybór stylu raportu w widoku Wynik/Podgląd.
+- wybór stylu raportu w widoku Wynik/Podgląd,
+- czytelna hierarchia pięciu ponumerowanych sekcji PV, jawne jednostki w nagłówkach,
+  rozdzielenie kosztów od podsumowań oraz brak skracania nazw wielokropkiem,
+- brak nakładania tekstu, wyjść poza marginesy i wielokropka we wszystkich
+  30 kombinacjach (6 zakładek × 5 motywów) podglądu/PDF.
 
-Wynik: `TOTAL 226 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 237 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 

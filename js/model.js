@@ -96,23 +96,23 @@
    *  poziomu cenowego (szczegóły w COST_SOURCE_LINE). */
   const MODULE_PRESETS = [
     { id: "jinko440",    name: "Jinko Tiger Neo 440W · N-type TOPCon",
-      wp: 440, area: 1.95, price: 350 },
+      short: "Jinko 440W", wp: 440, area: 1.95, price: 350 },
     { id: "longi445",    name: "Longi Hi-MO 5m 445W · Mono PERC",
-      wp: 445, area: 1.85, price: 317 },
+      short: "Longi 445W", wp: 445, area: 1.85, price: 317 },
     { id: "trina445",    name: "Trina Vertex S+ 445W · TOPCon",
-      wp: 445, area: 1.87, price: 326 },
+      short: "Trina 445W+", wp: 445, area: 1.87, price: 326 },
     { id: "trina450",    name: "Trina Vertex S 450W · TOPCon bifacial",
-      wp: 450, area: 1.92, price: 383 },
+      short: "Trina 450W", wp: 450, area: 1.92, price: 383 },
     { id: "suntech450",  name: "Suntech Ultra V 450W · Mono PERC",
-      wp: 450, area: 1.94, price: 308 },
+      short: "Suntech 450W", wp: 450, area: 1.94, price: 308 },
     { id: "selfa450",    name: "Selfa S450MH · Mono PERC (polska produkcja)",
-      wp: 450, area: 1.94, price: 289 },
+      short: "Selfa 450W (PL)", wp: 450, area: 1.94, price: 289 },
     { id: "jinko600",    name: "Jinko Tiger Neo 600W · N-type TOPCon bifacial",
-      wp: 600, area: 2.70, price: 470 },
+      short: "Jinko 600W", wp: 600, area: 2.70, price: 470 },
     { id: "longi600",    name: "Longi Hi-MO 7 600W · HPBC",
-      wp: 600, area: 2.70, price: 490 },
+      short: "Longi 600W", wp: 600, area: 2.70, price: 490 },
     { id: "canadian600", name: "Canadian Solar HiKu7 600W · Mono PERC",
-      wp: 600, area: 2.70, price: 455 },
+      short: "Canadian 600W", wp: 600, area: 2.70, price: 455 },
   ];
 
   const ESTIMATE_DEFAULT = {
@@ -135,6 +135,9 @@
     "wyliczona z ww. poziomu zł/Wp, nie z oferty konkretnego sklepu. Robocizna: " +
     "e-greenpower.pl (11.07.2026) — 1000–1500 zł/kWp brutto, 2000–5000 zł dla " +
     "instalacji 5 kWp. Kwoty orientacyjne; przed finalną wyceną sprawdź aktualne oferty.";
+  const COST_BREAKDOWN_LINE =
+    "Cena całkowita (Razem) obejmuje moduły, konstrukcję/falownik/osprzęt (BOS) " +
+    "oraz robociznę. Kwoty są brutto i orientacyjne.";
 
   function numOr(value, fallback) {
     const n = Number(value);
@@ -172,6 +175,20 @@
     return grouped + "," + parts[1] + " zł";
   }
 
+  /** Powierzchnia z jednym miejscem po przecinku: 27,3 (zamiast 0,0033…). */
+  function fmtArea(n) {
+    return fmt(Math.round((Number(n) || 0) * 10) / 10);
+  }
+
+  /** Poprawna odmiana: 1 dzień roboczy, 2 dni robocze, 5 dni roboczych. */
+  function daysPl(n) {
+    const v = Math.max(0, Math.floor(Number(n) || 0));
+    const last = v % 10, last2 = v % 100;
+    if (last === 1 && last2 !== 11) return v + " dzień roboczy";
+    if (last >= 2 && last <= 4 && (last2 < 12 || last2 > 14)) return v + " dni robocze";
+    return v + " dni roboczych";
+  }
+
   /**
    * Koszty i czas realizacji dla zadanej liczby paneli. Domyślnie liczba
    * paneli wynika z powierzchni; aplikacja przekazuje wynik doboru z mocy
@@ -180,8 +197,9 @@
    * @param {number} kw moc deklarowana w formularzu
    * @param {object} [data] parametry modułu i kosztów
    * @param {number} [panelsOverride] liczba paneli z automatycznego doboru
+   * @param {string} [placeText] rodzaj montażu — wpływa na treść ostrzeżenia
    */
-  function estimate(ha, kw, data, panelsOverride) {
+  function estimate(ha, kw, data, panelsOverride, placeText) {
     const o = estimateOptions(data);
     const haVal = numOr(ha, 0);
     const kwVal = numOr(kw, 0);
@@ -213,9 +231,12 @@
       powerNote = "Moc wynikająca z liczby paneli jest zgodna z mocą deklarowaną " +
         "(różnica do 10%).";
     } else {
+      const roof = /dach|elewacja/i.test(String(placeText || ""));
+      const areaWord = roof ? "powierzchnię dachu" : "powierzchnię terenu";
+      const coverWord = roof ? "pokrycie dachu" : "pokrycie powierzchni";
       powerNote = "Moc z liczby paneli różni się o " + fmt(Math.abs(deltaKw)) +
-        " kW od mocy deklarowanej — sprawdź powierzchnię, pokrycie dachu lub moc " +
-        "wpisaną w formularzu.";
+        " kW od mocy deklarowanej — sprawdź " + areaWord + ", " + coverWord +
+        " lub moc wpisaną w formularzu.";
     }
 
     return {
@@ -240,6 +261,40 @@
   }
 
   /**
+   * Wycena zawsze dotyczy tego samego modułu, który wygrał w rankingu.
+   * W przeciwnym razie liczba paneli pochodziłaby z jednego wariantu, a moc
+   * i cena modułu z drugiego (np. 10 paneli 600 Wp wycenione jako 440 Wp).
+   */
+  function estimateFromOptimizer(ha, kw, data, opt, placeText) {
+    const rec = opt && opt.recommended;
+    if (!rec) return estimate(ha, kw, data, 0, placeText);
+    const merged = Object.assign({}, estimateOptions(data), {
+      preset: rec.id,
+      panelWp: rec.wp,
+      panelAreaM2: rec.areaM2,
+      modulePriceZl: rec.modulePriceZl,
+    });
+    const e = estimate(ha, kw, merged, rec.panels, placeText);
+    const roof = /dach|elewacja/i.test(String(placeText || ""));
+    const areaName = roof ? "powierzchni dachu/elewacji" : "powierzchni terenu";
+    e.recommendedId = rec.id;
+    e.recommendedName = rec.name;
+    e.selectionScope =
+      "Wycena dotyczy wariantu rekomendowanego w tabeli poniżej: " + rec.name +
+      " · " + rec.panels + " szt. · " + fmt(rec.installedKw) + " kW.";
+    if (!rec.meetsPower) {
+      e.powerNote = "Powierzchnia " + areaName + " ogranicza moc: zmieściło się " +
+        rec.areaPanels + " paneli zamiast " + rec.powerPanels +
+        " potrzebnych do " + fmt(numOr(kw, 0)) + " kW.";
+    } else {
+      e.powerNote = "Dobrano " + rec.panels + " szt. — minimum potrzebne do mocy " +
+        fmt(numOr(kw, 0)) + " kW (" + rec.powerPanels + " szt.) przy maksimum " +
+        rec.areaPanels + " szt. z " + areaName + ".";
+    }
+    return e;
+  }
+
+  /**
    * Ranking modułów wg kosztu całkowitego (moduły + konstrukcja/falownik +
    * robocizna). Tryby "area" i "power" zostają dla zgodności z testami;
    * "both" (używany w aplikacji) bierze pod uwagę oba wejścia naraz:
@@ -248,11 +303,14 @@
    * @param {number} ha powierzchnia dostępna (ha)
    * @param {number} kw moc docelowa (kW)
    * @param {object} [data] parametry modułu i kosztów
+   * @param {string} [placeText] rodzaj montażu — doprecyzowuje uwagę o powierzchni
    */
-  function optimize(mode, ha, kw, data) {
+  function optimize(mode, ha, kw, data, placeText) {
     const o = estimateOptions(data);
     const m = mode === "power" || mode === "both" ? mode : "area";
     const haVal = numOr(ha, 0), kwVal = numOr(kw, 0);
+    const roof = /dach|elewacja/i.test(String(placeText || ""));
+    const areaName = roof ? "dachu/elewacji" : "terenu";
     const coverage = o.coveragePct / 100;
     const usableM2 = haVal * 10000 * coverage;
     const list = MODULE_PRESETS.map(function (p) {
@@ -283,7 +341,7 @@
       }
       const perPanelZl = p.price + o.bosPerPanelZl + o.laborPerPanelZl;
       return {
-        id: p.id, name: p.name, wp: p.wp, areaM2: p.area,
+        id: p.id, name: p.name, shortName: p.short || p.name, wp: p.wp, areaM2: p.area,
         modulePriceZl: p.price, panels: panels,
         powerPanels: powerPanels, areaPanels: areaPanels,
         meetsPower: meetsPower, limitedBy: limitedBy,
@@ -326,17 +384,20 @@
       note = "Żaden moduł nie mieści się w podanej powierzchni przy tym pokryciu — " +
              "zwiększ powierzchnię albo zmniejsz pokrycie.";
     } else if (m === "both" && recommended && !recommended.meetsPower) {
-      note = "Powierzchnia ogranicza moc: najtańszy wariant daje " +
+      note = "Powierzchnia " + areaName + " ogranicza moc: najtańszy wariant daje " +
              fmt(recommended.installedKw) + " kW z wymaganych " + fmt(kwVal) +
-             " kW. Pokazano maksymalną liczbę paneli mieszczącą się na terenie.";
+             " kW. Pokazano maksymalną liczbę paneli mieszczącą się na " + areaName + ".";
     } else {
       note = m === "both"
-        ? "Liczba paneli to minimum z zapotrzebowania na moc i maksimum z powierzchni. " +
-          "Ranking od najtańszego wariantu spełniającego oba warunki."
+        ? "Liczba paneli to mniejsza z dwóch wartości: minimum potrzebne do zadanej " +
+          "mocy oraz maksimum możliwe na dostępnej powierzchni " + areaName +
+          ". Ranking od najtańszego wariantu; gdy powierzchnia ogranicza moc, " +
+          "pokazano maksimum i osobną uwagę."
         : m === "power"
           ? "Ranking od najtańszego wariantu osiągającego zadaną moc. Rekomendacja " +
-            "uwzględnia też dostępną powierzchnię."
-          : "Ranking od najtańszego wariantu mieszczącego się na podanej powierzchni.";
+            "uwzględnia też dostępną powierzchnię " + areaName + "."
+          : "Ranking od najtańszego wariantu mieszczącego się na podanej powierzchni " +
+            areaName + ".";
     }
 
     return {
@@ -831,8 +892,12 @@
   root.PVModel = {
     VERSION: VERSION, PLACE_GROUND: PLACE_GROUND, PLACE_ROOF: PLACE_ROOF, LOC_NORMAL: LOC_NORMAL, LOC_PROTECTED: LOC_PROTECTED,
     SOURCE_LINE: SOURCE_LINE, DISCLAIMER: DISCLAIMER, AUTHOR_LINE: AUTHOR_LINE, THRESHOLDS_LINE: THRESHOLDS_LINE,
-    COST_SOURCE_LINE: COST_SOURCE_LINE, MODULE_PRESETS: MODULE_PRESETS, ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
-    STEPS: STEPS, PATHS: PATHS, fmt: fmt, fmtPayback: fmtPayback, money: money, todayPl: todayPl, calculate: calculate, estimateOptions: estimateOptions, estimate: estimate, optimize: optimize,
+    COST_SOURCE_LINE: COST_SOURCE_LINE, COST_BREAKDOWN_LINE: COST_BREAKDOWN_LINE,
+    MODULE_PRESETS: MODULE_PRESETS, ESTIMATE_DEFAULT: ESTIMATE_DEFAULT,
+    STEPS: STEPS, PATHS: PATHS, fmt: fmt, fmtPayback: fmtPayback, fmtArea: fmtArea,
+    daysPl: daysPl, money: money, todayPl: todayPl, calculate: calculate,
+    estimateOptions: estimateOptions, estimate: estimate,
+    estimateFromOptimizer: estimateFromOptimizer, optimize: optimize,
     OZE_SOURCES: OZE_SOURCES, OZE_DISCLAIMER: OZE_DISCLAIMER, OZE_GOV_SOURCE: OZE_GOV_SOURCE, OZE_BGK_SOURCE: OZE_BGK_SOURCE, OZE_KPK_SOURCE: OZE_KPK_SOURCE,
     ozeById: ozeById, ozeDefaultInput: ozeDefaultInput, ozeCalculate: ozeCalculate,
     COMPARE_DEFAULT: COMPARE_DEFAULT, compareMetrics: compareMetrics,

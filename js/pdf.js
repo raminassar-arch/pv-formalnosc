@@ -299,6 +299,11 @@
     return wrapParts(this.ctx, text, font, maxWidth).length;
   };
 
+  /** Pełny tekst podzielony na wiersze — bez skracania wielokropkiem. */
+  Doc.prototype.splitLines = function (text, font, maxWidth) {
+    return wrapParts(this.ctx, text, font, maxWidth);
+  };
+
   Doc.prototype.rule = function (y) {
     const ctx = this.ctx;
     ctx.strokeStyle = this.c.RULE;
@@ -431,11 +436,49 @@
 
   Doc.prototype.estimateSection = function (e) {
     const f = this.f, c = this.c, ctx = this.ctx;
-    const source = e.presetName + " · " + M.COST_SOURCE_LINE;
-    const srcLines = this.countLines(source, f.small, W - 2 * MARGIN);
-    const noteLines = this.countLines(e.powerNote, f.small, W - 2 * MARGIN);
-    const height = 10 + this.line.h2 + srcLines * this.line.small + 8 +
-                   9 * this.row + 6 + noteLines * this.line.small + 8;
+    // Źródła cen są w stopce. Powtarzanie długich adresów wydłuża sekcję
+    // i wypycha ranking na drugą stronę A4.
+    const source = e.selectionScope || e.presetName;
+    const noteText = e.powerNote || "";
+    const sourceLines = this.countLines(source, f.small, W - 2 * MARGIN);
+    const noteLines = this.countLines(noteText, f.small, W - 2 * MARGIN);
+
+    // Etykiety są po lewej, kwoty wyrównane do prawej. Długie nazwy i kwoty
+    // zawijają się do kolejnych wierszy — bez wielokropka i bez utraty treści.
+    const valueMax = 520, gap = 36, rows = [];
+    const addRow = (label, value, strong, divider) => {
+      const valueFont = strong ? f.h3 : f.body;
+      const valueLines = this.splitLines(value, valueFont, valueMax);
+      ctx.font = valueFont;
+      const valueWidth = Math.max.apply(null, valueLines.map(function (line) {
+        return ctx.measureText(line).width;
+      }));
+      const valueX = W - MARGIN - valueWidth;
+      ctx.font = f.body;
+      const labelLines = this.splitLines(label, f.body,
+        Math.max(120, valueX - gap - MARGIN));
+      const valueLine = strong ? this.line.h3 : this.line.body;
+      rows.push({
+        labelLines: labelLines, valueLines: valueLines, valueFont: valueFont,
+        valueLine: valueLine, valueX: valueX, strong: !!strong, divider: !!divider,
+        height: Math.max(labelLines.length * this.line.body,
+                         valueLines.length * valueLine) + (divider ? 8 : 0),
+      });
+    };
+    addRow("Panele [szt.] · moc [kW] · pow. [m²]",
+      e.panels + " szt. · " + M.fmt(e.installedKw) + " kW · " +
+      M.fmtArea(e.usableAreaM2) + " m²");
+    addRow("Moduły [zł]", M.money(e.moduleZl));
+    addRow("Konstrukcja / falownik / BOS [zł]", M.money(e.bosZl));
+    addRow("Materiały (moduły + BOS) [zł]", M.money(e.materialZl), false, true);
+    addRow("Robocizna [zł]", M.money(e.laborZl));
+    addRow("RAZEM (moduły + BOS + robocizna) [zł]", M.money(e.totalZl), true, true);
+    addRow("Czas realizacji", M.daysPl(e.days) + " (" + e.panelsPerDay +
+      " paneli/dzień)", false, true);
+
+    const rowsHeight = rows.reduce(function (sum, r) { return sum + r.height; }, 0);
+    const height = 10 + this.line.h2 + sourceLines * this.line.small + 8 +
+      rowsHeight + 6 + noteLines * this.line.small + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
@@ -443,60 +486,66 @@
     this.wrapped(source, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 8;
 
-    const fit = (value, font, maxWidth) => {
-      ctx.font = font;
-      let s = String(value);
-      if (ctx.measureText(s).width <= maxWidth) return s;
-      while (s.length > 1 && ctx.measureText(s + "…").width > maxWidth) {
-        s = s.slice(0, -1);
-      }
-      return s + "…";
-    };
-    // Wartości są wyrównane do prawej — dzięki temu żadna etykieta nie zachodzi
-    // na kwotę, także w motywie mono z wąskim, ale szerokim krojem Courier.
-    const row = (label, value, strong) => {
-      const valueFont = strong ? f.h3 : f.body;
-      const valueText = fit(value, valueFont, 520);
-      ctx.font = valueFont;
-      const valueWidth = ctx.measureText(valueText).width;
-      const valueX = W - MARGIN - valueWidth;
-      const gap = 40;
-      const labelText = fit(label, f.body, Math.max(120, valueX - gap - MARGIN));
-      this.text(labelText, f.body, c.MUTED, MARGIN, this.y);
-      this.text(valueText, valueFont, strong ? c.CELL : c.INK, valueX, this.y);
-      this.y += this.row;
-    };
-    row("Liczba paneli (moc i powierzchnia)", e.panels + " szt.");
-    row("Powierzchnia użyteczna", M.fmt(e.usableAreaM2) + " m²");
-    row("Moc z liczby paneli", M.fmt(e.installedKw) + " kW");
-    row("Koszt modułów", M.money(e.moduleZl));
-    row("Konstrukcja, falownik, osprzęt", M.money(e.bosZl));
-    row("Koszt materiałów", M.money(e.materialZl));
-    row("Koszt wykonania (robocizna)", M.money(e.laborZl));
-    row("RAZEM", M.money(e.totalZl), true);
-    row("Czas realizacji",
-        e.days + " dni roboczych (" + e.panelsPerDay + " paneli/dzień)");
+    rows.forEach((r) => {
+      if (r.divider) { this.rule(this.y - 2); this.y += 8; }
+      r.labelLines.forEach((line, i) => this.text(line, f.body, c.MUTED,
+        MARGIN, this.y + i * this.line.body));
+      ctx.font = r.valueFont;
+      r.valueLines.forEach((line, i) => this.text(line, r.valueFont,
+        r.strong ? c.CELL : c.INK, r.valueX - ctx.measureText(line).width,
+        this.y + i * r.valueLine));
+      this.y += r.height - (r.divider ? 8 : 0);
+    });
     this.y += 6;
-    this.wrapped(e.powerNote, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
+    this.wrapped(noteText, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     this.y += 8;
   };
 
   Doc.prototype.optimizerSection = function (o) {
     if (!o || !o.list || !o.list.length) return;
     const f = this.f, c = this.c, ctx = this.ctx;
-    const fit = (value, maxWidth) => {
-      let s = String(value);
-      if (ctx.measureText(s).width <= maxWidth) return s;
-      while (s.length > 1 && ctx.measureText(s + "…").width > maxWidth) {
-        s = s.slice(0, -1);
-      }
-      return s + "…";
-    };
-
     const rec = o.recommended;
     const noteLines = this.countLines(o.note, f.small, W - 2 * MARGIN);
-    const height = 10 + this.line.h2 + noteLines * this.line.small + (rec ? 8 + this.row + 8 : 0) +
-                   this.row + o.list.length * this.row + 8;
+    const recText = rec
+      ? "Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
+        M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl)
+      : "";
+    const recLines = rec ? this.countLines(recText, f.body, W - 2 * MARGIN) : 0;
+
+    // Pełne nazwy modułów mieszczą się w pierwszej kolumnie w jednym wierszu.
+    // Dzięki temu ranking zostaje na pierwszej stronie A4 we wszystkich motywach.
+    const widths = [520, 105, 90, 160, 185];
+    const cols = [MARGIN];
+    widths.slice(0, -1).forEach(function (w) { cols.push(cols[cols.length - 1] + w); });
+    const areaHead = o.mode === "both" ? "Pow. modułów [m²]"
+      : o.mode === "power" ? "Wymagana pow. [m²]" : "Zajęta pow. [m²]";
+    const heads = ["Moduł", "Panele [szt.]", "Moc [kW]", areaHead, "Razem [zł]"];
+    const headLines = heads.map((h, i) => this.splitLines(h, f.small, widths[i]));
+    const headHeight = Math.max.apply(null, headLines.map(function (lines) {
+      return lines.length;
+    })) * this.line.small + 8;
+
+    const rowData = o.list.map((x) => {
+      const areaText = o.mode === "power" && !x.fitsArea
+        ? "za dużo" : M.fmtArea(x.neededM2) + " m²";
+      const values = [
+        x.rank + ". " + x.name + " · " + M.fmt(x.wp) + " Wp",
+        x.panels + " szt.",
+        M.fmt(x.installedKw) + " kW",
+        areaText,
+        M.money(x.totalZl),
+      ];
+      const lines = values.map((value, i) => this.splitLines(value, f.small, widths[i]));
+      return {
+        x: x, lines: lines,
+        height: Math.max.apply(null, lines.map(function (cell) { return cell.length; })) *
+          this.line.small + 8,
+      };
+    });
+    const rowsHeight = rowData.reduce(function (sum, r) { return sum + r.height; }, 0);
+    const height = 10 + this.line.h2 + noteLines * this.line.small +
+      (rec ? 8 + recLines * this.line.body + 8 : 0) +
+      headHeight + 8 + rowsHeight + 8;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
@@ -504,48 +553,42 @@
     this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
     if (rec) {
       this.y += 8;
-      this.text("Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
-                M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl),
-                f.body, c.CELL, MARGIN, this.y);
-      this.y += this.row + 8;
+      this.wrapped(recText, f.body, c.CELL, MARGIN, W - 2 * MARGIN, this.line.body);
+      this.y += 8;
     }
 
-    const cols = [MARGIN, MARGIN + 430, MARGIN + 520, MARGIN + 630, MARGIN + 840];
-    const areaHead = o.mode === "both" ? "Pow. · z mocy/pow."
-      : o.mode === "power" ? "Pow. wymagana" : "Pow. zajęta";
-    const heads = ["Moduł", "Panele", "Moc", areaHead, "Razem"];
-    this.box(MARGIN, this.y - 4, W - 2 * MARGIN, 24,
+    this.box(MARGIN, this.y - 4, W - 2 * MARGIN, headHeight,
              c.TABLE_HEAD_BG, null, Math.min(8, this.shape.radius));
-    ctx.font = f.small;
-    heads.forEach((h, i) => this.text(fit(h, i === 0 ? 415 : 100), f.small,
-                                      c.CELL, cols[i], this.y));
-    this.rule(this.y + 24);
-    this.y += this.row;
+    headLines.forEach((lines, i) => {
+      lines.forEach((line, j) => {
+        ctx.font = f.small;
+        const x = i === 0 ? cols[i] : cols[i] + widths[i] - ctx.measureText(line).width;
+        this.text(line, f.small, c.CELL, x, this.y + j * this.line.small);
+      });
+    });
+    this.y += headHeight;
+    this.rule(this.y);
+    this.y += 8;
 
-    o.list.forEach(function (x) {
-      const best = rec && x.id === rec.id;
-      const areaText = o.mode === "both"
-        ? M.fmt(x.neededHa) + " ha · " + x.powerPanels + "/" + x.areaPanels
-        : o.mode === "power"
-          ? (x.fitsArea ? M.fmt(x.neededHa) + " ha" : "za dużo")
-          : M.fmt(x.neededM2) + " m²";
-      ctx.font = f.small;
-      this.text(fit(x.rank + ". " + x.name + " " + M.fmt(x.wp) + " Wp", 415),
-                f.small, best ? c.CELL : c.INK, cols[0], this.y);
-      this.text(x.panels + " szt.", f.small, c.INK, cols[1], this.y);
-      this.text(M.fmt(x.installedKw) + " kW", f.small, c.INK, cols[2], this.y);
-      this.text(fit(areaText, 100), f.small, c.INK, cols[3], this.y);
-      this.text(fit(M.money(x.totalZl), 145), f.small, best ? c.CELL : c.INK,
-                cols[4], this.y);
-      this.y += this.row;
-    }, this);
+    rowData.forEach((row) => {
+      const best = rec && row.x.id === rec.id;
+      row.lines.forEach((lines, i) => {
+        lines.forEach((line, j) => {
+          ctx.font = f.small;
+          const x = i === 0 ? cols[i] : cols[i] + widths[i] - ctx.measureText(line).width;
+          this.text(line, f.small, best && (i === 0 || i === 4) ? c.CELL : c.INK,
+                    x, this.y + j * this.line.small);
+        });
+      });
+      this.y += row.height;
+    });
     this.y += 8;
   };
 
   Doc.prototype.render = function (r, e, o) {
     const f = this.f, c = this.c;
-    if (!e) e = M.estimate(r.ha, r.kw);
-    if (!o) o = M.optimize("both", r.ha, r.kw);
+    if (!o) o = M.optimize("both", r.ha, r.kw, undefined, r.place_text);
+    if (!e) e = M.estimateFromOptimizer(r.ha, r.kw, undefined, o, r.place_text);
 
     this.setFooter([M.SOURCE_LINE, M.DISCLAIMER, M.AUTHOR_LINE]);
     this.header("Formalność OZE — raport",
