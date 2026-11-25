@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=17"></script>
-<script src="../js/payment.js?v=2.0.0i&n=17"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=17"></script>
-<script src="../js/app.js?v=2.0.0i&n=17"></script>
+<script src="../js/model.js?v=2.0.0i&n=18"></script>
+<script src="../js/payment.js?v=2.0.0i&n=18"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=18"></script>
+<script src="../js/app.js?v=2.0.0i&n=18"></script>
 <script>
 (function () {
   "use strict";
@@ -419,6 +419,15 @@
     ok("PDF: nagłówek 1.4", head === "%PDF-1.4", head);
     ok("PDF: JPEG /DCTDecode", text.indexOf("/DCTDecode") >= 0);
     ok("PDF: A4 2480x3508", text.indexOf("/Width 2480 /Height 3508") >= 0);
+    const imgDim = text.match(/\/Width (\d+) \/Height (\d+)/);
+    const dpiX = imgDim ? Number(imgDim[1]) / (window.PVPdf.constants.PAGE_W / 72) : 0;
+    const dpiY = imgDim ? Number(imgDim[2]) / (window.PVPdf.constants.PAGE_H / 72) : 0;
+    ok("PDF: 300 DPI względem A4",
+       Math.abs(dpiX - 300) < 1 && Math.abs(dpiY - 300) < 1,
+       dpiX.toFixed(2) + " x " + dpiY.toFixed(2));
+    ok("PDF: maksymalna jakość JPEG",
+       window.PVPdf.constants.JPEG_QUALITY === 1,
+       String(window.PVPdf.constants.JPEG_QUALITY));
     ok("PDF: EOF", tail.indexOf("%%EOF") >= 0, JSON.stringify(tail));
     ok("znak wodny wersji testowej w dwóch liniach",
        window.PVPdf.watermark === "BIM ARCHITECTS & CONSULTANTS\nWERSJA TESTOWA" &&

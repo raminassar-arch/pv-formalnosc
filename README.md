@@ -53,7 +53,7 @@ Stary fallback C# `PV_Formalność_v1.2.0.exe` pozostaje niezmieniony.
 | Podgląd A4 | Ten sam układ co w eksportowanym PDF, renderowany do canvasa 2480 × 3508 px |
 | Płatność | Wersja testowa: dostęp bez opłaty i bez danych bramki. W kodzie pozostaje szkielet bramki 30 zł (Przelewy24, `createUrl`/`verifyUrl`) bez edytowalnego panelu konfiguracji |
 | Wynik i podgląd | W wersji testowej zakładki są odblokowane, a bezpośrednie `#/wynik` / `#/podglad` działają bez opłaty. Po `TEST_MODE = false` wraca blokada kłódką i przekierowanie na płatność bez zapisu w historii |
-| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode`, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **5 wybieranych stylów** |
+| Eksport PDF | PDF 1.4, A4, **300 DPI**, JPEG `/DCTDecode` z maksymalną jakością, polskie znaki (fonty DejaVu), bez drukarki i bez okna wydruku - w wersji testowej bez opłaty; zawiera sekcję wyceny, tabelę rankingu i stałe parametry; **5 wybieranych stylów** |
 | Styl raportu | **Motyw 1** — biały, ostre kąty, DejaVu; **Motyw 2** — karty z zaokrągleniami, Georgia; **Motyw 3** — premium z złotymi akcentami, Arial; **Motyw 4** — czytelny mono, Consolas; **Motyw 5** — Tahoma z większymi literami. Wybór w panelu „Podgląd i PDF" każdej zakładki, w tym Porównaj |
 | Znak wodny | Dwie linie — „BIM ARCHITECTS & CONSULTANTS" i „WERSJA TESTOWA" — na każdej stronie PDF i w podglądzie A4 (przezroczysty, przekątny, pod treścią); znika automatycznie po `TEST_MODE = false` |
 
@@ -281,7 +281,7 @@ sprawdzają m.in.:
 - brak nakładania tekstu, wyjść poza marginesy i wielokropka we wszystkich
   30 kombinacjach (6 zakładek × 5 motywów) podglądu/PDF.
 
-Wynik: `TOTAL 242 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 244 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
@@ -337,7 +337,8 @@ gotowy kod iframe z adresem opublikowanej strony.
 Silnik kalkulatora, teksty decyzji, kolejność kroków, formatowanie liczb
 (polski przecinek), źródła i disclaimer są identyczne jak w `model.py`.
 PDF używa tego samego układu A4 w jednostkach projektowych 150 DPI skalowanych
-×2 do 300 DPI (2480 × 3508 px) oraz tego samego zapisu PDF 1.4 z obrazem JPEG.
+×2 do 300 DPI (2480 × 3508 px) oraz tego samego zapisu PDF 1.4 z obrazem JPEG
+z maksymalną jakością (`1.0`).
 
 Różnice wynikające ze środowiska:
 

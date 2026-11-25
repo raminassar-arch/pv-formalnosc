@@ -776,7 +776,8 @@
     const C = window.PVPdf.constants;
     return canvases.map(function (canvas) {
       return {
-        bytes: window.PVPdf.dataUrlBytes(canvas.toDataURL("image/jpeg", 0.96)),
+        bytes: window.PVPdf.dataUrlBytes(
+          canvas.toDataURL("image/jpeg", window.PVPdf.constants.JPEG_QUALITY)),
         w: C.PXW, h: C.PXH,
       };
     });

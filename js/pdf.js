@@ -16,6 +16,7 @@
   const S = 2;                              // 150 -> 300 DPI
   const PXW = W * S, PXH = H * S;
   const CARD_GAP = 10;                      // luz między kolejnymi kartami
+  const JPEG_QUALITY = 1;                   // maksymalna jakość obrazu w PDF
 
   // Wersja testowa — znak wodny na każdej stronie (również w podglądzie A4).
   // Znika automatycznie po ustawieniu TEST_MODE = false w js/payment.js.
@@ -766,7 +767,7 @@
     const doc = new Doc(theme);
     doc.render(r, e, o);
     const images = doc.pages.map((page) => ({
-      bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", 0.96)),
+      bytes: dataUrlBytes(page.canvas.toDataURL("image/jpeg", JPEG_QUALITY)),
       w: PXW, h: PXH,
     }));
     return buildPdf(images);
@@ -806,6 +807,7 @@
     watermarkLines: WATERMARK_LINES,
     defaultTheme: "premium",
     constants: { W: W, H: H, MARGIN: MARGIN, S: S, PXW: PXW, PXH: PXH,
-                 PAGE_W: PAGE_W, PAGE_H: PAGE_H, CARD_GAP: CARD_GAP },
+                 PAGE_W: PAGE_W, PAGE_H: PAGE_H, CARD_GAP: CARD_GAP,
+                 JPEG_QUALITY: JPEG_QUALITY },
   };
 })(typeof window !== "undefined" ? window : globalThis);
