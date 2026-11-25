@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=15"></script>
-<script src="../js/payment.js?v=2.0.0i&n=15"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=15"></script>
-<script src="../js/app.js?v=2.0.0i&n=15"></script>
+<script src="../js/model.js?v=2.0.0i&n=16"></script>
+<script src="../js/payment.js?v=2.0.0i&n=16"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=16"></script>
+<script src="../js/app.js?v=2.0.0i&n=16"></script>
 <script>
 (function () {
   "use strict";
@@ -697,6 +697,11 @@
          window.PVPdf.lineHeight("body", "wide") &&
        window.PVPdf.themeRowHeight("mono") < window.PVPdf.themeRowHeight("wide"),
        themeFonts.map(function (f) { return f.family + "@" + f.scale; }).join(" | "));
+    ok("motyw 4: czytelna czcionka Consolas i większe litery",
+       themeFonts[3].family.indexOf("Consolas") === 0 &&
+       themeFonts[3].scale >= 0.96 && themeFonts[3].lineScale >= 0.97 &&
+       window.PVPdf.lineHeight("small", "mono") >= 19,
+       themeFonts[3].family + "@" + themeFonts[3].scale);
     const themed = {};
     for (const t of themes) {
       const bytes = await window.PVPdf.renderPdf(r, est, optPower, t.id);

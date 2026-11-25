@@ -29,7 +29,7 @@
     { id: "simple",  label: "Motyw 1", name: "Biały — prosty i czytelny" },
     { id: "cards",   label: "Motyw 2", name: "Karty — sekcje w ramkach" },
     { id: "premium", label: "Motyw 3", name: "Premium — ciemnogranatowo-złoty" },
-    { id: "mono",    label: "Motyw 4", name: "Mono — wąski krój pisma" },
+    { id: "mono",    label: "Motyw 4", name: "Mono — czytelny krój o stałej szerokości" },
     { id: "wide",    label: "Motyw 5", name: "Wide — duży krój pisma" },
   ];
 
@@ -108,7 +108,7 @@
     simple:  { family: '"DejaVu", Arial, sans-serif', boldFamily: '"DejaVu-Bold", Arial, sans-serif', boldWeight: false, scale: 1.00, lineScale: 1.00 },
     cards:   { family: 'Georgia, "Times New Roman", serif', boldWeight: true, scale: 1.02, lineScale: 1.02 },
     premium: { family: 'Arial, Helvetica, sans-serif', boldWeight: true, scale: 1.03, lineScale: 1.03 },
-    mono:    { family: '"Courier New", "Lucida Console", monospace', boldWeight: true, scale: 0.90, lineScale: 0.94 },
+    mono:    { family: 'Consolas, "Lucida Console", monospace', boldWeight: true, scale: 0.97, lineScale: 0.98 },
     wide:    { family: 'Tahoma, Verdana, sans-serif', boldWeight: true, scale: 1.05, lineScale: 1.05 },
   };
 
