@@ -765,7 +765,7 @@
     const valueX = W - MG - valueWidth;
     const labelLines = splitPdfLines(doc, label,
       Math.max(120, valueX - MG - 36), font);
-    const height = Math.max(labelLines.length, valueLines.length) * doc.line.body + 6;
+    const height = Math.max(labelLines.length, valueLines.length) * doc.line.body + 12;
     doc.ensure(height + 10);
     const top = doc.y;
     labelLines.forEach(function (line, i) {
@@ -885,7 +885,7 @@
       return splitPdfLines(doc, head, widths[i], f.small);
     });
     const headLines = Math.max.apply(null, headParts.map(function (p) { return p.length; }));
-    const headHeight = headLines * L.small + 8;
+    const headHeight = headLines * L.small + 12;
     doc.ensure(headHeight + 14);
     doc.box(MG, doc.y - 4, W - 2 * MG, headHeight,
             c.TABLE_HEAD_BG, null, Math.min(8, doc.shape.radius));
@@ -912,7 +912,7 @@
         return splitPdfLines(doc, value, widths[i], f.small);
       });
       const lines = Math.max.apply(null, parts.map(function (p) { return p.length; }));
-      const height = lines * L.small + 10;
+      const height = lines * L.small + 16;
       doc.ensure(height + 12);
       if (row.recommended) {
         doc.box(MG - 10, doc.y - 8, W - 2 * MG + 20, height,

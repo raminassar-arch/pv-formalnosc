@@ -280,7 +280,7 @@
     e.recommendedId = rec.id;
     e.recommendedName = rec.name;
     e.selectionScope =
-      "Wycena dotyczy wariantu rekomendowanego w tabeli poniżej: " + rec.name +
+      "Wycena wariantu z rankingu poniżej: " + rec.name +
       " · " + rec.panels + " szt. · " + fmt(rec.installedKw) + " kW.";
     if (!rec.meetsPower) {
       e.powerNote = "Powierzchnia " + areaName + " ogranicza moc: zmieściło się " +

@@ -446,6 +446,7 @@
     // Etykiety są po lewej, kwoty wyrównane do prawej. Długie nazwy i kwoty
     // zawijają się do kolejnych wierszy — bez wielokropka i bez utraty treści.
     const valueMax = 520, gap = 36, rows = [];
+    const rowPad = Math.max(3, Math.round(this.line.body * 0.16));
     const addRow = (label, value, strong, divider) => {
       const valueFont = strong ? f.h3 : f.body;
       const valueLines = this.splitLines(value, valueFont, valueMax);
@@ -462,7 +463,8 @@
         labelLines: labelLines, valueLines: valueLines, valueFont: valueFont,
         valueLine: valueLine, valueX: valueX, strong: !!strong, divider: !!divider,
         height: Math.max(labelLines.length * this.line.body,
-                         valueLines.length * valueLine) + (divider ? 8 : 0),
+                         valueLines.length * valueLine) + rowPad +
+                (divider ? 8 : 0),
       });
     };
     addRow("Panele [szt.] · moc [kW] · pow. [m²]",
@@ -506,15 +508,14 @@
     const f = this.f, c = this.c, ctx = this.ctx;
     const rec = o.recommended;
     const noteLines = this.countLines(o.note, f.small, W - 2 * MARGIN);
-    const recText = rec
-      ? "Rekomendacja: " + rec.name + " · " + rec.panels + " szt. · " +
-        M.fmt(rec.installedKw) + " kW · " + M.money(rec.totalZl)
-      : "";
-    const recLines = rec ? this.countLines(recText, f.body, W - 2 * MARGIN) : 0;
+    // Wiersze mają wyraźny odstęp; rekomendacja jest wyróżniona w tabeli,
+    // więc nie powtarzamy jej w osobnym wierszu (zabrakłoby miejsca na A4).
+    const tableGap = 8;
+    const rowPad = Math.max(11, Math.round(this.line.small * 0.55));
 
     // Pełne nazwy modułów mieszczą się w pierwszej kolumnie w jednym wierszu.
     // Dzięki temu ranking zostaje na pierwszej stronie A4 we wszystkich motywach.
-    const widths = [520, 105, 90, 160, 185];
+    const widths = [550, 105, 95, 140, 170];
     const cols = [MARGIN];
     widths.slice(0, -1).forEach(function (w) { cols.push(cols[cols.length - 1] + w); });
     const areaHead = o.mode === "both" ? "Pow. modułów [m²]"
@@ -523,7 +524,7 @@
     const headLines = heads.map((h, i) => this.splitLines(h, f.small, widths[i]));
     const headHeight = Math.max.apply(null, headLines.map(function (lines) {
       return lines.length;
-    })) * this.line.small + 8;
+    })) * this.line.small + 6;
 
     const rowData = o.list.map((x) => {
       const areaText = o.mode === "power" && !x.fitsArea
@@ -539,23 +540,18 @@
       return {
         x: x, lines: lines,
         height: Math.max.apply(null, lines.map(function (cell) { return cell.length; })) *
-          this.line.small + 8,
+          this.line.small + rowPad,
       };
     });
     const rowsHeight = rowData.reduce(function (sum, r) { return sum + r.height; }, 0);
     const height = 10 + this.line.h2 + noteLines * this.line.small +
-      (rec ? 8 + recLines * this.line.body + 8 : 0) +
-      headHeight + 8 + rowsHeight + 8;
+      tableGap + headHeight + 6 + rowsHeight + 4;
     this.ensure(height + 20);
     this.cardRect(this.y, height + 6);
     this.y += 10;
     this.sectionTitle("Najtańszy wariant — dobór modułu i mocy", this.line.h2);
     this.wrapped(o.note, f.small, c.MUTED, MARGIN, W - 2 * MARGIN, this.line.small);
-    if (rec) {
-      this.y += 8;
-      this.wrapped(recText, f.body, c.CELL, MARGIN, W - 2 * MARGIN, this.line.body);
-      this.y += 8;
-    }
+    this.y += tableGap;
 
     this.box(MARGIN, this.y - 4, W - 2 * MARGIN, headHeight,
              c.TABLE_HEAD_BG, null, Math.min(8, this.shape.radius));
@@ -568,7 +564,7 @@
     });
     this.y += headHeight;
     this.rule(this.y);
-    this.y += 8;
+    this.y += 6;
 
     rowData.forEach((row) => {
       const best = rec && row.x.id === rec.id;
@@ -582,7 +578,7 @@
       });
       this.y += row.height;
     });
-    this.y += 8;
+    this.y += 4;
   };
 
   Doc.prototype.render = function (r, e, o) {

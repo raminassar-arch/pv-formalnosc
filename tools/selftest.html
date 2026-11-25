@@ -12,10 +12,10 @@
 </div>
 <div id="app"></div>
 
-<script src="../js/model.js?v=2.0.0i&n=12"></script>
-<script src="../js/payment.js?v=2.0.0i&n=12"></script>
-<script src="../js/pdf.js?v=2.0.0i&n=12"></script>
-<script src="../js/app.js?v=2.0.0i&n=12"></script>
+<script src="../js/model.js?v=2.0.0i&n=13"></script>
+<script src="../js/payment.js?v=2.0.0i&n=13"></script>
+<script src="../js/pdf.js?v=2.0.0i&n=13"></script>
+<script src="../js/app.js?v=2.0.0i&n=13"></script>
 <script>
 (function () {
   "use strict";
@@ -581,6 +581,20 @@
     const labelW = mc.measureText("Konstrukcja, falownik, osprzęt").width;
     ok("PDF: etykiety wyceny mieszczą się w kolumnie", labelW < 330,
        labelW.toFixed(1) + "px");
+
+    const spacingDoc = window.PVPdf.createDoc("premium");
+    const rankYs = [];
+    const originalText = spacingDoc.text;
+    spacingDoc.text = function (value, font, fill, x, y) {
+      if (/^\d+\. /.test(String(value))) rankYs.push(y);
+      return originalText.apply(this, arguments);
+    };
+    spacingDoc.optimizerSection(optPower);
+    const uniqueRankYs = Array.from(new Set(rankYs)).sort(function (a, b) { return a - b; });
+    ok("PDF: wiersze rankingu mają wyraźny odstęp",
+       uniqueRankYs.length >= 5 && uniqueRankYs.every(function (y, i) {
+         return i === 0 || y - uniqueRankYs[i - 1] >= 30;
+       }), JSON.stringify(uniqueRankYs));
 
     const canvas = document.createElement("canvas");
     const pages = await window.PVPdf.renderPreview(r, canvas, est, optPower);

@@ -275,11 +275,12 @@ sprawdzają m.in.:
 - wymiary podglądu A4 oraz formularz z miejscem montażu, lokalizacją, mocą i powierzchnią,
 - wybór stylu raportu w widoku Wynik/Podgląd,
 - czytelna hierarchia pięciu ponumerowanych sekcji PV, jawne jednostki w nagłówkach,
-  rozdzielenie kosztów od podsumowań oraz brak skracania nazw wielokropkiem,
+  rozdzielenie kosztów od podsumowań, wyraźne odstępy między wierszami rankingu
+  oraz brak skracania nazw wielokropkiem,
 - brak nakładania tekstu, wyjść poza marginesy i wielokropka we wszystkich
   30 kombinacjach (6 zakładek × 5 motywów) podglądu/PDF.
 
-Wynik: `TOTAL 237 PASS / 0 FAIL` (kod wyjścia 0).
+Wynik: `TOTAL 238 PASS / 0 FAIL` (kod wyjścia 0).
 
 ---
 
